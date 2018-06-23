@@ -64,6 +64,9 @@ class Policy(nn.Module):
         return value, action_log_probs, dist_entropy, states
 
 
+    def save_model(self, save_path):
+        torch.save(self.state_dict(), save_path+'/trained_learner.pth')
+
 class CNNBase(nn.Module):
     def __init__(self, num_inputs, use_gru):
         super(CNNBase, self).__init__()

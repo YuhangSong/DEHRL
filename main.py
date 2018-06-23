@@ -34,9 +34,9 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 try:
-    os.makedirs(args.log_dir)
+    os.makedirs(args.save_dir)
 except OSError:
-    files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
+    files = glob.glob(os.path.join(args.save_dir, '*.monitor.csv'))
     for f in files:
         os.remove(f)
 
@@ -54,7 +54,7 @@ def main():
         # win = None
         summary_writer = tf.summary.FileWriter(args.save_dir)
 
-    envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.add_timestep)
+    envs = [make_env(args.env_name, args.seed, i, args.save_dir, args.add_timestep)
                 for i in range(args.num_processes)]
 
     if args.num_processes > 1:
@@ -118,8 +118,17 @@ def main():
         rollouts.cuda()
 
     start = time.time()
-    num_trained_frames = 0
-    num_trained_updates = 0
+    try:
+        num_trained_frames = np.load(args.save_dir+'/num_trained_frames.npy')[0]
+        try:
+            actor_critic.load_state_dict(torch.load(args.save_dir+'/trained_learner.pth'))
+            print('Load learner previous point: Successed')
+        except Exception as e:
+            print('Load learner previous point: Failed')
+    except Exception as e:
+        num_trained_frames = 0
+    print('Learner has been trained to step: '+str(num_trained_frames))
+    j = 0
     while True:
         if num_trained_frames > args.num_frames:
             break
@@ -172,28 +181,21 @@ def main():
         rollouts.after_update()
 
         num_trained_frames += (args.num_steps*args.num_processes)
-        num_trained_updates += 1
+        j += 1
 
-        if num_trained_updates % args.save_interval == 0 and args.save_dir != "":
-            save_path = args.save_dir
+        if j % args.save_interval == 0 and args.save_dir != "":
             try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
+                np.save(
+                    args.save_dir+'/num_trained_frames.npy',
+                    np.array([num_trained_frames]),
+                )
+                actor_critic.save_model(save_path=args.save_dir)
+            except Exception as e:
+                print("Save checkpoint failed")
 
-            # A really ugly way to save a model to CPU
-            save_model = actor_critic
-            if args.cuda:
-                save_model = copy.deepcopy(actor_critic).cpu()
-
-            save_model = [save_model,
-                            hasattr(envs, 'ob_rms') and envs.ob_rms or None]
-
-            torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
-
-        if num_trained_updates % args.log_interval == 0:
+        if j % args.log_interval == 0:
             end = time.time()
-            total_num_steps = (num_trained_updates + 1) * args.num_processes * args.num_steps
+            total_num_steps = (j + 1) * args.num_processes * args.num_steps
             print("[{}/{}], FPS {}, final_reward_raw {:.2f}, remaining {} hours".
                 format(
                     num_trained_frames, args.num_frames,
@@ -203,10 +205,10 @@ def main():
                 )
             )
 
-        if args.vis and num_trained_updates % args.vis_interval == 0:
+        if args.vis and j % args.vis_interval == 0:
             # try:
             #     # Sometimes monitor doesn't properly flush the outputs
-            #     win = visdom_plot(viz, win, args.log_dir, args.env_name,
+            #     win = visdom_plot(viz, win, args.save_dir, args.env_name,
             #                       args.algo, args.num_frames)
             # except IOError:
             #     pass
