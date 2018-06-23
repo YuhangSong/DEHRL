@@ -27,9 +27,12 @@ class OverCooked(gym.Env):
         self.screen_height = 84
         self.leg_num = 4
         self.goal_num = 4
+        self.eposide_length = 0
         self.observation_space = spaces.Box(low=0, high=255, shape=(self.screen_height, self.screen_width, 3), dtype=np.uint8)
 
         self.reward_level = reward_level
+        if self.reward_level in [1]:
+            self.episode_length_limit = 50
 
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)
@@ -123,6 +126,7 @@ class OverCooked(gym.Env):
 
     def step(self, action_id):
         done = False
+        self.eposide_length += 1
         reward = 0
         if action_id<17:
             self.leg_id = int((action_id - 1) / 4)
@@ -162,7 +166,12 @@ class OverCooked(gym.Env):
                 elif body_action == 4:
                     self.position[1] = self.position[1]-self.screen_height/10
                 if self.reward_level == 0:
-                    reward = 1
+                    if body_action in [1]:
+                        reward = 1
+                        done = True
+                    else:
+                        reward = 0
+                        done = False
 
 
             self.position = self.position_constrain(self.position,[self.max_x,self.max_y],[self.min_x,self.min_y])
@@ -200,33 +209,39 @@ class OverCooked(gym.Env):
                 self.goal_id += 1
                 if self.reward_level == 1:
                     reward = 1
+                    done = True
             elif distance_2 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
                 self.cur_goal[self.goal_id] = 2
                 self.goal_id += 1
                 if self.reward_level == 1:
                     reward = 1
+                    done = True
             elif distance_3 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
                 self.cur_goal[self.goal_id] = 3
                 self.goal_id += 1
                 if self.reward_level == 1:
                     reward = 1
+                    done = True
             elif distance_4 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
                 self.cur_goal[self.goal_id] = 4
                 self.goal_id += 1
                 if self.reward_level == 1:
                     reward = 1
+                    done = True
 
         if self.reward_level == 2:
             if (self.realgoal==self.cur_goal).all():
                 reward = 1
+                done = True
 
         obs = self.render()
 
-        if self.goal_id >= 4:
-            done = True
-            # self.reset()
-
         obs = self.processes_obs(obs)
+
+
+        if self.eposide_length > self.episode_length_limit:
+            done = True
+            reward = 0
 
         return obs, reward, done, {}
 
@@ -236,6 +251,7 @@ class OverCooked(gym.Env):
     def reset(self):
         self.leg_id = 0
         self.goal_id = 0
+        self.eposide_length = 0
         self.action_mem = np.zeros(self.leg_num)
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)
