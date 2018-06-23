@@ -54,7 +54,7 @@ def main():
         # win = None
         summary_writer = tf.summary.FileWriter(args.save_dir)
 
-    envs = [make_env(args.env_name, args.seed, i, args.save_dir, args.add_timestep)
+    envs = [make_env(i, args=args)
                 for i in range(args.num_processes)]
 
     if args.num_processes > 1:

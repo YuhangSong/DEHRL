@@ -5,6 +5,8 @@ import torch
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument('--exp', type=str, default='',
+                        help='exp')
     parser.add_argument('--algo', default='a2c',
                         help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument('--lr', type=float, default=7e-4,
@@ -59,14 +61,14 @@ def get_args():
                         help='use a recurrent policy')
     parser.add_argument('--no-vis', action='store_true', default=False,
                         help='disables visdom visualization')
-    # parser.add_argument('--port', type=int, default=8097,
-    #                     help='port to run the server on (default: 8097)')
+    parser.add_argument('--reward-level', type=int, default=2,
+                        help='level of reward in games like OverCooked')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
 
-    args.save_dir = os.path.join(args.save_dir, 'temp_1')
+    args.save_dir = os.path.join(args.save_dir, args.exp)
     args.save_dir = os.path.join(args.save_dir, args.env_name)
 
     return args

@@ -66,7 +66,11 @@ pip install -r requirements.txt
 ```
 
 ```bash
-python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4
+python main.py --exp temp_2 --env-name "OverCooked" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --reward-level 0
+```
+
+```bash
+--env-name "PongNoFrameskip-v4"
 ```
 
 ```base

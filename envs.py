@@ -23,26 +23,32 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, add_timestep):
+def make_env(rank, args):
     def _thunk():
-        if env_id.startswith("dm"):
-            _, domain, task = env_id.split('.')
+        if args.env_name.startswith("dm"):
+            _, domain, task = args.env_name.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
+        elif args.env_name in ['OverCooked']:
+            import overcooked
+            env = overcooked.OverCooked(
+                reward_level = args.reward_level,
+            )
         else:
-            env = gym.make(env_id)
+            env = gym.make(args.env_name)
+
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
-            env = make_atari(env_id)
-        env.seed(seed + rank)
+            env = make_atari(args.env_name)
+        env.seed(args.seed + rank)
 
         obs_shape = env.observation_space.shape
-        if add_timestep and len(
+        if args.add_timestep and len(
                 obs_shape) == 1 and str(env).find('TimeLimit') > -1:
             env = AddTimestep(env)
 
-        if log_dir is not None:
-            env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
+        # if args.save_dir is not None:
+        #     env = bench.Monitor(env, os.path.join(args.save_dir, str(rank)))
 
         if is_atari:
             env = wrap_deepmind(env, clip_rewards=False)
