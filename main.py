@@ -160,7 +160,7 @@ def main():
         rollouts.after_update()
 
         if j % args.save_interval == 0 and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
+            save_path = args.save_dir
             try:
                 os.makedirs(save_path)
             except OSError:

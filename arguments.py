@@ -1,5 +1,5 @@
+import os
 import argparse
-
 import torch
 
 
@@ -51,8 +51,8 @@ def get_args():
                         help='environment to train on (default: PongNoFrameskip-v4)')
     parser.add_argument('--log-dir', default='/tmp/gym/',
                         help='directory to save agent logs (default: /tmp/gym)')
-    parser.add_argument('--save-dir', default='./trained_models/',
-                        help='directory to save agent logs (default: ./trained_models/)')
+    parser.add_argument('--save-dir', default='../results/',
+                        help='directory to save agent logs (default: ../results/)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--add-timestep', action='store_true', default=False,
@@ -67,5 +67,7 @@ def get_args():
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
+
+    args.save_dir = os.path.join(args.save_dir, 'temp_1')
 
     return args

@@ -45,6 +45,14 @@ To use the DeepMind Control Suite environments, set the flag `--env-name dm.<dom
 In order to install requirements, follow:
 
 ```bash
+
+# create env
+conda create -n ehrl
+
+# source in env
+source ~/.bashrc
+source activate ehrl
+
 # PyTorch
 conda install pytorch torchvision -c soumith
 
@@ -55,6 +63,10 @@ pip install -e .
 
 # Other requirements
 pip install -r requirements.txt
+```
+
+```bash
+python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --vis-interval 1 --log-interval 1
 ```
 
 ## Contributions
