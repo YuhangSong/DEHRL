@@ -18,6 +18,7 @@ from envs import make_env
 from model import Policy
 from storage import RolloutStorage
 from visualize import visdom_plot
+import tensorflow as tf
 
 import algo
 
@@ -27,8 +28,6 @@ assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
         'Recurrent policy is not implemented for ACKTR'
-
-num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
 torch.manual_seed(args.seed)
 if args.cuda:
@@ -50,9 +49,10 @@ def main():
     torch.set_num_threads(1)
 
     if args.vis:
-        from visdom import Visdom
-        viz = Visdom(port=args.port)
-        win = None
+        # from visdom import Visdom
+        # viz = Visdom(port=args.port)
+        # win = None
+        summary_writer = tf.summary.FileWriter(args.save_dir)
 
     envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.add_timestep)
                 for i in range(args.num_processes)]
@@ -109,6 +109,8 @@ def main():
 
     # These variables are used to compute average rewards for all processes.
     episode_rewards = torch.zeros([args.num_processes, 1])
+    episode_reward_raw = 0.0
+    final_reward_raw = 0.0
     final_rewards = torch.zeros([args.num_processes, 1])
 
     if args.cuda:
@@ -116,7 +118,12 @@ def main():
         rollouts.cuda()
 
     start = time.time()
-    for j in range(num_updates):
+    num_trained_frames = 0
+    num_trained_updates = 0
+    while True:
+        if num_trained_frames > args.num_frames:
+            break
+
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
@@ -127,7 +134,12 @@ def main():
             cpu_actions = action.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
-            obs, reward, done, info = envs.step(cpu_actions)
+            obs, reward_raw, done, info = envs.step(cpu_actions)
+            episode_reward_raw += reward_raw[0]
+            if done[0]:
+                final_reward_raw = episode_reward_raw
+                episode_reward_raw = 0.0
+            reward = np.sign(reward_raw)
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
             episode_rewards += reward
 
@@ -159,7 +171,10 @@ def main():
 
         rollouts.after_update()
 
-        if j % args.save_interval == 0 and args.save_dir != "":
+        num_trained_frames += (args.num_steps*args.num_processes)
+        num_trained_updates += 1
+
+        if num_trained_updates % args.save_interval == 0 and args.save_dir != "":
             save_path = args.save_dir
             try:
                 os.makedirs(save_path)
@@ -176,24 +191,35 @@ def main():
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
-        if j % args.log_interval == 0:
+        if num_trained_updates % args.log_interval == 0:
             end = time.time()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, total_num_steps,
-                       int(total_num_steps / (end - start)),
-                       final_rewards.mean(),
-                       final_rewards.median(),
-                       final_rewards.min(),
-                       final_rewards.max(), dist_entropy,
-                       value_loss, action_loss))
-        if args.vis and j % args.vis_interval == 0:
-            try:
-                # Sometimes monitor doesn't properly flush the outputs
-                win = visdom_plot(viz, win, args.log_dir, args.env_name,
-                                  args.algo, args.num_frames)
-            except IOError:
-                pass
+            total_num_steps = (num_trained_updates + 1) * args.num_processes * args.num_steps
+            print("[{}/{}], FPS {}, final_reward_raw {:.2f}, remaining {} hours".
+                format(
+                    num_trained_frames, args.num_frames,
+                    int(num_trained_frames / (end - start)),
+                    final_reward_raw,
+                    (end - start)/num_trained_frames*(args.num_frames-num_trained_frames)/60.0/60.0
+                )
+            )
+
+        if args.vis and num_trained_updates % args.vis_interval == 0:
+            # try:
+            #     # Sometimes monitor doesn't properly flush the outputs
+            #     win = visdom_plot(viz, win, args.log_dir, args.env_name,
+            #                       args.algo, args.num_frames)
+            # except IOError:
+            #     pass
+            '''we use tensorboard since its better when comparing plots'''
+            summary = tf.Summary()
+            summary.value.add(
+                tag = 'final_reward_raw',
+                simple_value = final_reward_raw,
+            )
+            summary_writer.add_summary(summary, num_trained_frames)
+            summary_writer.flush()
+
+
 
 if __name__ == "__main__":
     main()

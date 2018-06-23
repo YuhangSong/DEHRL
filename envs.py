@@ -45,7 +45,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep):
             env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
 
         if is_atari:
-            env = wrap_deepmind(env)
+            env = wrap_deepmind(env, clip_rewards=False)
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
