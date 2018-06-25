@@ -66,7 +66,7 @@ pip install -r requirements.txt
 ```
 
 ```bash
-python main.py --exp temp_2 --env-name "OverCooked" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --reward-level 0
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_5 --env-name "OverCooked" --reward-level 1
 ```
 
 ```bash
@@ -74,7 +74,7 @@ python main.py --exp temp_2 --env-name "OverCooked" --algo ppo --use-gae --lr 2.
 ```
 
 ```base
-tensorboard --logdir=../../../results/t-MovementBandits-v0/
+tensorboard --logdir=../results/t-MovementBandits-v0/
 ```
 
 

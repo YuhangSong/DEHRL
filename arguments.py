@@ -70,5 +70,7 @@ def get_args():
 
     args.save_dir = os.path.join(args.save_dir, args.exp)
     args.save_dir = os.path.join(args.save_dir, args.env_name)
+    if args.env_name in ['OverCooked']:
+        args.save_dir = os.path.join(args.save_dir, args.reward_level)
 
     return args
