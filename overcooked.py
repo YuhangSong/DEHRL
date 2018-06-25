@@ -31,8 +31,12 @@ class OverCooked(gym.Env):
         self.observation_space = spaces.Box(low=0, high=255, shape=(self.screen_height, self.screen_width, 3), dtype=np.uint8)
 
         self.reward_level = reward_level
-        if self.reward_level in [1]:
+        if self.reward_level in [0]:
+            self.episode_length_limit = -1
+        elif self.reward_level in [1]:
             self.episode_length_limit = 50
+        elif self.reward_level in [2]:
+            self.episode_length_limit = 50*4
 
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)
@@ -97,7 +101,6 @@ class OverCooked(gym.Env):
         for i in range(4):
             position = np.array([i*self.screen_width/10,self.screen_height])
             self.draw_goals(self.realgoal[i],position,self.img)
-        # print("new goal is " + str(self.realgoal))
 
     def draw_goals(self,goal_num,position,canvas):
         if goal_num == 1:
@@ -238,10 +241,10 @@ class OverCooked(gym.Env):
 
         obs = self.processes_obs(obs)
 
-
-        if self.eposide_length > self.episode_length_limit:
-            done = True
-            reward = 0
+        if self.episode_length_limit > 0:
+            if self.eposide_length > self.episode_length_limit:
+                done = True
+                reward = 0
 
         return obs, reward, done, {}
 

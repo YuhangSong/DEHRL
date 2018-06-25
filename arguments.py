@@ -63,14 +63,26 @@ def get_args():
                         help='disables visdom visualization')
     parser.add_argument('--reward-level', type=int, default=2,
                         help='level of reward in games like OverCooked')
+    parser.add_argument('--policy-type', type=str,
+                        help='shared_policy, hierarchical_policy' )
+    parser.add_argument('--num-hierarchy', type=int,
+                        help='shared_policy, hierarchical_policy' )
+    parser.add_argument('--reward-bounty', type=float,
+                        help='shared_policy, hierarchical_policy' )
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
 
     args.save_dir = os.path.join(args.save_dir, args.exp)
-    args.save_dir = os.path.join(args.save_dir, args.env_name)
+
+    args.save_dir = os.path.join(args.save_dir, 'env_name-{}'.format(args.env_name))
     if args.env_name in ['OverCooked']:
-        args.save_dir = os.path.join(args.save_dir, args.reward_level)
+        args.save_dir = os.path.join(args.save_dir, 'reward_level-{}'.format(args.reward_level))
+
+    args.save_dir = os.path.join(args.save_dir, 'policy_type-{}'.format(args.policy_type))
+    if args.policy_type in ['hierarchical_policy']:
+        args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
+        args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
 
     return args

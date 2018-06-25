@@ -66,7 +66,7 @@ pip install -r requirements.txt
 ```
 
 ```bash
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_5 --env-name "OverCooked" --reward-level 1
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_5 --env-name "OverCooked" --reward-level 1 --policy-type shared_policy 
 ```
 
 ```bash
