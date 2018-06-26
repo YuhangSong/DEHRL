@@ -200,37 +200,37 @@ class OverCooked(gym.Env):
             self.reset_legposi.append(
                 np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
-        if action_id==17:
-            distance_1 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
-            distance_2 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
-            distance_3 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.max_y) ** 2)
-            distance_4 = math.sqrt(abs(self.position[0] + self.screen_width / 20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height / 20 - self.max_y) ** 2)
+        # if action_id==17:
+        distance_1 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
+        distance_2 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
+        distance_3 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.max_y) ** 2)
+        distance_4 = math.sqrt(abs(self.position[0] + self.screen_width / 20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height / 20 - self.max_y) ** 2)
 
 
-            if distance_1 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
-                self.cur_goal[self.goal_id] = 1
-                self.goal_id += 1
-                if self.reward_level == 1:
-                    reward = 1
-                    done = True
-            elif distance_2 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
-                self.cur_goal[self.goal_id] = 2
-                self.goal_id += 1
-                if self.reward_level == 1:
-                    reward = 1
-                    done = True
-            elif distance_3 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
-                self.cur_goal[self.goal_id] = 3
-                self.goal_id += 1
-                if self.reward_level == 1:
-                    reward = 1
-                    done = True
-            elif distance_4 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
-                self.cur_goal[self.goal_id] = 4
-                self.goal_id += 1
-                if self.reward_level == 1:
-                    reward = 1
-                    done = True
+        if distance_1 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
+            self.cur_goal[self.goal_id] = 1
+            self.goal_id += 1
+            if self.reward_level == 1:
+                reward = 1
+                done = True
+        elif distance_2 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
+            self.cur_goal[self.goal_id] = 2
+            self.goal_id += 1
+            if self.reward_level == 1:
+                reward = 1
+                done = True
+        elif distance_3 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
+            self.cur_goal[self.goal_id] = 3
+            self.goal_id += 1
+            if self.reward_level == 1:
+                reward = 1
+                done = True
+        elif distance_4 <= self.screen_width/10+self.screen_height/10+self.screen_height/40:
+            self.cur_goal[self.goal_id] = 4
+            self.goal_id += 1
+            if self.reward_level == 1:
+                reward = 1
+                done = True
 
         if self.reward_level == 2:
             if (self.realgoal==self.cur_goal).all():

@@ -65,9 +65,16 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
+Run commands here:
 ```bash
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_5 --env-name "OverCooked" --reward-level 1 --policy-type shared_policy 
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_5 --env-name "OverCooked" --reward-level 1 --policy-type hierarchical_policy  --num_hierarchy 2 --num-subpolicy-per-hierarchy 4 --hierarchy-interval [4] --reward-bounty 0.0
 ```
+## Ice TODO list
+* check the logic of the game under reward_level=1
+* add observation_type = 'image' or 'ram' [float(0.0-1.0), float(0.0-1.0)] option in the game overcooked, and add support to run the game
+* Code the hierarchy policy, a general class called HierarachyPolicyLayer for heiraracy policy at any layers (1-256, 1-256, 256*256-2-policy).
+* One rollout for one hierarchy layer,
+* in a word, it should be easy to modulize our idea in this project, since the interacting & rollout & update in this project are already well modulized.
 
 ```bash
 --env-name "PongNoFrameskip-v4"
