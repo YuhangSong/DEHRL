@@ -42,16 +42,10 @@ except OSError:
 
 
 def main():
-    print("#######")
-    print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
-    print("#######")
 
     torch.set_num_threads(1)
 
     if args.vis:
-        # from visdom import Visdom
-        # viz = Visdom(port=args.port)
-        # win = None
         summary_writer = tf.summary.FileWriter(args.save_dir)
 
     envs = [make_env(i, args=args)
@@ -107,17 +101,14 @@ def main():
 
     rollouts.observations[0].copy_(current_obs)
 
-    # These variables are used to compute average rewards for all processes.
-    episode_rewards = torch.zeros([args.num_processes, 1])
     episode_reward_raw = 0.0
     final_reward_raw = 0.0
-    final_rewards = torch.zeros([args.num_processes, 1])
 
     if args.cuda:
         current_obs = current_obs.cuda()
         rollouts.cuda()
 
-    start = time.time()
+    # try to load checkpoint
     try:
         num_trained_frames = np.load(args.save_dir+'/num_trained_frames.npy')[0]
         try:
@@ -128,6 +119,8 @@ def main():
     except Exception as e:
         num_trained_frames = 0
     print('Learner has been trained to step: '+str(num_trained_frames))
+
+    start = time.time()
     j = 0
     while True:
         if num_trained_frames > args.num_frames:
@@ -137,9 +130,10 @@ def main():
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, states = actor_critic.act(
-                        rollouts.observations[step],
-                        rollouts.states[step],
-                        rollouts.masks[step])
+                    rollouts.observations[step],
+                    rollouts.states[step],
+                    rollouts.masks[step],
+                )
             cpu_actions = action.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
@@ -150,13 +144,9 @@ def main():
                 episode_reward_raw = 0.0
             reward = np.sign(reward_raw)
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-            episode_rewards += reward
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
-            final_rewards *= masks
-            final_rewards += (1 - masks) * episode_rewards
-            episode_rewards *= masks
 
             if args.cuda:
                 masks = masks.cuda()
@@ -170,9 +160,11 @@ def main():
             rollouts.insert(current_obs, states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
-            next_value = actor_critic.get_value(rollouts.observations[-1],
-                                                rollouts.states[-1],
-                                                rollouts.masks[-1]).detach()
+            next_value = actor_critic.get_value(
+                rollouts.observations[-1],
+                rollouts.states[-1],
+                rollouts.masks[-1],
+            ).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
@@ -183,6 +175,7 @@ def main():
         num_trained_frames += (args.num_steps*args.num_processes)
         j += 1
 
+        # save checkpoint
         if j % args.save_interval == 0 and args.save_dir != "":
             try:
                 np.save(
@@ -193,6 +186,7 @@ def main():
             except Exception as e:
                 print("Save checkpoint failed")
 
+        # print info
         if j % args.log_interval == 0:
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
@@ -205,18 +199,25 @@ def main():
                 )
             )
 
+        # visualize results
         if args.vis and j % args.vis_interval == 0:
-            # try:
-            #     # Sometimes monitor doesn't properly flush the outputs
-            #     win = visdom_plot(viz, win, args.save_dir, args.env_name,
-            #                       args.algo, args.num_frames)
-            # except IOError:
-            #     pass
             '''we use tensorboard since its better when comparing plots'''
             summary = tf.Summary()
             summary.value.add(
                 tag = 'final_reward_raw',
                 simple_value = final_reward_raw,
+            )
+            summary.value.add(
+                tag = 'value_loss',
+                simple_value = value_loss,
+            )
+            summary.value.add(
+                tag = 'action_loss',
+                simple_value = action_loss,
+            )
+            summary.value.add(
+                tag = 'dist_entropy',
+                simple_value = dist_entropy,
             )
             summary_writer.add_summary(summary, num_trained_frames)
             summary_writer.flush()
