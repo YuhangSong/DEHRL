@@ -368,7 +368,7 @@ class OverCooked(gym.Env):
         return canvas
 
 if __name__ == '__main__':
-    env = OverCooked()
+    env = OverCooked(reward_level=2, isrender=False)
     for i_episode in range(20):
         observation = env.reset()
         for t in range(100):
@@ -376,28 +376,28 @@ if __name__ == '__main__':
             key = env.get_keys_to_action()
             if key<20:
                 action = key
-                observation, reward, done, info = env._step(action)
+                observation, reward, done, info = env.step(action)
             else:
                 if key==20:
-                    observation, reward, done, info = env._step(1)
-                    observation, reward, done, info = env._step(5)
-                    observation, reward, done, info = env._step(9)
-                    observation, reward, done, info = env._step(13)
+                    observation, reward, done, info = env.step(1)
+                    observation, reward, done, info = env.step(5)
+                    observation, reward, done, info = env.step(9)
+                    observation, reward, done, info = env.step(13)
                 elif key==21:
-                    observation, reward, done, info = env._step(2)
-                    observation, reward, done, info = env._step(6)
-                    observation, reward, done, info = env._step(10)
-                    observation, reward, done, info = env._step(14)
+                    observation, reward, done, info = env.step(2)
+                    observation, reward, done, info = env.step(6)
+                    observation, reward, done, info = env.step(10)
+                    observation, reward, done, info = env.step(14)
                 elif key == 22:
-                    observation, reward, done, info = env._step(3)
-                    observation, reward, done, info = env._step(7)
-                    observation, reward, done, info = env._step(11)
-                    observation, reward, done, info = env._step(15)
+                    observation, reward, done, info = env.step(3)
+                    observation, reward, done, info = env.step(7)
+                    observation, reward, done, info = env.step(11)
+                    observation, reward, done, info = env.step(15)
                 elif key == 23:
-                    observation, reward, done, info = env._step(4)
-                    observation, reward, done, info = env._step(8)
-                    observation, reward, done, info = env._step(12)
-                    observation, reward, done, info = env._step(16)
+                    observation, reward, done, info = env.step(4)
+                    observation, reward, done, info = env.step(8)
+                    observation, reward, done, info = env.step(12)
+                    observation, reward, done, info = env.step(16)
 
             gray_img = observation
             # cv2.imshow('overcooked_gray',gray_img)
