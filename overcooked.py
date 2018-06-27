@@ -62,6 +62,12 @@ class OverCooked(gym.Env):
         self.max_x = self.screen_width-self.screen_width/10
         self.min_x = self.screen_width/10
 
+        self.goal_position = []
+        self.goal_position.append(np.array([int(self.min_x), int(self.min_y)]))
+        self.goal_position.append(np.array([int(self.max_x), int(self.min_y)]))
+        self.goal_position.append(np.array([int(self.min_x), int(self.max_y)]))
+        self.goal_position.append(np.array([int(self.max_x), int(self.max_y)]))
+
         self.reset()
 
     def canvas_clear(self):
@@ -256,9 +262,8 @@ class OverCooked(gym.Env):
                 reward = 1
                 done = True
 
-        obs = self.render()
-
-        obs = self.processes_obs(obs)
+        obs = self.obs()
+        # obs = self.processes_obs(obs)
 
         if self.episode_length_limit > 0:
             if self.eposide_length > self.episode_length_limit:
@@ -272,10 +277,35 @@ class OverCooked(gym.Env):
             return self.get_ram()
         elif self._obs_type == 'image':
             img = self.render()
+            img = self.processes_obs(img)
         return img
 
     def get_ram(self):
-        return 0
+        if self.reward_level == 1:
+            obs_vec = np.concatenate([self.position,
+                                      self.leg_position[0],
+                                      self.leg_position[1],
+                                      self.leg_position[2],
+                                      self.leg_position[3],
+                                      np.array([self.min_x,self.min_y]),
+                                      np.array([self.max_x,self.max_y]),
+                                      self.goal_position[self.single_goal]
+                                      ])
+            return obs_vec/self.max_x*255.0
+        elif self.reward_level == 2:
+            obs_vec = np.concatenate([self.position,
+                                      self.leg_position[0],
+                                      self.leg_position[1],
+                                      self.leg_position[2],
+                                      self.leg_position[3],
+                                      np.array([self.min_x,self.min_y]),
+                                      np.array([self.max_x,self.max_y]),
+                                      self.goal_position[self.realgoal[0]-1],
+                                      self.goal_position[self.realgoal[1]-1],
+                                      self.goal_position[self.realgoal[2]-1],
+                                      self.goal_position[self.realgoal[3]-1],
+                                      ])
+            return obs_vec/self.max_x*255.0
 
     def reset(self):
         self.leg_id = 0
@@ -308,8 +338,8 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
         self.setgoal([1, 2, 3, 4])
-        obs = self.render()
-        obs = self.processes_obs(obs)
+        obs = self.obs()
+        # obs = self.processes_obs(obs)
 
         return obs
 
@@ -397,7 +427,7 @@ class OverCooked(gym.Env):
         return canvas
 
 if __name__ == '__main__':
-    env = OverCooked(reward_level=1, obs_type='image', isrender=True)
+    env = OverCooked(reward_level=1, obs_type='image', isrender=False)
     for i_episode in range(20):
         observation = env.reset()
         for t in range(100):
