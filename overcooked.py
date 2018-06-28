@@ -19,7 +19,7 @@ class OverCooked(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, reward_level=2, obs_type='image', isrender=False):
+    def __init__(self, reward_level=2, obs_type='ram', isrender=False):
         # new action space = [left, right]
         self.isrender = isrender
         self.action_space = spaces.Discrete(18)
@@ -32,7 +32,7 @@ class OverCooked(gym.Env):
         assert obs_type in ('ram', 'image')
         self._obs_type = obs_type
         if self._obs_type == 'ram':
-            self.observation_space = spaces.Box(low=0, high=255, dtype=np.uint8, shape=(128,))
+            self.observation_space = spaces.Box(low=0, high=1.0, dtype=np.float64, shape=(26,))
         elif self._obs_type == 'image':
             self.observation_space = spaces.Box(low=0, high=255, shape=(self.screen_height, self.screen_width, 3),dtype=np.uint8)
         else:
@@ -63,10 +63,10 @@ class OverCooked(gym.Env):
         self.min_x = self.screen_width/10
 
         self.goal_position = []
-        self.goal_position.append(np.array([int(self.min_x), int(self.min_y)]))
-        self.goal_position.append(np.array([int(self.max_x), int(self.min_y)]))
-        self.goal_position.append(np.array([int(self.min_x), int(self.max_y)]))
-        self.goal_position.append(np.array([int(self.max_x), int(self.max_y)]))
+        self.goal_position.append(np.array([self.min_x, self.min_y]))
+        self.goal_position.append(np.array([self.max_x, self.min_y]))
+        self.goal_position.append(np.array([self.min_x, self.max_y]))
+        self.goal_position.append(np.array([self.max_x, self.max_y]))
 
         self.goal_ram = np.zeros(self.goal_num)
 
@@ -284,37 +284,40 @@ class OverCooked(gym.Env):
 
     def get_ram(self):
         if self.reward_level == 1:
-            obs_vec = np.concatenate([self.position,
+            obs_position = np.concatenate([self.position,
                                       self.leg_position[0],
                                       self.leg_position[1],
                                       self.leg_position[2],
                                       self.leg_position[3],
-                                      np.array([self.min_x,self.min_y]),
-                                      np.array([self.max_x,self.max_y]),
                                       self.goal_position[0],
                                       self.goal_position[1],
                                       self.goal_position[2],
                                       self.goal_position[3],
-                                      self.goal_label/4*self.max_x,
-                                      self.cur_goal/4*self.max_x
                                       ])
-            return obs_vec/self.max_x*255.0
+            obs_position = (obs_position-self.min_x)/(self.max_x-self.min_x)
+            obs_label = np.concatenate([self.goal_label/4,
+                                        self.cur_goal/4
+                                      ])
+            obs_vec = np.concatenate([obs_position,obs_label])
+            return obs_vec
         elif self.reward_level == 2:
-            obs_vec = np.concatenate([self.position,
+            obs_position = np.concatenate([self.position,
                                       self.leg_position[0],
                                       self.leg_position[1],
                                       self.leg_position[2],
                                       self.leg_position[3],
-                                      np.array([self.min_x,self.min_y]),
-                                      np.array([self.max_x,self.max_y]),
                                       self.goal_position[0],
                                       self.goal_position[1],
                                       self.goal_position[2],
                                       self.goal_position[3],
-                                      self.realgoal/4*self.max_x,
-                                      self.cur_goal/4*self.max_x
                                       ])
-            return obs_vec/self.max_x*255.0
+            obs_position = (obs_position-self.min_x)/(self.max_x-self.min_x)
+            obs_label = np.concatenate([self.realgoal/4,
+                                        self.cur_goal/4
+                                      ])
+            obs_vec = np.concatenate([obs_position,obs_label])
+
+            return obs_vec
 
     def reset(self):
         self.leg_id = 0
@@ -439,7 +442,7 @@ class OverCooked(gym.Env):
         return canvas
 
 if __name__ == '__main__':
-    env = OverCooked(reward_level=1, obs_type='ram', isrender=True)
+    env = OverCooked(reward_level=2, obs_type='ram', isrender=False)
     for i_episode in range(20):
         observation = env.reset()
         for t in range(100):
@@ -475,7 +478,7 @@ if __name__ == '__main__':
             gray_img_rezised = cv2.resize(gray_img, (84,84))
             # cv2.imshow('gray_img_rezised', gray_img_rezised)
             cv2.waitKey(2)
-            print(observation.shape)
+            print(observation)
             print(reward)
             if done:
                 print("Episode finished after {} timesteps".format(t + 1))
