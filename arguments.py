@@ -66,9 +66,11 @@ def get_args():
     parser.add_argument('--policy-type', type=str,
                         help='shared_policy, hierarchical_policy' )
     parser.add_argument('--num-hierarchy', type=int,
-                        help='shared_policy, hierarchical_policy' )
+                        help='num of the hierarchical_policy' )
     parser.add_argument('--reward-bounty', type=float,
-                        help='shared_policy, hierarchical_policy' )
+                        help='the discount for the encoder' )
+    parser.add_argument('--obs-type', type=str, default='image',
+                        help='observation type: image or ram' )
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -81,6 +83,7 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'reward_level-{}'.format(args.reward_level))
 
     args.save_dir = os.path.join(args.save_dir, 'policy_type-{}'.format(args.policy_type))
+    args.save_dir = os.path.join(args.save_dir, 'obs-type-{}'.format(args.obs_type))
     if args.policy_type in ['hierarchical_policy']:
         args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
         args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))

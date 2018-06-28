@@ -32,6 +32,7 @@ def make_env(rank, args):
             import overcooked
             env = overcooked.OverCooked(
                 reward_level = args.reward_level,
+                obs_type = args.obs_type
             )
         else:
             env = gym.make(args.env_name)

@@ -19,7 +19,7 @@ class OverCooked(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, reward_level=2, obs_type='ram', isrender=False):
+    def __init__(self, reward_level=2, obs_type='image', isrender=False):
         # new action space = [left, right]
         self.isrender = isrender
         self.action_space = spaces.Discrete(18)
@@ -28,6 +28,10 @@ class OverCooked(gym.Env):
         self.leg_num = 4
         self.goal_num = 4
         self.eposide_length = 0
+        '''
+        move distance: screen_width/move_discount, default:10---3 step
+        '''
+        self.move_discount = 10
 
         assert obs_type in ('ram', 'image')
         self._obs_type = obs_type
@@ -180,13 +184,13 @@ class OverCooked(gym.Env):
             if action_box.shape[0]==1:
                 body_action = action_box[0]
                 if body_action == 1:
-                    self.position[0] = self.position[0]+self.screen_width/10
+                    self.position[0] = self.position[0]+self.screen_width/self.move_discount
                 elif body_action == 2:
-                    self.position[0] = self.position[0]-self.screen_width/10
+                    self.position[0] = self.position[0]-self.screen_width/self.move_discount
                 elif body_action == 3:
-                    self.position[1] = self.position[1]+self.screen_height/10
+                    self.position[1] = self.position[1]+self.screen_height/self.move_discount
                 elif body_action == 4:
-                    self.position[1] = self.position[1]-self.screen_height/10
+                    self.position[1] = self.position[1]-self.screen_height/self.move_discount
                 if self.reward_level == 0:
                     if body_action in [1]:
                         reward = 1
@@ -233,7 +237,7 @@ class OverCooked(gym.Env):
                 if self.reward_level == 1:
                     if self.single_goal == 0:
                         reward = 1
-                        done = True
+                    done = True
         elif distance_2 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 2 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 2
@@ -241,7 +245,7 @@ class OverCooked(gym.Env):
                 if self.reward_level == 1:
                     if self.single_goal == 1:
                         reward = 1
-                        done = True
+                    done = True
         elif distance_3 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 3 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 3
@@ -249,7 +253,7 @@ class OverCooked(gym.Env):
                 if self.reward_level == 1:
                     if self.single_goal == 2:
                         reward = 1
-                        done = True
+                    done = True
         elif distance_4 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 4 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 4
@@ -257,11 +261,14 @@ class OverCooked(gym.Env):
                 if self.reward_level == 1:
                     if self.single_goal == 3:
                         reward = 1
-                        done = True
+                    done = True
 
         if self.reward_level == 2:
             if (self.realgoal==self.cur_goal).all():
                 reward = 1
+                done = True
+            elif self.cur_goal[self.goal_num-1]>0:
+                reward = 0
                 done = True
 
         obs = self.obs()
@@ -280,7 +287,7 @@ class OverCooked(gym.Env):
         elif self._obs_type == 'image':
             img = self.render()
             img = self.processes_obs(img)
-        return img
+            return img
 
     def get_ram(self):
         if self.reward_level == 1:
@@ -412,7 +419,6 @@ class OverCooked(gym.Env):
         return cur_position
 
     def render(self):
-
         canvas = self.img.copy()
         cv2.rectangle(canvas, (int(self.position[0]), int(self.position[1])), (int(self.position[0]+self.screen_width/10), int(self.position[1]+self.screen_height/10)), (92,92,205), 2)
         # legs
@@ -442,7 +448,7 @@ class OverCooked(gym.Env):
         return canvas
 
 if __name__ == '__main__':
-    env = OverCooked(reward_level=2, obs_type='ram', isrender=False)
+    env = OverCooked(reward_level=1, obs_type='image', isrender=True)
     for i_episode in range(20):
         observation = env.reset()
         for t in range(100):
