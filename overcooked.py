@@ -12,6 +12,7 @@ from gym import error, spaces
 from gym.utils import seeding
 import numpy as np
 import cv2
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +275,7 @@ class OverCooked(gym.Env):
                 done = True
 
         obs = self.obs()
+        # print(obs)
         # obs = self.processes_obs(obs)
 
         if self.episode_length_limit > 0:
@@ -365,7 +367,7 @@ class OverCooked(gym.Env):
         goal_list = [1, 2, 4, 3]
         random.shuffle(goal_list)
         self.setgoal(goal_list)
-        
+
         obs = self.obs()
         # obs = self.processes_obs(obs)
 

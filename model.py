@@ -116,7 +116,7 @@ class CNNBase(nn.Module):
 
     def forward(self, inputs, states, masks):
         x = self.main(inputs / 255.0)
-
+        # print(inputs)
         if hasattr(self, 'gru'):
             if inputs.size(0) == states.size(0):
                 x = states = self.gru(x, states * masks)
@@ -167,6 +167,7 @@ class MLPBase(nn.Module):
         return 64
 
     def forward(self, inputs, states, masks):
+        # print(inputs)
         hidden_critic = self.critic(inputs)
         hidden_actor = self.actor(inputs)
 

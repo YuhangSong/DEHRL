@@ -56,7 +56,7 @@ def main():
     else:
         envs = DummyVecEnv(envs)
 
-    if len(envs.observation_space.shape) == 1:
+    if len(envs.observation_space.shape) == 1 and args.env_name not in ['OverCooked']:
         envs = VecNormalize(envs, gamma=args.gamma)
 
     obs_shape = envs.observation_space.shape
@@ -145,6 +145,7 @@ def main():
 
             # Obser reward and next obs
             obs, reward_raw, done, info = envs.step(cpu_actions)
+
             episode_reward_raw += reward_raw[0]
             if done[0]:
                 final_reward_raw = episode_reward_raw

@@ -22,7 +22,7 @@ class DummyVecEnv(VecEnv):
             shapes[key] = box.shape
             dtypes[key] = box.dtype
             self.keys.append(key)
-        
+
         self.buf_obs = { k: np.zeros((self.num_envs,) + tuple(shapes[k]), dtype=dtypes[k]) for k in self.keys }
         self.buf_dones = np.zeros((self.num_envs,), dtype=np.bool)
         self.buf_rews  = np.zeros((self.num_envs,), dtype=np.float32)
@@ -38,6 +38,7 @@ class DummyVecEnv(VecEnv):
             if self.buf_dones[e]:
                 obs = self.envs[e].reset()
             self._save_obs(e, obs)
+
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones),
                 self.buf_infos.copy())
 
