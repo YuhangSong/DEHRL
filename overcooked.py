@@ -1,6 +1,8 @@
 """
 Classic cart-pole system implemented by Rich Sutton et al.
 Copied from https://webdocs.cs.ualberta.ca/~sutton/book/code/pole.c
+New gym game OverCooked, support by Iceclear,
+A game with three tasks.
 """
 
 import logging
@@ -31,7 +33,7 @@ class OverCooked(gym.Env):
         '''
         move distance: screen_width/move_discount, default:10---3 step
         '''
-        self.move_discount = 10
+        self.move_discount = 10/3
 
         assert obs_type in ('ram', 'image')
         self._obs_type = obs_type
@@ -359,7 +361,11 @@ class OverCooked(gym.Env):
             np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
         self.canvas_clear()
-        self.setgoal([1, 2, 4, 3])
+
+        goal_list = [1, 2, 4, 3]
+        random.shuffle(goal_list)
+        self.setgoal(goal_list)
+        
         obs = self.obs()
         # obs = self.processes_obs(obs)
 
