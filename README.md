@@ -67,7 +67,7 @@ pip install -r requirements.txt
 
 Run commands here:
 ```bash
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_5 --env-name "OverCooked" --reward-level 1 --policy-type hierarchical_policy  --num-hierarchy 2 --reward-bounty 0.0 --obs-type 'image'  (--num-subpolicy-per-hierarchy 4)(--hierarchy-interval [4])
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_6 --env-name "OverCooked" --reward-level 1 --policy-type shared_policy --reward-bounty 0.0 --obs-type 'image'
 ```
 ## Ice TODO list
 * check the logic of the game under reward_level=1(finished)
