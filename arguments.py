@@ -53,7 +53,7 @@ def get_args():
                         help='environment to train on (default: PongNoFrameskip-v4)')
     parser.add_argument('--save-dir', default='../results/',
                         help='directory to save agent logs (default: ../results/)')
-    parser.add_argument('--no-cuda', action='store_true', default=True,
+    parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')
