@@ -81,11 +81,6 @@ class CNNBase(nn.Module):
     def __init__(self, num_inputs, one_hot, hid_size, use_gru):
         super(CNNBase, self).__init__()
 
-        if one_hot is None:
-            self.ismaster_policy = True
-        else:
-            self.ismaster_policy = False
-
         init_ = lambda m: init(m,
                       nn.init.orthogonal_,
                       lambda x: nn.init.constant_(x, 0),
@@ -118,10 +113,10 @@ class CNNBase(nn.Module):
         '''
         action-conditional
         '''
-        if not self.ismaster_policy:
-            self.feature_linear = init_(nn.Linear(512, hid_size))
-            self.label_linear = init_(nn.Linear(one_hot.shape[0], hid_size))
-            self.combine_linear = init_(nn.Linear(hid_size, 512))
+
+        self.feature_linear = init_(nn.Linear(512, hid_size))
+        self.label_linear = init_(nn.Linear(one_hot.shape[0], hid_size))
+        self.combine_linear = init_(nn.Linear(hid_size, 512))
 
         self.train()
 
@@ -151,28 +146,19 @@ class CNNBase(nn.Module):
                     outputs.append(hx)
                 x = torch.cat(outputs, 0)
 
-        if self.ismaster_policy:
-            # print(x)
-            return self.critic_linear(x), x, states
-        else:
-            x_feature = self.feature_linear(x)
-            x_feature = F.tanh(x_feature)
-            label = self.label_linear(one_hot)
-            label = F.tanh(label)
-            x_multiply = x_feature*label
-            x_ac = self.combine_linear(x_multiply)
-            x_ac = F.tanh(x_ac)
-            return self.critic_linear(x_ac), x_ac, states
+        x_feature = self.feature_linear(x)
+        x_feature = F.tanh(x_feature)
+        label = self.label_linear(one_hot)
+        label = F.tanh(label)
+        x_multiply = x_feature*label
+        x_ac = self.combine_linear(x_multiply)
+        x_ac = F.tanh(x_ac)
+        return self.critic_linear(x_ac), x_ac, states
 
 
 class MLPBase(nn.Module):
     def __init__(self, num_inputs, hid_size):
         super(MLPBase, self).__init__()
-
-        if one_hot is None:
-            self.ismaster_policy = True
-        else:
-            self.ismaster_policy = False
 
         init_ = lambda m: init(m,
               init_normc_,
@@ -197,10 +183,9 @@ class MLPBase(nn.Module):
         '''
         action-conditional
         '''
-        if not self.ismaster_policy:
-            self.feature_linear = init_(nn.Linear(64, hid_size))
-            self.label_linear = init_(nn.Linear(one_hot.shape[0], hid_size))
-            self.combine_linear = init_(nn.Linear(hid_size, 64))
+        self.feature_linear = init_(nn.Linear(64, hid_size))
+        self.label_linear = init_(nn.Linear(one_hot.shape[0], hid_size))
+        self.combine_linear = init_(nn.Linear(hid_size, 64))
 
         self.train()
 

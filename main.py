@@ -254,13 +254,11 @@ def main():
         while len(update_interval)<args.num_hierarchy-1:
             update_interval.append(update_interval[-1])
 
-        # print(update_interval)
-        # print(num_subpolicy)
-
         actor_critic = {}
         rollouts = {}
-        actor_critic['top'] = EHRL_Policy(obs_shape, space.Discrete(num_subpolicy[-1]), None, 128, args.recurrent_policy,'top')
-        rollouts['top'] = EHRL_RolloutStorage(int(args.num_steps/update_interval[-1]), args.num_processes, obs_shape, space.Discrete(num_subpolicy[-1]), None, actor_critic['top'].state_size)
+        actor_critic['top'] = EHRL_Policy(obs_shape, space.Discrete(num_subpolicy[-1]), np.zeros(1), 128, args.recurrent_policy,'top')
+        rollouts['top'] = EHRL_RolloutStorage(int(args.num_steps/update_interval[-1]), args.num_processes, obs_shape, space.Discrete(num_subpolicy[-1]), np.zeros(1), actor_critic['top'].state_size)
+
         for hie_id in range(args.num_hierarchy-1):
             if hie_id>0:
                 actor_critic[str(hie_id)] = EHRL_Policy(obs_shape, space.Discrete(num_subpolicy[hie_id-1]), np.zeros(num_subpolicy[hie_id]), 128, args.recurrent_policy,str(hie_id))
@@ -349,16 +347,16 @@ def main():
 
             for step in range(args.num_steps):
                 if step_count % update_interval[-1] == 0:
-                    # print
                     with torch.no_grad():
                         value['top'], action['top'], action_log_prob['top'], states['top'] = actor_critic['top'].act(
                             rollouts['top'].observations[update_flag[-1]],
-                            None,
+                            rollouts['top'].one_hot[update_flag[-1]],
                             rollouts['top'].states[update_flag[-1]],
                             rollouts['top'].masks[update_flag[-1]],
                         )
                     update_flag[-1]+=1
                     onehot_mem[str(args.num_hierarchy-1)] = get_onehot(num_subpolicy[-1],action['top'])
+                    onehot_mem[str(args.num_hierarchy)] = get_onehot(1,0)
                 if len(update_interval)>1:
                     for interval_id in range(len(update_interval)-1):
                         if step_count % update_interval[interval_id] == 0:
@@ -373,8 +371,6 @@ def main():
                             update_flag[interval_id]+=1
                             onehot_mem[str(interval_id+1)] = get_onehot(num_subpolicy[interval_id],action[str(interval_id+1)])
                 # Sample actions
-                if step_count>=127:
-                    print(stop)
                 with torch.no_grad():
                     value['0'], action['0'], action_log_prob['0'], states['0'] = actor_critic['0'].act(
                         rollouts['0'].observations[step],
@@ -389,7 +385,7 @@ def main():
 
                 for reward_id in range(args.num_hierarchy-1):
                     try:
-                        reward_mem[str(reward_id)] += reward_raw[0]
+                        reward_mem[str(reward_id)] += [reward_raw[0]]
                     except Exception as e:
                         reward_mem[str(reward_id)] = reward_raw[0]
 
@@ -415,10 +411,10 @@ def main():
 
                 update_current_obs(obs)
                 rollouts['0'].insert(current_obs, states['0'], action['0'], onehot_mem['1'], action_log_prob['0'], value['0'], reward, masks)
-                if step_count % update_interval[-1] == 0 or done[0]:
+                if step_count % update_interval[-1] == 0:
                     reward_mean = np.mean(np.array(reward_mem[str(args.num_hierarchy-2)]))
                     reward_mean = torch.from_numpy(np.ones(1)*reward_mean).float()
-                    rollouts['top'].insert(current_obs, states['top'], action['top'], None, action_log_prob['top'], value['top'], reward_mean , masks)
+                    rollouts['top'].insert(current_obs, states['top'], action['top'], onehot_mem[str(args.num_hierarchy)], action_log_prob['top'], value['top'], reward_mean , masks)
                     reward_mem[str(args.num_hierarchy-2)] = []
                 if len(update_interval)>1:
                     for interval_id in range(len(update_interval)-1):
@@ -446,13 +442,13 @@ def main():
             with torch.no_grad():
                 next_value['top'] = actor_critic['top'].get_value(
                     rollouts['top'].observations[-1],
-                    None,
+                    rollouts['top'].one_hot[-1],
                     rollouts['top'].states[-1],
                     rollouts['top'].masks[-1],
                 ).detach()
 
             rollouts['top'].compute_returns(next_value['top'], args.use_gae, args.gamma, args.tau)
-            _, _, _ = agent['top'].update(rollouts['top'], ismaster_policy = True)
+            _, _, _ = agent['top'].update(rollouts['top'], add_onehot = True)
             rollouts['top'].after_update()
             update_flag[-1] = 0
 

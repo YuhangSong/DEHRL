@@ -5,11 +5,6 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 class EHRL_RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, one_hot, state_size):
 
-        if one_hot is None:
-            self.ismaster_policy = True
-        else:
-            self.ismaster_policy = False
-
         self.observations = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.states = torch.zeros(num_steps + 1, num_processes, state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
@@ -17,8 +12,7 @@ class EHRL_RolloutStorage(object):
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
 
-        if not self.ismaster_policy:
-            self.one_hot = torch.zeros(num_steps + 1, num_processes, one_hot.shape[0])
+        self.one_hot = torch.zeros(num_steps + 1, num_processes, one_hot.shape[0])
 
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
@@ -41,9 +35,7 @@ class EHRL_RolloutStorage(object):
         self.action_log_probs = self.action_log_probs.cuda()
         self.actions = self.actions.cuda()
         self.masks = self.masks.cuda()
-
-        if not self.ismaster_policy:
-            self.one_hot = self.one_hot.cuda()
+        self.one_hot = self.one_hot.cuda()
 
     def insert(self, current_obs, state, action, one_hot, action_log_prob, value_pred, reward, mask):
         self.observations[self.step + 1].copy_(current_obs)
@@ -53,8 +45,7 @@ class EHRL_RolloutStorage(object):
         self.value_preds[self.step].copy_(value_pred)
         self.rewards[self.step].copy_(reward)
         self.masks[self.step + 1].copy_(mask)
-        if not self.ismaster_policy:
-            self.one_hot[self.step + 1].copy_(one_hot)
+        self.one_hot[self.step + 1].copy_(one_hot)
 
         self.step = (self.step + 1) % self.num_steps
 
@@ -62,8 +53,7 @@ class EHRL_RolloutStorage(object):
         self.observations[0].copy_(self.observations[-1])
         self.states[0].copy_(self.states[-1])
         self.masks[0].copy_(self.masks[-1])
-        if not self.ismaster_policy:
-            self.one_hot[0].copy_(self.one_hot[-1])
+        self.one_hot[0].copy_(self.one_hot[-1])
 
     def compute_returns(self, next_value, use_gae, gamma, tau):
         if use_gae:
@@ -95,13 +85,9 @@ class EHRL_RolloutStorage(object):
             old_action_log_probs_batch = self.action_log_probs.view(-1, 1)[indices]
             adv_targ = advantages.view(-1, 1)[indices]
 
-            if self.ismaster_policy:
-                yield observations_batch, states_batch, actions_batch, \
-                    return_batch, masks_batch, old_action_log_probs_batch, adv_targ
-            else:
-                onehot_batch =  self.one_hot[:-1].view(-1,
-                                            *self.one_hot.size()[2:])[indices]
-                yield observations_batch, onehot_batch, states_batch, actions_batch, \
+            onehot_batch =  self.one_hot[:-1].view(-1,
+                                        *self.one_hot.size()[2:])[indices]
+            yield observations_batch, onehot_batch, states_batch, actions_batch, \
                     return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
 
@@ -117,8 +103,7 @@ class EHRL_RolloutStorage(object):
             masks_batch = []
             old_action_log_probs_batch = []
             adv_targ = []
-            if not self.ismaster_policy:
-                onehot_batch = []
+            onehot_batch = []
 
             for offset in range(num_envs_per_batch):
                 ind = perm[start_ind + offset]
@@ -129,8 +114,7 @@ class EHRL_RolloutStorage(object):
                 masks_batch.append(self.masks[:-1, ind])
                 old_action_log_probs_batch.append(self.action_log_probs[:, ind])
                 adv_targ.append(advantages[:, ind])
-                if not self.ismaster_policy:
-                    self.onehot_batch.append((self.one_hot[:-1, ind]))
+                self.onehot_batch.append((self.one_hot[:-1, ind]))
 
             observations_batch = torch.cat(observations_batch, 0)
             states_batch = torch.cat(states_batch, 0)
@@ -140,10 +124,6 @@ class EHRL_RolloutStorage(object):
             old_action_log_probs_batch = torch.cat(old_action_log_probs_batch, 0)
             adv_targ = torch.cat(adv_targ, 0)
 
-            if self.ismaster_policy:
-                yield observations_batch, states_batch, actions_batch, \
-                    return_batch, masks_batch, old_action_log_probs_batch, adv_targ
-            else:
-                onehot_batch = torch.cat(onehot_batch, 0)
-                yield observations_batch, onehot_batch, states_batch, actions_batch, \
+            onehot_batch = torch.cat(onehot_batch, 0)
+            yield observations_batch, onehot_batch, states_batch, actions_batch, \
                     return_batch, masks_batch, old_action_log_probs_batch, adv_targ

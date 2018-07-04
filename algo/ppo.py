@@ -29,7 +29,7 @@ class PPO(object):
 
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
-    def update(self, rollouts, add_onehot = False, ismaster_policy = False):
+    def update(self, rollouts, add_onehot = False):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
@@ -60,14 +60,9 @@ class PPO(object):
 
                 # Reshape to do in a single forward pass for all steps
                 if not add_onehot:
-                    if not ismaster_policy:
-                        values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-                            observations_batch, states_batch,
-                            masks_batch, actions_batch)
-                    else:
-                        values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-                            observations_batch, None, states_batch,
-                            masks_batch, actions_batch)
+                    values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
+                        observations_batch, states_batch,
+                        masks_batch, actions_batch)
                 else:
                     values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
                         observations_batch, onehot_batch, states_batch,

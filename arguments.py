@@ -67,9 +67,9 @@ def get_args():
                         help='shared_policy, hierarchical_policy' )
     parser.add_argument('--num-hierarchy', type=int,
                         help='num of the hierarchical_policy' )
-    parser.add_argument('--num-subpolicy', type=int, default = [18],
+    parser.add_argument('--num-subpolicy', type=int, default = [4],
                         help='num of the subpolicies per hierarchy' )
-    parser.add_argument('--hierarchy-interval', type=int, default = [1],
+    parser.add_argument('--hierarchy-interval', type=int, default = [4],
                         help='the interval between the subpolicies')
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the encoder' )
