@@ -53,7 +53,7 @@ def get_args():
                         help='environment to train on (default: PongNoFrameskip-v4)')
     parser.add_argument('--save-dir', default='../results/',
                         help='directory to save agent logs (default: ../results/)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')
@@ -67,6 +67,10 @@ def get_args():
                         help='shared_policy, hierarchical_policy' )
     parser.add_argument('--num-hierarchy', type=int,
                         help='num of the hierarchical_policy' )
+    parser.add_argument('--num-subpolicy', type=int, default = [18],
+                        help='num of the subpolicies per hierarchy' )
+    parser.add_argument('--hierarchy-interval', type=int, default = [1],
+                        help='the interval between the subpolicies')
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the encoder' )
     parser.add_argument('--obs-type', type=str, default='image',

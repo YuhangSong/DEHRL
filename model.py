@@ -44,7 +44,7 @@ class Policy(nn.Module):
             action = dist.mode()
         else:
             action = dist.sample()
-
+        
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
@@ -167,7 +167,7 @@ class MLPBase(nn.Module):
         return 64
 
     def forward(self, inputs, states, masks):
-        # print(inputs)
+
         hidden_critic = self.critic(inputs)
         hidden_actor = self.actor(inputs)
 

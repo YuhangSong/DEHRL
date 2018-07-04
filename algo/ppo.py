@@ -29,7 +29,7 @@ class PPO(object):
 
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
-    def update(self, rollouts):
+    def update(self, rollouts, add_onehot = False, ismaster_policy = False):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
@@ -48,14 +48,31 @@ class PPO(object):
                     advantages, self.num_mini_batch)
 
             for sample in data_generator:
-                observations_batch, states_batch, actions_batch, \
-                   return_batch, masks_batch, old_action_log_probs_batch, \
-                        adv_targ = sample
+                if not add_onehot:
+                    observations_batch, states_batch, actions_batch, \
+                       return_batch, masks_batch, old_action_log_probs_batch, \
+                            adv_targ = sample
+                else:
+                    observations_batch, onehot_batch, states_batch, actions_batch, \
+                       return_batch, masks_batch, old_action_log_probs_batch, \
+                            adv_targ = sample
+
 
                 # Reshape to do in a single forward pass for all steps
-                values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-                    observations_batch, states_batch,
-                    masks_batch, actions_batch)
+                if not add_onehot:
+                    if not ismaster_policy:
+                        values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
+                            observations_batch, states_batch,
+                            masks_batch, actions_batch)
+                    else:
+                        values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
+                            observations_batch, None, states_batch,
+                            masks_batch, actions_batch)
+                else:
+                    values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
+                        observations_batch, onehot_batch, states_batch,
+                        masks_batch, actions_batch)
+
 
                 ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
                 surr1 = ratio * adv_targ
