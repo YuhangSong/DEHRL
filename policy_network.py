@@ -114,9 +114,9 @@ class CNNBase(nn.Module):
         action-conditional
         '''
 
-        self.feature_linear = init_(nn.Linear(512, hid_size))
-        self.label_linear = init_(nn.Linear(one_hot.shape[0], hid_size))
-        self.combine_linear = init_(nn.Linear(hid_size, 512))
+        # self.feature_linear = init_(nn.Linear(512, hid_size))
+        self.label_linear = init_(nn.Linear(one_hot.shape[0], 512))
+        # self.combine_linear = init_(nn.Linear(hid_size, 512))
 
         self.train()
 
@@ -146,14 +146,15 @@ class CNNBase(nn.Module):
                     outputs.append(hx)
                 x = torch.cat(outputs, 0)
 
-        x_feature = self.feature_linear(x)
-        x_feature = F.tanh(x_feature)
+        # x_feature = self.feature_linear(x)
+        # x_feature = F.tanh(x_feature)
         label = self.label_linear(one_hot)
         label = F.tanh(label)
-        x_multiply = x_feature*label
-        x_ac = self.combine_linear(x_multiply)
-        x_ac = F.tanh(x_ac)
-        return self.critic_linear(x_ac), x_ac, states
+        x_multiply = x*label
+        # x_ac = self.combine_linear(x_multiply)
+        # x_ac = F.tanh(x_ac)
+        return self.critic_linear(x_multiply), x_multiply, states
+        # return self.critic_linear(x), x, states
 
 
 class MLPBase(nn.Module):
