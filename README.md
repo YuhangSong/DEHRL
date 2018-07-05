@@ -66,10 +66,13 @@ pip install -r requirements.txt
 ```
 
 Run commands here:
+
+To run shared policy without reward_bounty:
 ```bash
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_5 --env-name "OverCooked" --reward-level 1 --policy-type hierarchical_policy  --num-hierarchy 2 --reward-bounty 0.0 --obs-type 'image'  (--num-subpolicy-per-hierarchy 4)(--hierarchy-interval [4])
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_10 --env-name "OverCooked" --reward-level 1 --obs-type 'image' --policy-type shared_policy --reward-bounty 0.0
 ```
-## Ice TODO list
+
+## TODO list
 * check the logic of the game under reward_level=1(finished)
 * add observation_type = 'image' or 'ram' [float(0.0-1.0), float(0.0-1.0)] option in the game overcooked, and add support to run the game(finished)
 * Code the hierarchy policy, a general class called HierarachyPolicyLayer for heiraracy policy at any layers (1-256, 1-256, 256*256-2-policy).

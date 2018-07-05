@@ -5,8 +5,14 @@ import torch
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
-    parser.add_argument('--exp', type=str, default='',
+
+    '''basic save and log'''
+    parser.add_argument('--save-dir', default='../results/',
+                        help='directory to save agent logs')
+    parser.add_argument('--exp', type=str,
                         help='exp')
+
+    '''following settings are seen as default in this project'''
     parser.add_argument('--algo', default='a2c',
                         help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument('--lr', type=float, default=7e-4,
@@ -49,10 +55,6 @@ def get_args():
                         help='vis interval, one log per n updates')
     parser.add_argument('--num-frames', type=int, default=10e7,
                         help='number of frames to train (default: 10e6)')
-    parser.add_argument('--env-name', default='PongNoFrameskip-v4',
-                        help='environment to train on (default: PongNoFrameskip-v4)')
-    parser.add_argument('--save-dir', default='../results/',
-                        help='directory to save agent logs (default: ../results/)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--add-timestep', action='store_true', default=False,
@@ -61,20 +63,29 @@ def get_args():
                         help='use a recurrent policy')
     parser.add_argument('--no-vis', action='store_true', default=False,
                         help='disables visdom visualization')
+
+    '''environment details'''
+    parser.add_argument('--env-name', default='PongNoFrameskip-v4',
+                        help='environment to train on')
     parser.add_argument('--reward-level', type=int, default=2,
                         help='level of reward in games like OverCooked')
+    parser.add_argument('--obs-type', type=str, default='image',
+                        help='observation type: image or ram' )
+
+    '''policy details'''
     parser.add_argument('--policy-type', type=str,
                         help='shared_policy, hierarchical_policy' )
     parser.add_argument('--num-hierarchy', type=int,
                         help='num of the hierarchical_policy' )
-    parser.add_argument('--num-subpolicy', type=int, default = [4],
+    parser.add_argument('--num-subpolicy', type=int,
                         help='num of the subpolicies per hierarchy' )
-    parser.add_argument('--hierarchy-interval', type=int, default = [4],
+    parser.add_argument('--hierarchy-interval', type=int,
                         help='the interval between the subpolicies')
+
+    '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
-                        help='the discount for the encoder' )
-    parser.add_argument('--obs-type', type=str, default='image',
-                        help='observation type: image or ram' )
+                        help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -82,14 +93,18 @@ def get_args():
 
     args.save_dir = os.path.join(args.save_dir, args.exp)
 
+    args.save_dir = os.path.join(args.save_dir, 'obs-type-{}'.format(args.obs_type))
+
     args.save_dir = os.path.join(args.save_dir, 'env_name-{}'.format(args.env_name))
     if args.env_name in ['OverCooked']:
         args.save_dir = os.path.join(args.save_dir, 'reward_level-{}'.format(args.reward_level))
 
+
     args.save_dir = os.path.join(args.save_dir, 'policy_type-{}'.format(args.policy_type))
-    args.save_dir = os.path.join(args.save_dir, 'obs-type-{}'.format(args.obs_type))
     if args.policy_type in ['hierarchical_policy']:
         args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
-        args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
+        args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(args.num_subpolicy))
+
+    args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
 
     return args
