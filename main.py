@@ -373,7 +373,7 @@ def main():
                                 value[str(interval_id+1)], action[str(interval_id+1)], action_log_prob[str(interval_id+1)], states[str(interval_id+1)] = \
                                 actor_critic[str(interval_id+1)].act(
                                     rollouts[str(interval_id+1)].observations[update_flag[interval_id]],
-                                    onehot_mem[str(interval_id+2)],
+                                    rollouts[str(interval_id+1)].one_hot[update_flag[-1]],
                                     rollouts[str(interval_id+1)].states[update_flag[interval_id]],
                                     rollouts[str(interval_id+1)].masks[update_flag[interval_id]],
                                 )
