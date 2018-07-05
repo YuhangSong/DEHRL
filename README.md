@@ -69,8 +69,9 @@ Run commands here:
 
 To run shared policy without reward_bounty:
 ```bash
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_10 --env-name "OverCooked" --reward-level 1 --obs-type 'image' --policy-type shared_policy --reward-bounty 0.0
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_11 --obs-type 'image' --env-name "OverCooked" --reward-level 1  --num-hierarchy 1 --num-subpolicy 2 --hierarchy-interval 2 --reward-bounty 0.0
 ```
+Note that when setting ```--num-hierarchy 1```, the ```--num-subpolicy 2 --hierarchy-interval 2``` shouldn't matter anymore.
 
 ## TODO list
 * check the logic of the game under reward_level=1(finished)

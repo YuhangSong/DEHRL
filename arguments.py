@@ -2,7 +2,6 @@ import os
 import argparse
 import torch
 
-
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
 
@@ -65,16 +64,14 @@ def get_args():
                         help='disables visdom visualization')
 
     '''environment details'''
+    parser.add_argument('--obs-type', type=str, default='image',
+                        help='observation type: image or ram' )
     parser.add_argument('--env-name', default='PongNoFrameskip-v4',
                         help='environment to train on')
     parser.add_argument('--reward-level', type=int, default=2,
                         help='level of reward in games like OverCooked')
-    parser.add_argument('--obs-type', type=str, default='image',
-                        help='observation type: image or ram' )
 
     '''policy details'''
-    parser.add_argument('--policy-type', type=str,
-                        help='shared_policy, hierarchical_policy' )
     parser.add_argument('--num-hierarchy', type=int,
                         help='num of the hierarchical_policy' )
     parser.add_argument('--num-subpolicy', type=int,
@@ -91,20 +88,21 @@ def get_args():
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
 
+    '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
 
+    '''environment details'''
     args.save_dir = os.path.join(args.save_dir, 'obs-type-{}'.format(args.obs_type))
-
     args.save_dir = os.path.join(args.save_dir, 'env_name-{}'.format(args.env_name))
     if args.env_name in ['OverCooked']:
         args.save_dir = os.path.join(args.save_dir, 'reward_level-{}'.format(args.reward_level))
 
+    '''policy details'''
+    args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
+    args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(args.num_subpolicy))
+    args.save_dir = os.path.join(args.save_dir, 'hierarchy_interval-{}'.format(args.hierarchy_interval))
 
-    args.save_dir = os.path.join(args.save_dir, 'policy_type-{}'.format(args.policy_type))
-    if args.policy_type in ['hierarchical_policy']:
-        args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
-        args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(args.num_subpolicy))
-
+    '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
 
     return args

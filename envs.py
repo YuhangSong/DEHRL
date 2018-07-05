@@ -32,7 +32,6 @@ def make_env(rank, args):
             import overcooked
             env = overcooked.OverCooked(
                 reward_level = args.reward_level,
-                obs_type = args.obs_type
             )
         else:
             env = gym.make(args.env_name)
@@ -44,12 +43,8 @@ def make_env(rank, args):
         env.seed(args.seed + rank)
 
         obs_shape = env.observation_space.shape
-        if args.add_timestep and len(
-                obs_shape) == 1 and str(env).find('TimeLimit') > -1:
+        if args.add_timestep and len(obs_shape) == 1 and str(env).find('TimeLimit') > -1:
             env = AddTimestep(env)
-
-        # if args.save_dir is not None:
-        #     env = bench.Monitor(env, os.path.join(args.save_dir, str(rank)))
 
         if is_atari:
             env = wrap_deepmind(env, clip_rewards=False)
