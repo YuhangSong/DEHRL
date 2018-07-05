@@ -44,15 +44,15 @@ class Policy(nn.Module):
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
 
-    def get_final_features(self, inputs, states, masks, input_action=None):
-        input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
+    def get_final_features(self, inputs, input_action, states, masks):
+        # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
         input_action_features = self.input_action_linear(input_action)
         final_features = base_features*input_action_features
         return final_features, states
 
-    def act(self, inputs, states, masks, deterministic=False, input_action=None):
-        final_features, states = self.get_final_features(inputs, states, masks, input_action)
+    def act(self, inputs, input_action, states, masks, deterministic=False):
+        final_features, states = self.get_final_features(inputs, input_action, states, masks)
         value = self.critic_linear(final_features)
         dist = self.dist(final_features)
 
@@ -66,13 +66,13 @@ class Policy(nn.Module):
 
         return value, action, action_log_probs, states
 
-    def get_value(self, inputs, states, masks, input_action=None):
-        final_features, _ = self.get_final_features(inputs, states, masks, input_action)
+    def get_value(self, inputs, input_action, states, masks):
+        final_features, _ = self.get_final_features(inputs, input_action, states, masks)
         value = self.critic_linear(final_features)
         return value
 
-    def evaluate_actions(self, inputs, states, masks, action, input_action=None):
-        final_features, states = self.get_final_features(inputs, states, masks, input_action)
+    def evaluate_actions(self, inputs, input_action, states, masks, action):
+        final_features, states = self.get_final_features(inputs, input_action, states, masks)
         value = self.critic_linear(final_features)
         dist = self.dist(final_features)
 
@@ -82,7 +82,7 @@ class Policy(nn.Module):
         return value, action_log_probs, dist_entropy, states
 
     def save_model(self, save_path):
-        torch.save(self.state_dict(), save_path+'/trained_learner.pth')
+        torch.save(self.state_dict(), save_path)
 
 class CNNBase(nn.Module):
     def __init__(self, num_inputs, use_gru, linear_size=512):
