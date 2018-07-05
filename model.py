@@ -39,14 +39,22 @@ class Policy(nn.Module):
         self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
         self.input_action_space = input_action_space
+        self.input_action_linear = self.base.linear_init_(nn.Linear(self.input_action_space.n,self.base.linear_size))
 
-    def forward(self, inputs, states, masks):
+    def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
 
-    def act(self, inputs, states, masks, deterministic=False):
-        actor_features, states = self.base(inputs, states, masks)
-        value = self.critic_linear(actor_features)
-        dist = self.dist(actor_features)
+    def get_final_features(self, inputs, states, masks, input_action=None):
+        input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
+        base_features, states = self.base(inputs, states, masks)
+        input_action_features = self.input_action_linear(input_action)
+        final_features = base_features*input_action_features
+        return final_features, states
+
+    def act(self, inputs, states, masks, deterministic=False, input_action=None):
+        final_features, states = self.get_final_features(inputs, states, masks, input_action)
+        value = self.critic_linear(final_features)
+        dist = self.dist(final_features)
 
         if deterministic:
             action = dist.mode()
@@ -58,21 +66,20 @@ class Policy(nn.Module):
 
         return value, action, action_log_probs, states
 
-    def get_value(self, inputs, states, masks):
-        actor_features, _ = self.base(inputs, states, masks)
-        value = self.critic_linear(actor_features)
+    def get_value(self, inputs, states, masks, input_action=None):
+        final_features, _ = self.get_final_features(inputs, states, masks, input_action)
+        value = self.critic_linear(final_features)
         return value
 
-    def evaluate_actions(self, inputs, states, masks, action):
-        actor_features, states = self.base(inputs, states, masks)
-        value = self.critic_linear(actor_features)
-        dist = self.dist(actor_features)
+    def evaluate_actions(self, inputs, states, masks, action, input_action=None):
+        final_features, states = self.get_final_features(inputs, states, masks, input_action)
+        value = self.critic_linear(final_features)
+        dist = self.dist(final_features)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
         return value, action_log_probs, dist_entropy, states
-
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path+'/trained_learner.pth')
@@ -152,14 +159,7 @@ class MLPBase(nn.Module):
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
 
-        self.actor = nn.Sequential(
-            self.linear_init_(nn.Linear(num_inputs, self.linear_size)),
-            nn.Tanh(),
-            self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-            nn.Tanh()
-        )
-
-        self.critic = nn.Sequential(
+        self.main = nn.Sequential(
             self.linear_init_(nn.Linear(num_inputs, self.linear_size)),
             nn.Tanh(),
             self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
@@ -177,7 +177,6 @@ class MLPBase(nn.Module):
         return 64
 
     def forward(self, inputs, states, masks):
-        hidden_critic = self.critic(inputs)
-        hidden_actor = self.actor(inputs)
+        x = self.main(inputs)
 
-        return hidden_actor, states
+        return x, states
