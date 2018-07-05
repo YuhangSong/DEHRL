@@ -63,7 +63,14 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    actor_critic = Policy(obs_shape, envs.action_space, args.recurrent_policy)
+    macro_action_space = gym.spaces.Discrete(args.num_subpolicy)
+
+    actor_critic = Policy(
+        obs_shape = obs_shape,
+        input_action_space = macro_action_space,
+        output_action_space = envs.action_space,
+        recurrent_policy = args.recurrent_policy,
+    )
 
     if envs.action_space.__class__.__name__ == "Discrete":
         action_shape = 1

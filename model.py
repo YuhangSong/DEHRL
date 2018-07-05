@@ -11,8 +11,10 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, recurrent_policy):
+    def __init__(self, obs_shape, input_action_space,output_action_space, recurrent_policy):
         super(Policy, self).__init__()
+
+        '''build base model'''
         if len(obs_shape) == 3:
             self.base = CNNBase(obs_shape[0], recurrent_policy)
         elif len(obs_shape) == 1:
@@ -21,23 +23,29 @@ class Policy(nn.Module):
             self.base = MLPBase(obs_shape[0])
         else:
             raise NotImplementedError
+        self.state_size = self.base.state_size
 
-        if action_space.__class__.__name__ == "Discrete":
-            num_outputs = action_space.n
+        '''build actor model'''
+        if output_action_space.__class__.__name__ == "Discrete":
+            num_outputs = output_action_space.n
             self.dist = Categorical(self.base.output_size, num_outputs)
-        elif action_space.__class__.__name__ == "Box":
-            num_outputs = action_space.shape[0]
+        elif output_action_space.__class__.__name__ == "Box":
+            num_outputs = output_action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
         else:
             raise NotImplementedError
 
-        self.state_size = self.base.state_size
+        '''build critic model'''
+        self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
+
+        self.input_action_space = input_action_space
 
     def forward(self, inputs, states, masks):
         raise NotImplementedError
 
     def act(self, inputs, states, masks, deterministic=False):
-        value, actor_features, states = self.base(inputs, states, masks)
+        actor_features, states = self.base(inputs, states, masks)
+        value = self.critic_linear(actor_features)
         dist = self.dist(actor_features)
 
         if deterministic:
@@ -51,11 +59,13 @@ class Policy(nn.Module):
         return value, action, action_log_probs, states
 
     def get_value(self, inputs, states, masks):
-        value, _, _ = self.base(inputs, states, masks)
+        actor_features, _ = self.base(inputs, states, masks)
+        value = self.critic_linear(actor_features)
         return value
 
     def evaluate_actions(self, inputs, states, masks, action):
-        value, actor_features, states = self.base(inputs, states, masks)
+        actor_features, states = self.base(inputs, states, masks)
+        value = self.critic_linear(actor_features)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -68,51 +78,51 @@ class Policy(nn.Module):
         torch.save(self.state_dict(), save_path+'/trained_learner.pth')
 
 class CNNBase(nn.Module):
-    def __init__(self, num_inputs, use_gru):
+    def __init__(self, num_inputs, use_gru, linear_size=512):
         super(CNNBase, self).__init__()
 
-        init_ = lambda m: init(m,
+        self.linear_size = linear_size
+
+        self.conv_init_ = lambda m: init(m,
                       nn.init.orthogonal_,
                       lambda x: nn.init.constant_(x, 0),
                       nn.init.calculate_gain('relu'))
 
         self.main = nn.Sequential(
-            init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            self.conv_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
             nn.ReLU(),
-            init_(nn.Conv2d(32, 64, 4, stride=2)),
+            self.conv_init_(nn.Conv2d(32, 64, 4, stride=2)),
             nn.ReLU(),
-            init_(nn.Conv2d(64, 32, 3, stride=1)),
+            self.conv_init_(nn.Conv2d(64, 32, 3, stride=1)),
             nn.ReLU(),
             Flatten(),
-            init_(nn.Linear(32 * 7 * 7, 512)),
+            self.conv_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
             nn.ReLU()
         )
 
         if use_gru:
-            self.gru = nn.GRUCell(512, 512)
+            self.gru = nn.GRUCell(self.linear_size, self.linear_size)
             nn.init.orthogonal_(self.gru.weight_ih.data)
             nn.init.orthogonal_(self.gru.weight_hh.data)
             self.gru.bias_ih.data.fill_(0)
             self.gru.bias_hh.data.fill_(0)
 
-        init_ = lambda m: init(m,
+        self.linear_init_ = lambda m: init(m,
           nn.init.orthogonal_,
           lambda x: nn.init.constant_(x, 0))
-
-        self.critic_linear = init_(nn.Linear(512, 1))
 
         self.train()
 
     @property
     def state_size(self):
         if hasattr(self, 'gru'):
-            return 512
+            return self.linear_size
         else:
             return 1
 
     @property
     def output_size(self):
-        return 512
+        return self.linear_size
 
     def forward(self, inputs, states, masks):
         x = self.main(inputs / 255.0)
@@ -129,32 +139,32 @@ class CNNBase(nn.Module):
                     outputs.append(hx)
                 x = torch.cat(outputs, 0)
 
-        return self.critic_linear(x), x, states
+        return x, states
 
 
 class MLPBase(nn.Module):
-    def __init__(self, num_inputs):
+    def __init__(self, num_inputs, linear_size=64):
         super(MLPBase, self).__init__()
 
-        init_ = lambda m: init(m,
+        self.linear_size = linear_size
+
+        self.linear_init_ = lambda m: init(m,
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
 
         self.actor = nn.Sequential(
-            init_(nn.Linear(num_inputs, 64)),
+            self.linear_init_(nn.Linear(num_inputs, self.linear_size)),
             nn.Tanh(),
-            init_(nn.Linear(64, 64)),
+            self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
             nn.Tanh()
         )
 
         self.critic = nn.Sequential(
-            init_(nn.Linear(num_inputs, 64)),
+            self.linear_init_(nn.Linear(num_inputs, self.linear_size)),
             nn.Tanh(),
-            init_(nn.Linear(64, 64)),
+            self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
             nn.Tanh()
         )
-
-        self.critic_linear = init_(nn.Linear(64, 1))
 
         self.train()
 
@@ -170,4 +180,4 @@ class MLPBase(nn.Module):
         hidden_critic = self.critic(inputs)
         hidden_actor = self.actor(inputs)
 
-        return self.critic_linear(hidden_critic), hidden_actor, states
+        return hidden_actor, states
