@@ -210,6 +210,9 @@ class HierarchyLayer(object):
             for mask_i in range(macro_step_i+1, args.hierarchy_interval):
                 mask_macro[mask_i] = mask_macro[mask_i]*mask_macro[macro_step_i]
         print(mask_macro)
+        '''we will use mask_macro_add_one_step to mask rewards and obs,
+        since the done step is still returning valid rewards and obs'''
+        mask_macro_add_one_step
 
         print(reward_macro)
         reward_macro = reward_macro*mask_macro
