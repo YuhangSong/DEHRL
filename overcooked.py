@@ -339,7 +339,8 @@ class OverCooked(gym.Env):
                                       self.goal_position[3],
                                       ])
             obs_position = (obs_position-self.min_x)/(self.max_x-self.min_x)
-            return obs_position
+            obs_vec = np.concatenate([obs_position,np.zeros(8)])
+            return obs_vec
 
     def reset(self):
         self.leg_id = 0
