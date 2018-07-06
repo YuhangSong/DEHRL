@@ -171,10 +171,10 @@ class HierarchyLayer(object):
         for process_i in range(args.num_processes):
             self.input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
 
-        # '''macro step forward'''
-        # for macro_step_i in range(args.hierarchy_interval):
-        #     # obs, reward_raw, done, info = self.one_step()
-        self.one_step()
+        '''macro step forward'''
+        for macro_step_i in range(args.hierarchy_interval):
+            # obs, reward_raw, done, info = self.one_step()
+            self.one_step()
 
         # print('xxx: need mask here!!!!')
 
@@ -225,10 +225,10 @@ class HierarchyLayer(object):
 
         self.step_i += 1
         if self.step_i==args.num_steps:
-            self.update_agent()
+            self.update_agent_one_step()
             self.step_i = 0
 
-    def update_agent(self):
+    def update_agent_one_step(self):
 
         with torch.no_grad():
             self.next_value = self.actor_critic.get_value(
