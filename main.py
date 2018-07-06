@@ -188,54 +188,58 @@ class HierarchyLayer(object):
         if self.num_trained_frames > args.num_frames:
             raise Exception('ss')
 
-        for step in range(args.num_steps):
+        for self.step_i in range(args.num_steps):
 
-            self.rollouts.input_actions[step].copy_(self.input_gpu_actions_onehot)
+            self.rollouts.input_actions[self.step_i].copy_(self.input_gpu_actions_onehot)
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob, states = self.actor_critic.act(
-                    inputs = self.rollouts.observations[step],
-                    states = self.rollouts.states[step],
-                    masks = self.rollouts.masks[step],
+                self.value, self.action, self.action_log_prob, self.states = self.actor_critic.act(
+                    inputs = self.rollouts.observations[self.step_i],
+                    states = self.rollouts.states[self.step_i],
+                    masks = self.rollouts.masks[self.step_i],
                     deterministic = False,
-                    input_action = self.rollouts.input_actions[step],
+                    input_action = self.rollouts.input_actions[self.step_i],
                 )
-            cpu_actions = action.squeeze(1).cpu().numpy()
+            self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
-            obs, reward_raw, done, info = envs.step(cpu_actions)
-            self.episode_reward_raw += reward_raw[0]
-            if done[0]:
+            self.obs, self.reward_raw, self.done, self.info = envs.step(self.cpu_actions)
+            self.episode_reward_raw += self.reward_raw[0]
+            if self.done[0]:
                 self.final_reward_raw = self.episode_reward_raw
                 self.episode_reward_raw = 0.0
-            reward = np.sign(reward_raw)
-            reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
+            self.reward = np.sign(self.reward_raw)
+            self.reward = torch.from_numpy(np.expand_dims(np.stack(self.reward), 1)).float()
 
             # If done then clean the history of observations.
-            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
 
             if args.cuda:
-                masks = masks.cuda()
+                self.masks = self.masks.cuda()
 
             if self.current_obs.dim() == 4:
-                self.current_obs *= masks.unsqueeze(2).unsqueeze(2)
+                self.current_obs *= self.masks.unsqueeze(2).unsqueeze(2)
             else:
-                self.current_obs *= masks
+                self.current_obs *= self.masks
 
-            self.update_current_obs(obs)
-            self.rollouts.insert(self.current_obs, states, action, action_log_prob, value, reward, masks)
+            self.update_current_obs(self.obs)
+            self.rollouts.insert(self.current_obs, self.states, self.action, self.action_log_prob, self.value, self.reward, self.masks)
+
+        self.update_agent()
+
+    def update_agent(self):
 
         with torch.no_grad():
-            next_value = self.actor_critic.get_value(
+            self.next_value = self.actor_critic.get_value(
                 inputs=self.rollouts.observations[-1],
                 states=self.rollouts.states[-1],
                 masks=self.rollouts.masks[-1],
                 input_action=self.rollouts.input_actions[-1],
             ).detach()
 
-        self.rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
+        self.rollouts.compute_returns(self.next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = self.agent.update(self.rollouts)
+        self.value_loss, self.action_loss, self.dist_entropy = self.agent.update(self.rollouts)
 
         self.rollouts.after_update()
 
@@ -255,38 +259,38 @@ class HierarchyLayer(object):
 
         # print info
         if self.j % args.log_interval == 0:
-            end = time.time()
-            total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
+            self.end = time.time()
+            self.total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
             print("[{}/{}], FPS {}, final_reward_raw {:.2f}, remaining {} hours".
                 format(
                     self.num_trained_frames, args.num_frames,
-                    int(self.num_trained_frames / (end - self.start)),
+                    int(self.num_trained_frames / (self.end - self.start)),
                     self.final_reward_raw,
-                    (end - self.start)/self.num_trained_frames*(args.num_frames-self.num_trained_frames)/60.0/60.0
+                    (self.end - self.start)/self.num_trained_frames*(args.num_frames-self.num_trained_frames)/60.0/60.0
                 )
             )
 
         # visualize results
         if args.vis and self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
-            summary = tf.Summary()
-            summary.value.add(
+            self.summary = tf.Summary()
+            self.summary.value.add(
                 tag = 'final_reward_raw',
                 simple_value = self.final_reward_raw,
             )
-            summary.value.add(
+            self.summary.value.add(
                 tag = 'value_loss',
-                simple_value = value_loss,
+                simple_value = self.value_loss,
             )
-            summary.value.add(
+            self.summary.value.add(
                 tag = 'action_loss',
-                simple_value = action_loss,
+                simple_value = self.action_loss,
             )
-            summary.value.add(
+            self.summary.value.add(
                 tag = 'dist_entropy',
-                simple_value = dist_entropy,
+                simple_value = self.dist_entropy,
             )
-            summary_writer.add_summary(summary, self.num_trained_frames)
+            summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
 
 def main():
