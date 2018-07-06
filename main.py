@@ -69,6 +69,10 @@ else:
 
 class HierarchyLayer(object):
     """docstring for HierarchyLayer."""
+    """
+    HierarchyLayer is a learning system, containning actor_critic, agent, rollouts.
+    In the meantime, it is a environment, which has step, reset functions, as well as action_space, observation_space, etc.
+    """
     def __init__(self, envs, hierarchy_id):
         super(HierarchyLayer, self).__init__()
 
@@ -80,7 +84,7 @@ class HierarchyLayer(object):
         self.envs = envs
         self.hierarchy_id = hierarchy_id
 
-        '''as an env'''
+        '''as an env, it should have action_space and observation space'''
         self.action_space = macro_action_space
         self.observation_space = self.envs.observation_space
 
@@ -140,24 +144,25 @@ class HierarchyLayer(object):
             self.rollouts.cuda()
             self.input_gpu_actions_onehot = self.input_gpu_actions_onehot.cuda()
 
-        # try to load checkpoint
+        '''try to load checkpoint'''
         try:
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
                 self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id)))
                 print('Load learner previous point: Successed')
             except Exception as e:
-                print('Load learner previous point: Failed')
+                print('Load learner previous point: Failed, due to {}'.format(e))
         except Exception as e:
             self.num_trained_frames = 0
         print('Learner has been trained to step: '+str(self.num_trained_frames))
+        self.num_trained_frames_at_start = self.num_trained_frames
 
-        if self.hierarchy_id in [0]:
-            self.start = time.time()
+        self.start = time.time()
         self.j = 0
         self.step_i = 0
 
     def update_current_obs(self, obs):
+        '''update self.current_obs, which contains args.num_stack frames, with obs, which is current frame'''
         shape_dim0 = self.envs.observation_space.shape[0]
         obs = torch.from_numpy(obs).float()
         if args.num_stack > 1:
@@ -165,6 +170,7 @@ class HierarchyLayer(object):
         self.current_obs[:, -shape_dim0:] = obs
 
     def step(self, input_cpu_actions):
+        '''as a environment, it has step method'''
 
         '''convert: input_cpu_actions >> self.input_gpu_actions_onehot'''
         self.input_gpu_actions_onehot *= 0.0
@@ -180,10 +186,14 @@ class HierarchyLayer(object):
         return obs, reward_raw, done, info
 
     def reset(self):
+        '''as a environment, it has reset method'''
         return self.envs.reset()
 
     def interact_one_step(self):
+        '''interact with self.envs for one step and store experience into self.rollouts'''
+
         self.rollouts.input_actions[self.step_i].copy_(self.input_gpu_actions_onehot)
+
         # Sample actions
         with torch.no_grad():
             self.value, self.action, self.action_log_prob, self.states = self.actor_critic.act(
@@ -221,17 +231,24 @@ class HierarchyLayer(object):
         return self.obs, self.reward_raw, self.done, self.info
 
     def one_step(self):
+        '''as a environment, it has step method.
+        But the step method step forward for args.hierarchy_interval times,
+        as a macro action, this method is to step forward for a singel step'''
 
+        '''for each one_step, interact with env for one step'''
         obs, reward_raw, done, info = self.interact_one_step()
 
         self.step_i += 1
         if self.step_i==args.num_steps:
+            '''if reach args.num_steps, update agent for one step with the experiences stored in rollouts'''
             self.update_agent_one_step()
             self.step_i = 0
 
         return obs, reward_raw, done, info
 
     def update_agent_one_step(self):
+        '''update the self.actor_critic with self.agent,
+        according to the experiences stored in self.rollouts'''
 
         with torch.no_grad():
             self.next_value = self.actor_critic.get_value(
@@ -250,7 +267,7 @@ class HierarchyLayer(object):
         self.num_trained_frames += (args.num_steps*args.num_processes)
         self.j += 1
 
-        # save checkpoint
+        '''save checkpoint'''
         if self.j % args.save_interval == 0 and args.save_dir != "":
             try:
                 np.save(
@@ -261,7 +278,7 @@ class HierarchyLayer(object):
             except Exception as e:
                 print("Save checkpoint failed")
 
-        # print info
+        '''print info'''
         if self.j % args.log_interval == 0:
             self.end = time.time()
             self.total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
@@ -278,7 +295,7 @@ class HierarchyLayer(object):
             print(print_string)
 
 
-        # visualize results
+        '''visualize results'''
         if args.vis and self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
@@ -301,8 +318,11 @@ class HierarchyLayer(object):
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
 
-        if self.num_trained_frames > args.num_frames:
-            raise Exception('Done')
+        if self.hierarchy_id in [0]:
+            '''if hierarchy_id is 0, it is the basic env, then control the training
+            progress by its num_trained_frames'''
+            if self.num_trained_frames > args.num_frames:
+                raise Exception('Done')
 
 def main():
 
@@ -321,6 +341,7 @@ def main():
 
     while True:
 
+        '''as long as the top hierarchy layer is stepping forward, the downer layers is controlled and kept running'''
         hierarchy_layer[-1].step(empty_actions)
 
 if __name__ == "__main__":
