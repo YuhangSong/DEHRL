@@ -171,10 +171,10 @@ class HierarchyLayer(object):
         for process_i in range(args.num_processes):
             self.input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
 
-        '''macro step forward'''
-        for macro_step_i in range(args.hierarchy_interval):
-            # obs, reward_raw, done, info = self.one_step()
-            self.one_step()
+        # '''macro step forward'''
+        # for macro_step_i in range(args.hierarchy_interval):
+        #     # obs, reward_raw, done, info = self.one_step()
+        self.one_step()
 
         # print('xxx: need mask here!!!!')
 
@@ -183,46 +183,50 @@ class HierarchyLayer(object):
     def reset(self):
         return self.envs.reset()
 
+    def interact_one_step(self):
+        self.rollouts.input_actions[self.step_i].copy_(self.input_gpu_actions_onehot)
+        # Sample actions
+        with torch.no_grad():
+            self.value, self.action, self.action_log_prob, self.states = self.actor_critic.act(
+                inputs = self.rollouts.observations[self.step_i],
+                states = self.rollouts.states[self.step_i],
+                masks = self.rollouts.masks[self.step_i],
+                deterministic = False,
+                input_action = self.rollouts.input_actions[self.step_i],
+            )
+        self.cpu_actions = self.action.squeeze(1).cpu().numpy()
+
+        # Obser reward and next obs
+        self.obs, self.reward_raw, self.done, self.info = envs.step(self.cpu_actions)
+        self.episode_reward_raw += self.reward_raw[0]
+        if self.done[0]:
+            self.final_reward_raw = self.episode_reward_raw
+            self.episode_reward_raw = 0.0
+        self.reward = np.sign(self.reward_raw)
+        self.reward = torch.from_numpy(np.expand_dims(np.stack(self.reward), 1)).float()
+
+        # If done then clean the history of observations.
+        self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
+
+        if args.cuda:
+            self.masks = self.masks.cuda()
+
+        if self.current_obs.dim() == 4:
+            self.current_obs *= self.masks.unsqueeze(2).unsqueeze(2)
+        else:
+            self.current_obs *= self.masks
+
+        self.update_current_obs(self.obs)
+        self.rollouts.insert(self.current_obs, self.states, self.action, self.action_log_prob, self.value, self.reward, self.masks)
+
     def one_step(self):
 
-        for self.step_i in range(args.num_steps):
+        self.interact_one_step()
 
-            self.rollouts.input_actions[self.step_i].copy_(self.input_gpu_actions_onehot)
-            # Sample actions
-            with torch.no_grad():
-                self.value, self.action, self.action_log_prob, self.states = self.actor_critic.act(
-                    inputs = self.rollouts.observations[self.step_i],
-                    states = self.rollouts.states[self.step_i],
-                    masks = self.rollouts.masks[self.step_i],
-                    deterministic = False,
-                    input_action = self.rollouts.input_actions[self.step_i],
-                )
-            self.cpu_actions = self.action.squeeze(1).cpu().numpy()
-
-            # Obser reward and next obs
-            self.obs, self.reward_raw, self.done, self.info = envs.step(self.cpu_actions)
-            self.episode_reward_raw += self.reward_raw[0]
-            if self.done[0]:
-                self.final_reward_raw = self.episode_reward_raw
-                self.episode_reward_raw = 0.0
-            self.reward = np.sign(self.reward_raw)
-            self.reward = torch.from_numpy(np.expand_dims(np.stack(self.reward), 1)).float()
-
-            # If done then clean the history of observations.
-            self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
-
-            if args.cuda:
-                self.masks = self.masks.cuda()
-
-            if self.current_obs.dim() == 4:
-                self.current_obs *= self.masks.unsqueeze(2).unsqueeze(2)
-            else:
-                self.current_obs *= self.masks
-
-            self.update_current_obs(self.obs)
-            self.rollouts.insert(self.current_obs, self.states, self.action, self.action_log_prob, self.value, self.reward, self.masks)
-
-        self.update_agent()
+        self.step_i += 1
+        if self.step_i==args.num_steps:
+            self.update_agent()
+            self.step_i = 0
 
     def update_agent(self):
 
