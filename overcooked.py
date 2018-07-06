@@ -47,7 +47,7 @@ class OverCooked(gym.Env):
 
         self.reward_level = reward_level
         if self.reward_level in [0]:
-            self.episode_length_limit = 5
+            self.episode_length_limit = 10
         elif self.reward_level in [1]:
             self.episode_length_limit = 50
         elif self.reward_level in [2]:
