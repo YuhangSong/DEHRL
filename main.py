@@ -189,14 +189,8 @@ class HierarchyLayer(object):
                 break
 
             for step in range(args.num_steps):
-                input_cpu_actions = np.zeros(args.num_processes, dtype=int)
-                '''convert: input_cpu_actions >> self.input_gpu_actions_onehot'''
-                input_gpu_actions_onehot = torch.zeros(args.num_processes, macro_action_space.n).cuda()
-                input_gpu_actions_onehot *= 0.0
-                for process_i in range(args.num_processes):
-                    input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
 
-                self.rollouts.input_actions[step].copy_(input_gpu_actions_onehot)
+                self.rollouts.input_actions[step].copy_(self.input_gpu_actions_onehot)
                 # Sample actions
                 with torch.no_grad():
                     value, action, action_log_prob, states = self.actor_critic.act(
@@ -308,7 +302,7 @@ def main():
     #         hierarchy_id=hierarchy_i,
     #     )]
     #
-    # empty_actions = np.zeros(args.num_processes, dtype=int)
+    empty_actions = np.zeros(args.num_processes, dtype=int)
 
     hierarchy_layer = HierarchyLayer(
         envs = envs,
@@ -317,7 +311,7 @@ def main():
 
     while True:
 
-        hierarchy_layer.one_step()
+        hierarchy_layer.step(empty_actions)
 
 if __name__ == "__main__":
     main()
