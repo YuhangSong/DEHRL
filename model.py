@@ -82,7 +82,7 @@ class Policy(nn.Module):
         return value, action_log_probs, dist_entropy, states
 
     def save_model(self, save_path):
-        torch.save(self.state_dict(), save_path+'/trained_learner.pth')
+        torch.save(self.state_dict(), save_path)
 
 class CNNBase(nn.Module):
     def __init__(self, num_inputs, use_gru, linear_size=512):
