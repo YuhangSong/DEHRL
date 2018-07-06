@@ -185,9 +185,6 @@ class HierarchyLayer(object):
 
     def one_step(self):
 
-        if self.num_trained_frames > args.num_frames:
-            raise Exception('ss')
-
         for self.step_i in range(args.num_steps):
 
             self.rollouts.input_actions[self.step_i].copy_(self.input_gpu_actions_onehot)
@@ -292,6 +289,9 @@ class HierarchyLayer(object):
             )
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
+
+        if self.num_trained_frames > args.num_frames:
+            raise Exception('Done')
 
 def main():
 
