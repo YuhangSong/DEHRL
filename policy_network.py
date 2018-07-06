@@ -158,7 +158,7 @@ class CNNBase(nn.Module):
 
 
 class MLPBase(nn.Module):
-    def __init__(self, num_inputs, hid_size):
+    def __init__(self, num_inputs, one_hot, hid_size):
         super(MLPBase, self).__init__()
 
         init_ = lambda m: init(m,
@@ -184,9 +184,7 @@ class MLPBase(nn.Module):
         '''
         action-conditional
         '''
-        self.feature_linear = init_(nn.Linear(64, hid_size))
-        self.label_linear = init_(nn.Linear(one_hot.shape[0], hid_size))
-        self.combine_linear = init_(nn.Linear(hid_size, 64))
+        self.label_linear = init_(nn.Linear(one_hot.shape[0], 64))
 
         self.train()
 
@@ -202,5 +200,11 @@ class MLPBase(nn.Module):
 
         hidden_critic = self.critic(inputs)
         hidden_actor = self.actor(inputs)
+
+        label = self.label_linear(one_hot)
+        label = F.tanh(label)
+
+        hidden_critic = hidden_critic*label
+        hidden_actor = hidden_actor*label
 
         return self.critic_linear(hidden_critic), hidden_actor, states
