@@ -173,121 +173,121 @@ class HierarchyLayer(object):
 
         '''macro step forward'''
         for macro_step_i in range(args.hierarchy_interval):
-            obs, reward_raw, done, info = self.one_step()
+            # obs, reward_raw, done, info = self.one_step()
+            self.one_step()
 
         # print('xxx: need mask here!!!!')
 
-        return obs, reward_raw, done, info
+        # return obs, reward_raw, done, info
 
     def reset(self):
         return self.envs.reset()
 
     def one_step(self):
 
-        while True:
-            if self.num_trained_frames > args.num_frames:
-                break
+        if self.num_trained_frames > args.num_frames:
+            raise Exception('ss')
 
-            for step in range(args.num_steps):
+        for step in range(args.num_steps):
 
-                self.rollouts.input_actions[step].copy_(self.input_gpu_actions_onehot)
-                # Sample actions
-                with torch.no_grad():
-                    value, action, action_log_prob, states = self.actor_critic.act(
-                        inputs = self.rollouts.observations[step],
-                        states = self.rollouts.states[step],
-                        masks = self.rollouts.masks[step],
-                        deterministic = False,
-                        input_action = self.rollouts.input_actions[step],
-                    )
-                cpu_actions = action.squeeze(1).cpu().numpy()
-
-                # Obser reward and next obs
-                obs, reward_raw, done, info = envs.step(cpu_actions)
-                self.episode_reward_raw += reward_raw[0]
-                if done[0]:
-                    self.final_reward_raw = self.episode_reward_raw
-                    self.episode_reward_raw = 0.0
-                reward = np.sign(reward_raw)
-                reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-
-                # If done then clean the history of observations.
-                masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
-
-                if args.cuda:
-                    masks = masks.cuda()
-
-                if self.current_obs.dim() == 4:
-                    self.current_obs *= masks.unsqueeze(2).unsqueeze(2)
-                else:
-                    self.current_obs *= masks
-
-                self.update_current_obs(obs)
-                self.rollouts.insert(self.current_obs, states, action, action_log_prob, value, reward, masks)
-
+            self.rollouts.input_actions[step].copy_(self.input_gpu_actions_onehot)
+            # Sample actions
             with torch.no_grad():
-                next_value = self.actor_critic.get_value(
-                    inputs=self.rollouts.observations[-1],
-                    states=self.rollouts.states[-1],
-                    masks=self.rollouts.masks[-1],
-                    input_action=self.rollouts.input_actions[-1],
-                ).detach()
-
-            self.rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
-
-            value_loss, action_loss, dist_entropy = self.agent.update(self.rollouts)
-
-            self.rollouts.after_update()
-
-            self.num_trained_frames += (args.num_steps*args.num_processes)
-            self.j += 1
-
-            # save checkpoint
-            if self.j % args.save_interval == 0 and args.save_dir != "":
-                try:
-                    np.save(
-                        args.save_dir+'/num_trained_frames.npy',
-                        np.array([self.num_trained_frames]),
-                    )
-                    self.actor_critic.save_model(save_path=args.save_dir)
-                except Exception as e:
-                    print("Save checkpoint failed")
-
-            # print info
-            if self.j % args.log_interval == 0:
-                end = time.time()
-                total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
-                print("[{}/{}], FPS {}, final_reward_raw {:.2f}, remaining {} hours".
-                    format(
-                        self.num_trained_frames, args.num_frames,
-                        int(self.num_trained_frames / (end - self.start)),
-                        self.final_reward_raw,
-                        (end - self.start)/self.num_trained_frames*(args.num_frames-self.num_trained_frames)/60.0/60.0
-                    )
+                value, action, action_log_prob, states = self.actor_critic.act(
+                    inputs = self.rollouts.observations[step],
+                    states = self.rollouts.states[step],
+                    masks = self.rollouts.masks[step],
+                    deterministic = False,
+                    input_action = self.rollouts.input_actions[step],
                 )
+            cpu_actions = action.squeeze(1).cpu().numpy()
 
-            # visualize results
-            if args.vis and self.j % args.vis_interval == 0:
-                '''we use tensorboard since its better when comparing plots'''
-                summary = tf.Summary()
-                summary.value.add(
-                    tag = 'final_reward_raw',
-                    simple_value = self.final_reward_raw,
+            # Obser reward and next obs
+            obs, reward_raw, done, info = envs.step(cpu_actions)
+            self.episode_reward_raw += reward_raw[0]
+            if done[0]:
+                self.final_reward_raw = self.episode_reward_raw
+                self.episode_reward_raw = 0.0
+            reward = np.sign(reward_raw)
+            reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
+
+            # If done then clean the history of observations.
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+
+            if args.cuda:
+                masks = masks.cuda()
+
+            if self.current_obs.dim() == 4:
+                self.current_obs *= masks.unsqueeze(2).unsqueeze(2)
+            else:
+                self.current_obs *= masks
+
+            self.update_current_obs(obs)
+            self.rollouts.insert(self.current_obs, states, action, action_log_prob, value, reward, masks)
+
+        with torch.no_grad():
+            next_value = self.actor_critic.get_value(
+                inputs=self.rollouts.observations[-1],
+                states=self.rollouts.states[-1],
+                masks=self.rollouts.masks[-1],
+                input_action=self.rollouts.input_actions[-1],
+            ).detach()
+
+        self.rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
+
+        value_loss, action_loss, dist_entropy = self.agent.update(self.rollouts)
+
+        self.rollouts.after_update()
+
+        self.num_trained_frames += (args.num_steps*args.num_processes)
+        self.j += 1
+
+        # save checkpoint
+        if self.j % args.save_interval == 0 and args.save_dir != "":
+            try:
+                np.save(
+                    args.save_dir+'/num_trained_frames.npy',
+                    np.array([self.num_trained_frames]),
                 )
-                summary.value.add(
-                    tag = 'value_loss',
-                    simple_value = value_loss,
+                self.actor_critic.save_model(save_path=args.save_dir)
+            except Exception as e:
+                print("Save checkpoint failed")
+
+        # print info
+        if self.j % args.log_interval == 0:
+            end = time.time()
+            total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
+            print("[{}/{}], FPS {}, final_reward_raw {:.2f}, remaining {} hours".
+                format(
+                    self.num_trained_frames, args.num_frames,
+                    int(self.num_trained_frames / (end - self.start)),
+                    self.final_reward_raw,
+                    (end - self.start)/self.num_trained_frames*(args.num_frames-self.num_trained_frames)/60.0/60.0
                 )
-                summary.value.add(
-                    tag = 'action_loss',
-                    simple_value = action_loss,
-                )
-                summary.value.add(
-                    tag = 'dist_entropy',
-                    simple_value = dist_entropy,
-                )
-                summary_writer.add_summary(summary, self.num_trained_frames)
-                summary_writer.flush()
+            )
+
+        # visualize results
+        if args.vis and self.j % args.vis_interval == 0:
+            '''we use tensorboard since its better when comparing plots'''
+            summary = tf.Summary()
+            summary.value.add(
+                tag = 'final_reward_raw',
+                simple_value = self.final_reward_raw,
+            )
+            summary.value.add(
+                tag = 'value_loss',
+                simple_value = value_loss,
+            )
+            summary.value.add(
+                tag = 'action_loss',
+                simple_value = action_loss,
+            )
+            summary.value.add(
+                tag = 'dist_entropy',
+                simple_value = dist_entropy,
+            )
+            summary_writer.add_summary(summary, self.num_trained_frames)
+            summary_writer.flush()
 
 def main():
 
