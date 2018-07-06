@@ -134,8 +134,13 @@ class HierarchyLayer(object):
 
         self.rollouts.observations[0].copy_(self.current_obs)
 
-        self.episode_reward_raw = 0.0
-        self.final_reward_raw = 0.0
+        '''for summarizing reward'''
+        self.episode_reward = 0.0
+        self.final_reward = 0.0
+        if self.hierarchy_id in [0]:
+            '''for hierarchy_id=0, we need to summarize reward_raw'''
+            self.episode_reward_raw = 0.0
+            self.final_reward_raw = 0.0
 
         self.input_gpu_actions_onehot = torch.zeros(args.num_processes, macro_action_space.n)
 
@@ -161,13 +166,6 @@ class HierarchyLayer(object):
         self.j = 0
         self.step_i = 0
 
-    def update_current_obs(self, obs):
-        '''update self.current_obs, which contains args.num_stack frames, with obs, which is current frame'''
-        shape_dim0 = self.envs.observation_space.shape[0]
-        obs = torch.from_numpy(obs).float()
-        if args.num_stack > 1:
-            self.current_obs[:, :-shape_dim0] = self.current_obs[:, shape_dim0:]
-        self.current_obs[:, -shape_dim0:] = obs
 
     def step(self, input_cpu_actions):
         '''as a environment, it has step method'''
@@ -177,17 +175,66 @@ class HierarchyLayer(object):
         for process_i in range(args.num_processes):
             self.input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
 
-        '''macro step forward'''
+        '''macro step forward, when doing this, record every step returns.
+        This is because we have to make done single pass all the way up to top hierarchy layer,
+        we will do mask operation afterwards'''
+        obs_macro = None
+        reward_macro = None
+        mask_macro = None
         for macro_step_i in range(args.hierarchy_interval):
-            obs, reward_raw, done, info = self.one_step()
+            obs, reward, done, info = self.one_step()
 
-        # print('xxx: need mask here!!!!')
+            obs = np.expand_dims(obs, 0)
+            if obs_macro is None:
+                obs_macro = obs
+            else:
+                obs_macro = np.concatenate((obs_macro, obs),0)
 
-        return obs, reward_raw, done, info
+            reward = reward.squeeze().unsqueeze(0)
+            if reward_macro is None:
+                reward_macro = reward
+            else:
+                reward_macro = torch.cat([reward_macro,reward],0)
 
-    def reset(self):
-        '''as a environment, it has reset method'''
-        return self.envs.reset()
+            mask = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).squeeze(1).unsqueeze(0)
+            if mask_macro is None:
+                mask_macro = mask
+            else:
+                mask_macro = torch.cat([mask_macro,mask],0)
+
+        '''this is the mask operation'''
+
+        '''if done, the following returns are done'''
+        print(mask_macro)
+        for macro_step_i in range(args.hierarchy_interval-1):
+            for mask_i in range(macro_step_i+1, args.hierarchy_interval):
+                mask_macro[mask_i] = mask_macro[mask_i]*mask_macro[macro_step_i]
+        print(mask_macro)
+
+        print(reward_macro)
+        reward_macro = reward_macro*mask_macro
+        print(reward_macro)
+        reward = reward_macro.sum(dim=1,keepdim=False)
+        print(reward)
+        print(s)
+
+        return obs, reward, done, info
+
+    def one_step(self):
+        '''as a environment, it has step method.
+        But the step method step forward for args.hierarchy_interval times,
+        as a macro action, this method is to step forward for a singel step'''
+
+        '''for each one_step, interact with env for one step'''
+        obs, reward, done, info = self.interact_one_step()
+
+        self.step_i += 1
+        if self.step_i==args.num_steps:
+            '''if reach args.num_steps, update agent for one step with the experiences stored in rollouts'''
+            self.update_agent_one_step()
+            self.step_i = 0
+
+        return obs, reward, done, info
 
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
@@ -206,12 +253,29 @@ class HierarchyLayer(object):
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
         # Obser reward and next obs
-        self.obs, self.reward_raw, self.done, self.info = envs.step(self.cpu_actions)
-        self.episode_reward_raw += self.reward_raw[0]
+        self.obs, self.reward_raw_OR_reward, self.done, self.info = envs.step(self.cpu_actions)
+
+        if self.hierarchy_id in [0]:
+            '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
+            self.reward_raw = self.reward_raw_OR_reward
+            self.reward = np.sign(self.reward_raw)
+        else:
+            '''otherwise, this is reward'''
+            self.reward = self.reward_raw_OR_reward
+
+        '''summarize reward'''
+        self.episode_reward += self.reward[0]
+        if self.hierarchy_id in [0]:
+            '''for hierarchy_id=0, summarize reward_raw'''
+            self.episode_reward_raw += self.reward_raw[0]
+
         if self.done[0]:
-            self.final_reward_raw = self.episode_reward_raw
-            self.episode_reward_raw = 0.0
-        self.reward = np.sign(self.reward_raw)
+            self.final_reward = self.episode_reward
+            self.episode_reward = 0.0
+            if self.hierarchy_id in [0]:
+                self.final_reward_raw = self.episode_reward_raw
+                self.episode_reward_raw = 0.0
+
         self.reward = torch.from_numpy(np.expand_dims(np.stack(self.reward), 1)).float()
 
         # If done then clean the history of observations.
@@ -228,23 +292,7 @@ class HierarchyLayer(object):
         self.update_current_obs(self.obs)
         self.rollouts.insert(self.current_obs, self.states, self.action, self.action_log_prob, self.value, self.reward, self.masks)
 
-        return self.obs, self.reward_raw, self.done, self.info
-
-    def one_step(self):
-        '''as a environment, it has step method.
-        But the step method step forward for args.hierarchy_interval times,
-        as a macro action, this method is to step forward for a singel step'''
-
-        '''for each one_step, interact with env for one step'''
-        obs, reward_raw, done, info = self.interact_one_step()
-
-        self.step_i += 1
-        if self.step_i==args.num_steps:
-            '''if reach args.num_steps, update agent for one step with the experiences stored in rollouts'''
-            self.update_agent_one_step()
-            self.step_i = 0
-
-        return obs, reward_raw, done, info
+        return self.obs, self.reward, self.done, self.info
 
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
@@ -282,15 +330,15 @@ class HierarchyLayer(object):
         if self.j % args.log_interval == 0:
             self.end = time.time()
             self.total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
-            print_string = "[H-{}][{}/{}], FPS {}, final_reward_raw {:.2f}".format(
+            print_string = "[H-{}][{}/{}], FPS {}, final_reward {:.2f}".format(
                 self.hierarchy_id,
                 self.num_trained_frames, args.num_frames,
                 int(self.num_trained_frames / (self.end - self.start)),
-                self.final_reward_raw,
+                self.final_reward,
             )
             if self.hierarchy_id in [0]:
                 print_string += ', remaining {} hours'.format(
-                    (self.end - self.start)/self.num_trained_frames*(args.num_frames-self.num_trained_frames)/60.0/60.0,
+                    (self.end - self.start)/(self.num_trained_frames-self.num_trained_frames_at_start)*(args.num_frames-self.num_trained_frames)/60.0/60.0,
                 )
             print(print_string)
 
@@ -323,6 +371,18 @@ class HierarchyLayer(object):
             progress by its num_trained_frames'''
             if self.num_trained_frames > args.num_frames:
                 raise Exception('Done')
+
+    def reset(self):
+        '''as a environment, it has reset method'''
+        return self.envs.reset()
+
+    def update_current_obs(self, obs):
+        '''update self.current_obs, which contains args.num_stack frames, with obs, which is current frame'''
+        shape_dim0 = self.envs.observation_space.shape[0]
+        obs = torch.from_numpy(obs).float()
+        if args.num_stack > 1:
+            self.current_obs[:, :-shape_dim0] = self.current_obs[:, shape_dim0:]
+        self.current_obs[:, -shape_dim0:] = obs
 
 def main():
 
