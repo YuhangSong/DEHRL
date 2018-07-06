@@ -254,10 +254,10 @@ class HierarchyLayer(object):
         if self.j % args.save_interval == 0 and args.save_dir != "":
             try:
                 np.save(
-                    args.save_dir+'/num_trained_frames.npy',
+                    args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
                     np.array([self.num_trained_frames]),
                 )
-                self.actor_critic.save_model(save_path=args.save_dir)
+                self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id))
             except Exception as e:
                 print("Save checkpoint failed")
 
@@ -265,33 +265,37 @@ class HierarchyLayer(object):
         if self.j % args.log_interval == 0:
             self.end = time.time()
             self.total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
-            print("[{}/{}], FPS {}, final_reward_raw {:.2f}, remaining {} hours".
-                format(
-                    self.num_trained_frames, args.num_frames,
-                    int(self.num_trained_frames / (self.end - self.start)),
-                    self.final_reward_raw,
-                    (self.end - self.start)/self.num_trained_frames*(args.num_frames-self.num_trained_frames)/60.0/60.0
-                )
+            print_string = "[H-{}][{}/{}], FPS {}, final_reward_raw {:.2f}".format(
+                self.hierarchy_id,
+                self.num_trained_frames, args.num_frames,
+                int(self.num_trained_frames / (self.end - self.start)),
+                self.final_reward_raw,
             )
+            if self.hierarchy_id in [0]:
+                print_string += ', remaining {} hours'.format(
+                    (self.end - self.start)/self.num_trained_frames*(args.num_frames-self.num_trained_frames)/60.0/60.0,
+                )
+            print(print_string)
+
 
         # visualize results
         if args.vis and self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
             self.summary.value.add(
-                tag = 'final_reward_raw',
+                tag = 'hierarchy_{}_final_reward_raw'.format(self.hierarchy_id),
                 simple_value = self.final_reward_raw,
             )
             self.summary.value.add(
-                tag = 'value_loss',
+                tag = 'hierarchy_{}_value_loss'.format(self.hierarchy_id),
                 simple_value = self.value_loss,
             )
             self.summary.value.add(
-                tag = 'action_loss',
+                tag = 'hierarchy_{}_action_loss'.format(self.hierarchy_id),
                 simple_value = self.action_loss,
             )
             self.summary.value.add(
-                tag = 'dist_entropy',
+                tag = 'hierarchy_{}_dist_entropy'.format(self.hierarchy_id),
                 simple_value = self.dist_entropy,
             )
             summary_writer.add_summary(self.summary, self.num_trained_frames)
