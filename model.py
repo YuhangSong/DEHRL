@@ -45,7 +45,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def get_final_features(self, inputs, states, masks, input_action=None):
-        input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
+        # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
         input_action_features = self.input_action_linear(input_action)
         final_features = base_features*input_action_features

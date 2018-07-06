@@ -29,7 +29,7 @@ class PPO(object):
 
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
-    def update(self, rollouts, add_onehot = False):
+    def update(self, rollouts):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
@@ -48,25 +48,19 @@ class PPO(object):
                     advantages, self.num_mini_batch)
 
             for sample in data_generator:
-                if not add_onehot:
-                    observations_batch, states_batch, actions_batch, \
-                       return_batch, masks_batch, old_action_log_probs_batch, \
-                            adv_targ = sample
-                else:
-                    observations_batch, onehot_batch, states_batch, actions_batch, \
-                       return_batch, masks_batch, old_action_log_probs_batch, \
-                            adv_targ = sample
+                observations_batch, input_actions_batch, states_batch, actions_batch, \
+                   return_batch, masks_batch, old_action_log_probs_batch, \
+                        adv_targ = sample
 
 
                 # Reshape to do in a single forward pass for all steps
-                if not add_onehot:
-                    values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-                        observations_batch, states_batch,
-                        masks_batch, actions_batch)
-                else:
-                    values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-                        observations_batch, onehot_batch, states_batch,
-                        masks_batch, actions_batch)
+                values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
+                    inputs = observations_batch,
+                    states = states_batch,
+                    masks = masks_batch,
+                    action = actions_batch,
+                    input_action = input_actions_batch,
+                )
 
 
                 ratio = torch.exp(action_log_probs - old_action_log_probs_batch)

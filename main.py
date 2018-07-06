@@ -101,7 +101,7 @@ def main():
             acktr=True,
         )
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, macro_action_space, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     def update_current_obs(obs):
@@ -142,12 +142,22 @@ def main():
             break
 
         for step in range(args.num_steps):
+            input_cpu_actions = np.zeros(args.num_processes, dtype=int)
+            '''convert: input_cpu_actions >> self.input_gpu_actions_onehot'''
+            input_gpu_actions_onehot = torch.zeros(args.num_processes, macro_action_space.n).cuda()
+            input_gpu_actions_onehot *= 0.0
+            for process_i in range(args.num_processes):
+                input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
+
+            rollouts.input_actions[step].copy_(input_gpu_actions_onehot)
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, states = actor_critic.act(
-                    rollouts.observations[step],
-                    rollouts.states[step],
-                    rollouts.masks[step],
+                    inputs = rollouts.observations[step],
+                    states = rollouts.states[step],
+                    masks = rollouts.masks[step],
+                    deterministic = False,
+                    input_action = rollouts.input_actions[step],
                 )
             cpu_actions = action.squeeze(1).cpu().numpy()
 
@@ -176,9 +186,10 @@ def main():
 
         with torch.no_grad():
             next_value = actor_critic.get_value(
-                rollouts.observations[-1],
-                rollouts.states[-1],
-                rollouts.masks[-1],
+                inputs=rollouts.observations[-1],
+                states=rollouts.states[-1],
+                masks=rollouts.masks[-1],
+                input_action=rollouts.input_actions[-1],
             ).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)

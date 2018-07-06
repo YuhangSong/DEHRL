@@ -3,8 +3,9 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 
 class RolloutStorage(object):
-    def __init__(self, num_steps, num_processes, obs_shape, action_space, state_size):
+    def __init__(self, num_steps, num_processes, obs_shape, macro_action_space, action_space, state_size):
         self.observations = torch.zeros(num_steps + 1, num_processes, *obs_shape)
+        self.input_actions = torch.zeros(num_steps + 1, num_processes, macro_action_space.n)
         self.states = torch.zeros(num_steps + 1, num_processes, state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
@@ -24,6 +25,7 @@ class RolloutStorage(object):
 
     def cuda(self):
         self.observations = self.observations.cuda()
+        self.input_actions = self.input_actions.cuda()
         self.states = self.states.cuda()
         self.rewards = self.rewards.cuda()
         self.value_preds = self.value_preds.cuda()
@@ -71,6 +73,8 @@ class RolloutStorage(object):
         for indices in sampler:
             observations_batch = self.observations[:-1].view(-1,
                                         *self.observations.size()[2:])[indices]
+            input_actions_batch = self.input_actions[:-1].view(-1,
+                                        *self.input_actions.size()[2:])[indices]
             states_batch = self.states[:-1].view(-1, self.states.size(-1))[indices]
             actions_batch = self.actions.view(-1, self.actions.size(-1))[indices]
             return_batch = self.returns[:-1].view(-1, 1)[indices]
@@ -78,7 +82,7 @@ class RolloutStorage(object):
             old_action_log_probs_batch = self.action_log_probs.view(-1, 1)[indices]
             adv_targ = advantages.view(-1, 1)[indices]
 
-            yield observations_batch, states_batch, actions_batch, \
+            yield observations_batch, input_actions_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
     def recurrent_generator(self, advantages, num_mini_batch):
@@ -87,6 +91,7 @@ class RolloutStorage(object):
         perm = torch.randperm(num_processes)
         for start_ind in range(0, num_processes, num_envs_per_batch):
             observations_batch = []
+            input_actions_batch = []
             states_batch = []
             actions_batch = []
             return_batch = []
@@ -97,6 +102,7 @@ class RolloutStorage(object):
             for offset in range(num_envs_per_batch):
                 ind = perm[start_ind + offset]
                 observations_batch.append(self.observations[:-1, ind])
+                input_actions_batch.append(self.input_actions[:-1, ind])
                 states_batch.append(self.states[0:1, ind])
                 actions_batch.append(self.actions[:, ind])
                 return_batch.append(self.returns[:-1, ind])
@@ -105,6 +111,7 @@ class RolloutStorage(object):
                 adv_targ.append(advantages[:, ind])
 
             observations_batch = torch.cat(observations_batch, 0)
+            input_actions_batch = torch.cat(input_actions_batch, 0)
             states_batch = torch.cat(states_batch, 0)
             actions_batch = torch.cat(actions_batch, 0)
             return_batch = torch.cat(return_batch, 0)
@@ -112,5 +119,5 @@ class RolloutStorage(object):
             old_action_log_probs_batch = torch.cat(old_action_log_probs_batch, 0)
             adv_targ = torch.cat(adv_targ, 0)
 
-            yield observations_batch, states_batch, actions_batch, \
+            yield observations_batch, input_actions_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
