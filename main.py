@@ -173,12 +173,11 @@ class HierarchyLayer(object):
 
         '''macro step forward'''
         for macro_step_i in range(args.hierarchy_interval):
-            # obs, reward_raw, done, info = self.one_step()
-            self.one_step()
+            obs, reward_raw, done, info = self.one_step()
 
         # print('xxx: need mask here!!!!')
 
-        # return obs, reward_raw, done, info
+        return obs, reward_raw, done, info
 
     def reset(self):
         return self.envs.reset()
@@ -219,14 +218,18 @@ class HierarchyLayer(object):
         self.update_current_obs(self.obs)
         self.rollouts.insert(self.current_obs, self.states, self.action, self.action_log_prob, self.value, self.reward, self.masks)
 
+        return self.obs, self.reward_raw, self.done, self.info
+
     def one_step(self):
 
-        self.interact_one_step()
+        obs, reward_raw, done, info = self.interact_one_step()
 
         self.step_i += 1
         if self.step_i==args.num_steps:
             self.update_agent_one_step()
             self.step_i = 0
+
+        return obs, reward_raw, done, info
 
     def update_agent_one_step(self):
 
@@ -299,27 +302,22 @@ class HierarchyLayer(object):
 
 def main():
 
-    # hierarchy_layer = []
-    # hierarchy_layer += [HierarchyLayer(
-    #     envs = envs,
-    #     hierarchy_id = 0,
-    # )]
-    # for hierarchy_i in range(1, args.num_hierarchy):
-    #     hierarchy_layer += [HierarchyLayer(
-    #         envs = hierarchy_layer[hierarchy_i-1],
-    #         hierarchy_id=hierarchy_i,
-    #     )]
-    #
-    empty_actions = np.zeros(args.num_processes, dtype=int)
-
-    hierarchy_layer = HierarchyLayer(
+    hierarchy_layer = []
+    hierarchy_layer += [HierarchyLayer(
         envs = envs,
         hierarchy_id = 0,
-    )
+    )]
+    for hierarchy_i in range(1, args.num_hierarchy):
+        hierarchy_layer += [HierarchyLayer(
+            envs = hierarchy_layer[hierarchy_i-1],
+            hierarchy_id=hierarchy_i,
+        )]
+
+    empty_actions = np.zeros(args.num_processes, dtype=int)
 
     while True:
 
-        hierarchy_layer.step(empty_actions)
+        hierarchy_layer[-1].step(empty_actions)
 
 if __name__ == "__main__":
     main()
