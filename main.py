@@ -119,6 +119,7 @@ def main():
         current_obs = torch.zeros(args.num_processes, *obs_shape)
 
         obs = envs.reset()
+        
         update_current_obs(obs)
 
         rollouts.observations[0].copy_(current_obs)

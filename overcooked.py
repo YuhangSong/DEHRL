@@ -195,7 +195,7 @@ class OverCooked(gym.Env):
                 elif body_action == 4:
                     self.position[1] = self.position[1]-self.screen_height/self.move_discount
                 if self.reward_level == 0:
-                    if body_action in [1]:
+                    if body_action in [self.single_goal]:
                         reward = 1
                         done = True
                     else:
@@ -327,6 +327,20 @@ class OverCooked(gym.Env):
 
             return obs_vec
 
+        elif self.reward_level == 0:
+            obs_position = np.concatenate([self.position,
+                                      self.leg_position[0],
+                                      self.leg_position[1],
+                                      self.leg_position[2],
+                                      self.leg_position[3],
+                                      self.goal_position[0],
+                                      self.goal_position[1],
+                                      self.goal_position[2],
+                                      self.goal_position[3],
+                                      ])
+            obs_position = (obs_position-self.min_x)/(self.max_x-self.min_x)
+            return obs_position
+
     def reset(self):
         self.leg_id = 0
         self.goal_id = 0
@@ -340,6 +354,8 @@ class OverCooked(gym.Env):
             self.single_goal = np.random.randint(0,self.goal_num)
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
+        elif self.reward_level == 0:
+            self.single_goal = 1
         # self.randomizeCorrect()
         self.position = [self.screen_width/2-self.screen_width/20, self.screen_height/2-self.screen_height/20]
         self.state = np.zeros((self.leg_num,2))
