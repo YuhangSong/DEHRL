@@ -162,7 +162,6 @@ class HierarchyLayer(object):
         self.j = 0
         self.step_i = 0
 
-
     def step(self, input_cpu_actions):
         '''as a environment, it has step method'''
 
@@ -171,76 +170,18 @@ class HierarchyLayer(object):
         for process_i in range(args.num_processes):
             self.input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
 
-        '''macro step forward, when doing this, record every step returns.
-        This is because we have to make done single pass all the way up to top hierarchy layer,
-        we will do mask operation afterwards'''
-        obs_macro = None
+        '''macro step forward'''
         reward_macro = None
-        mask_macro = None
         for macro_step_i in range(args.hierarchy_interval):
 
             obs, reward, done, info = self.one_step()
-            mask = np.squeeze(np.array([[0.0] if done_ else [1.0] for done_ in done], dtype=int),1)
-
-            if obs_macro is None:
-                obs_macro = np.expand_dims(obs, 0)
-            else:
-                obs_macro = np.concatenate(
-                    (obs_macro, np.expand_dims(obs, 0)),
-                    axis = 0,
-                )
 
             if reward_macro is None:
-                reward_macro = np.expand_dims(reward, 0)
+                reward_macro = reward
             else:
-                reward_macro = np.concatenate(
-                    (reward_macro,np.expand_dims(reward, 0)),
-                    axis = 0,
-                )
+                reward_macro += reward
 
-            if mask_macro is None:
-                mask_macro = np.expand_dims(mask, 0)
-            else:
-                mask_macro = np.concatenate(
-                    (mask_macro,np.expand_dims(mask, 0)),
-                    axis = 0,
-                )
-
-        '''this is the mask operation'''
-
-        '''if done, the following returns are done'''
-        for macro_step_i in range(args.hierarchy_interval-1):
-            for mask_i in range(macro_step_i+1, args.hierarchy_interval):
-                mask_macro[mask_i] = mask_macro[mask_i]*mask_macro[macro_step_i]
-
-        '''we will use mask_macro_add_one_step to mask rewards and obs,
-        since the done step is still returning valid rewards and obs'''
-        mask_macro_add_one_step = np.sign(mask_macro + np.concatenate((np.zeros((1, args.num_processes)), mask_macro))[:-1])
-
-        '''mask reward_macro with mask_macro_add_one_step,
-        since the reward at done step still masters'''
-        reward_macro = reward_macro*mask_macro_add_one_step
-        reward = np.sum(reward_macro, axis=0,keepdims=False)
-
-        '''get obs index from mask_macro.
-        this will result in the obs at the first done being sampled.
-        I can not find a more efficient way to do this, please open a pr if you can.
-        Some hints are using np.take, np.choose'''
-        obs_index = np.clip(
-            np.sum(
-                mask_macro,
-                axis = 0,
-                keepdims = False
-            ),
-            a_min = 0,
-            a_max = args.hierarchy_interval-1,
-        )
-        for process_i in range(args.num_processes):
-            obs[process_i] = obs_macro[obs_index[process_i],process_i]
-
-        '''get done from mask_macro'''
-        mask = mask_macro[-1]
-        done = np.squeeze(np.array([[True] if (mask_==0.0) else [False] for mask_ in mask.tolist()]),1)
+        reward = reward_macro
 
         return obs, reward, done, info
 
