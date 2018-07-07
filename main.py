@@ -44,28 +44,28 @@ torch.set_num_threads(1)
 if args.vis:
     summary_writer = tf.summary.FileWriter(args.save_dir)
 
-envs = [make_env(i, args=args)
+bottom_envs = [make_env(i, args=args)
             for i in range(args.num_processes)]
 
 if args.num_processes > 1:
-    envs = SubprocVecEnv(envs)
+    bottom_envs = SubprocVecEnv(bottom_envs)
 else:
-    envs = DummyVecEnv(envs)
+    bottom_envs = DummyVecEnv(bottom_envs)
 
-if len(envs.observation_space.shape) == 1:
+if len(bottom_envs.observation_space.shape) == 1:
     if args.env_name in ['OverCooked']:
         raise Exception("I donot know why they have VecNormalize for ram observation")
-    envs = VecNormalize(envs, gamma=args.gamma)
+    bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
 
-obs_shape = envs.observation_space.shape
+obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
 macro_action_space = gym.spaces.Discrete(args.num_subpolicy)
 
-if envs.action_space.__class__.__name__ == "Discrete":
+if bottom_envs.action_space.__class__.__name__ == "Discrete":
     action_shape = 1
 else:
-    action_shape = envs.action_space.shape[0]
+    action_shape = bottom_envs.action_space.shape[0]
 
 class HierarchyLayer(object):
     """docstring for HierarchyLayer."""
@@ -178,7 +178,9 @@ class HierarchyLayer(object):
         reward_macro = None
         mask_macro = None
         for macro_step_i in range(args.hierarchy_interval):
+
             obs, reward, done, info = self.one_step()
+            mask = np.squeeze(np.array([[0.0] if done_ else [1.0] for done_ in done], dtype=int),1)
 
             if obs_macro is None:
                 obs_macro = np.expand_dims(obs, 0)
@@ -188,17 +190,21 @@ class HierarchyLayer(object):
                     axis = 0,
                 )
 
-            reward = reward.squeeze().unsqueeze(0)
             if reward_macro is None:
-                reward_macro = reward
+                reward_macro = np.expand_dims(reward, 0)
             else:
-                reward_macro = torch.cat([reward_macro,reward],0)
+                reward_macro = np.concatenate(
+                    (reward_macro,np.expand_dims(reward, 0)),
+                    axis = 0,
+                )
 
-            mask = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).squeeze(1).unsqueeze(0)
             if mask_macro is None:
-                mask_macro = mask
+                mask_macro = np.expand_dims(mask, 0)
             else:
-                mask_macro = torch.cat([mask_macro,mask],0)
+                mask_macro = np.concatenate(
+                    (mask_macro,np.expand_dims(mask, 0)),
+                    axis = 0,
+                )
 
         '''this is the mask operation'''
 
@@ -209,24 +215,32 @@ class HierarchyLayer(object):
 
         '''we will use mask_macro_add_one_step to mask rewards and obs,
         since the done step is still returning valid rewards and obs'''
-        mask_macro_add_one_step = (mask_macro + torch.cat([torch.zeros(1, args.num_processes), mask_macro])[:-1]).sign()
+        mask_macro_add_one_step = np.sign(mask_macro + np.concatenate((np.zeros((1, args.num_processes)), mask_macro))[:-1])
 
         '''mask reward_macro with mask_macro_add_one_step,
         since the reward at done step still masters'''
         reward_macro = reward_macro*mask_macro_add_one_step
-        reward = reward_macro.sum(dim=0,keepdim=False).unsqueeze(1)
+        reward = np.sum(reward_macro, axis=0,keepdims=False)
 
         '''get obs index from mask_macro.
         this will result in the obs at the first done being sampled.
         I can not find a more efficient way to do this, please open a pr if you can.
         Some hints are using np.take, np.choose'''
-        obs_index = mask_macro.sum(dim=0,keepdim=False).int().clamp(0,(args.hierarchy_interval-1))
+        obs_index = np.clip(
+            np.sum(
+                mask_macro,
+                axis = 0,
+                keepdims = False
+            ),
+            a_min = 0,
+            a_max = args.hierarchy_interval-1,
+        )
         for process_i in range(args.num_processes):
             obs[process_i] = obs_macro[obs_index[process_i],process_i]
 
         '''get done from mask_macro'''
         mask = mask_macro[-1]
-        done = np.squeeze(np.array([[True] if (mask_==0.0) else [False] for mask_ in mask.numpy().tolist()]),1)
+        done = np.squeeze(np.array([[True] if (mask_==0.0) else [False] for mask_ in mask.tolist()]),1)
 
         return obs, reward, done, info
 
@@ -263,7 +277,7 @@ class HierarchyLayer(object):
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
         # Obser reward and next obs
-        self.obs, self.reward_raw_OR_reward, self.done, self.info = envs.step(self.cpu_actions)
+        self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.cpu_actions)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
@@ -311,7 +325,7 @@ class HierarchyLayer(object):
         self.update_current_obs(self.obs)
         self.rollouts.insert(self.current_obs, self.states, self.action, self.action_log_prob, self.value, self.reward, self.masks)
 
-        return self.obs, self.reward, self.done, self.info
+        return self.obs, self.reward_raw_OR_reward, self.done, self.info
 
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
@@ -366,9 +380,14 @@ class HierarchyLayer(object):
         if args.vis and self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
+            if self.hierarchy_id in [0]:
+                self.summary.value.add(
+                    tag = 'hierarchy_{}_final_reward_raw'.format(self.hierarchy_id),
+                    simple_value = self.final_reward_raw,
+                )
             self.summary.value.add(
-                tag = 'hierarchy_{}_final_reward_raw'.format(self.hierarchy_id),
-                simple_value = self.final_reward_raw,
+                tag = 'hierarchy_{}_final_reward'.format(self.hierarchy_id),
+                simple_value = self.final_reward,
             )
             self.summary.value.add(
                 tag = 'hierarchy_{}_value_loss'.format(self.hierarchy_id),
@@ -410,7 +429,7 @@ def main():
 
     hierarchy_layer = []
     hierarchy_layer += [HierarchyLayer(
-        envs = envs,
+        envs = bottom_envs,
         hierarchy_id = 0,
     )]
     for hierarchy_i in range(1, args.num_hierarchy):
