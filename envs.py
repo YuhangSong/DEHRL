@@ -22,6 +22,27 @@ try:
 except ImportError:
     pass
 
+class SleepAfterDone(gym.Wrapper):
+    def __init__(self, env):
+        """make the env sleep after returning done,
+        keep sleeping untill be reset() is called
+        """
+        gym.Wrapper.__init__(self, env)
+        self.sleeping = True
+
+    def reset(self, **kwargs):
+        self.sleeping = False
+        self.obs = self.env.reset(**kwargs)
+        return self.obs
+
+    def step(self, ac):
+        if not self.sleeping:
+            self.obs, reward, done, info = self.env.step(ac)
+            if done:
+                self.sleep = True
+        else:
+            reward, done, info = [0.0, True, None]
+        return self.obs, reward, done, info
 
 def make_env(rank, args):
     def _thunk():
@@ -53,6 +74,8 @@ def make_env(rank, args):
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = WrapPyTorch(env)
+
+        env = SleepAfterDone(env)
 
         return env
 

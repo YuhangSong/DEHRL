@@ -129,14 +129,10 @@ class HierarchyLayer(object):
         )
         self.current_obs = torch.zeros(args.num_processes, *obs_shape)
 
-        obs = self.envs.reset()
-        self.update_current_obs(obs)
-
-        self.rollouts.observations[0].copy_(self.current_obs)
-
         '''for summarizing reward'''
         self.episode_reward = 0.0
         self.final_reward = 0.0
+        self.episode_length = 0
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward_raw = 0.0
@@ -268,6 +264,12 @@ class HierarchyLayer(object):
 
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = envs.step(self.cpu_actions)
+        self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
+
+        if self.hierarchy_id in [(args.num_hierarchy-1)]:
+            '''top hierarchy layer is responsible for reseting env if all env has done'''
+            if self.masks.sum() == 0.0:
+                self.obs = self.reset()
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
@@ -279,25 +281,28 @@ class HierarchyLayer(object):
 
         '''summarize reward'''
         self.episode_reward += self.reward[0]
+        self.episode_length += 1
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, summarize reward_raw'''
             self.episode_reward_raw += self.reward_raw[0]
 
-        if self.done[0]:
-            self.final_reward = self.episode_reward
-            self.episode_reward = 0.0
-            if self.hierarchy_id in [0]:
-                self.final_reward_raw = self.episode_reward_raw
-                self.episode_reward_raw = 0.0
+        if self.episode_length > 1:
+            '''if episode<=1. it might be the environment is sleeping,
+            thus do no summary reward under this circonstance'''
+            if self.done[0]:
+                self.final_reward = self.episode_reward
+                self.episode_reward = 0.0
+                self.episode_length = 0
+                if self.hierarchy_id in [0]:
+                    self.final_reward_raw = self.episode_reward_raw
+                    self.episode_reward_raw = 0.0
 
         self.reward = torch.from_numpy(np.expand_dims(np.stack(self.reward), 1)).float()
-
-        # If done then clean the history of observations.
-        self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
 
         if args.cuda:
             self.masks = self.masks.cuda()
 
+        '''If done then clean the history of observations'''
         if self.current_obs.dim() == 4:
             self.current_obs *= self.masks.unsqueeze(2).unsqueeze(2)
         else:
@@ -388,7 +393,10 @@ class HierarchyLayer(object):
 
     def reset(self):
         '''as a environment, it has reset method'''
-        return self.envs.reset()
+        obs = self.envs.reset()
+        self.update_current_obs(obs)
+        self.rollouts.observations[0].copy_(self.current_obs)
+        return obs
 
     def update_current_obs(self, obs):
         '''update self.current_obs, which contains args.num_stack frames, with obs, which is current frame'''
@@ -411,12 +419,15 @@ def main():
             hierarchy_id=hierarchy_i,
         )]
 
-    empty_actions = np.zeros(args.num_processes, dtype=int)
+    hierarchy_layer[-1].reset()
 
     while True:
 
-        '''as long as the top hierarchy layer is stepping forward, the downer layers is controlled and kept running'''
-        hierarchy_layer[-1].step(empty_actions)
+        '''as long as the top hierarchy layer is stepping forward,
+        the downer layers is controlled and kept running.
+        Note that the top hierarchy does no have to call step,
+        calling one_step is enough'''
+        hierarchy_layer[-1].one_step()
 
 if __name__ == "__main__":
     main()
