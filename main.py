@@ -184,11 +184,13 @@ class HierarchyLayer(object):
         for macro_step_i in range(args.hierarchy_interval):
             obs, reward, done, info = self.one_step()
 
-            obs = np.expand_dims(obs, 0)
             if obs_macro is None:
-                obs_macro = obs
+                obs_macro = np.expand_dims(obs, 0)
             else:
-                obs_macro = np.concatenate((obs_macro, obs),0)
+                obs_macro = np.concatenate(
+                    (obs_macro, np.expand_dims(obs, 0)),
+                    axis = 0,
+                )
 
             reward = reward.squeeze().unsqueeze(0)
             if reward_macro is None:
@@ -205,21 +207,30 @@ class HierarchyLayer(object):
         '''this is the mask operation'''
 
         '''if done, the following returns are done'''
-        print(mask_macro)
         for macro_step_i in range(args.hierarchy_interval-1):
             for mask_i in range(macro_step_i+1, args.hierarchy_interval):
                 mask_macro[mask_i] = mask_macro[mask_i]*mask_macro[macro_step_i]
-        print(mask_macro)
+
         '''we will use mask_macro_add_one_step to mask rewards and obs,
         since the done step is still returning valid rewards and obs'''
-        mask_macro_add_one_step
+        mask_macro_add_one_step = (mask_macro + torch.cat([torch.zeros(1, args.num_processes), mask_macro])[:-1]).sign()
 
-        print(reward_macro)
-        reward_macro = reward_macro*mask_macro
-        print(reward_macro)
-        reward = reward_macro.sum(dim=1,keepdim=False)
-        print(reward)
-        print(s)
+        '''mask reward_macro with mask_macro_add_one_step,
+        since the reward at done step still masters'''
+        reward_macro = reward_macro*mask_macro_add_one_step
+        reward = reward_macro.sum(dim=0,keepdim=False).unsqueeze(1)
+
+        '''get obs index from mask_macro.
+        this will result in the obs at the first done being sampled.
+        I can not find a more efficient way to do this, please open a pr if you can.
+        Some hints are using np.take, np.choose'''
+        obs_index = mask_macro.sum(dim=0,keepdim=False).int().clamp(0,(args.hierarchy_interval-1))
+        for process_i in range(args.num_processes):
+            obs[process_i] = obs_macro[obs_index[process_i],process_i]
+
+        '''get done from mask_macro'''
+        mask = mask_macro[-1]
+        done = np.squeeze(np.array([[True] if (mask_==0.0) else [False] for mask_ in mask.numpy().tolist()]),1)
 
         return obs, reward, done, info
 
