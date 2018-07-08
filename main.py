@@ -33,11 +33,13 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 try:
+    print('Dir empty, making new log dir...')
     os.makedirs(args.save_dir)
-except OSError:
-    files = glob.glob(os.path.join(args.save_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
+except Exception as e:
+    if e.__class__.__name__ in ['FileExistsError']:
+        print('Dir exsit, checking checkpoint...')
+    else:
+        raise e
 
 torch.set_num_threads(1)
 
@@ -47,10 +49,7 @@ if args.vis:
 bottom_envs = [make_env(i, args=args)
             for i in range(args.num_processes)]
 
-if args.num_processes > 1:
-    bottom_envs = SubprocVecEnv(bottom_envs)
-else:
-    bottom_envs = DummyVecEnv(bottom_envs)
+bottom_envs = SubprocVecEnv(bottom_envs)
 
 if len(bottom_envs.observation_space.shape) == 1:
     if args.env_name in ['OverCooked']:
@@ -76,10 +75,7 @@ class HierarchyLayer(object):
     def __init__(self, envs, hierarchy_id):
         super(HierarchyLayer, self).__init__()
 
-        print('================================================================')
-        print('Building hierarchy layer: {}'.format(
-            hierarchy_id
-        ))
+        print('[H-{}] Building hierarchy layer..........................................................'.format(hierarchy_id))
 
         self.envs = envs
         self.hierarchy_id = hierarchy_id
@@ -90,7 +86,7 @@ class HierarchyLayer(object):
 
         self.actor_critic = Policy(
             obs_shape = obs_shape,
-            input_action_space = macro_action_space,
+            input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
         )
@@ -150,12 +146,12 @@ class HierarchyLayer(object):
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
                 self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id)))
-                print('Load learner previous point: Successed')
+                print('[H-{}] Load learner previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
-                print('Load learner previous point: Failed, due to {}'.format(e))
+                print('[H-{}] Load learner previous point: Failed, due to {}'.format(self.hierarchy_id,e))
         except Exception as e:
             self.num_trained_frames = 0
-        print('Learner has been trained to step: '+str(self.num_trained_frames))
+        print('[H-{}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
         self.num_trained_frames_at_start = self.num_trained_frames
 
         self.start = time.time()
@@ -224,7 +220,9 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
             '''top hierarchy layer is responsible for reseting env if all env has done'''
             if self.masks.sum() == 0.0:
+                # print('Top layer reseting')
                 self.obs = self.reset()
+                # print('Top layer reset done')
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
@@ -241,9 +239,12 @@ class HierarchyLayer(object):
             '''for hierarchy_id=0, summarize reward_raw'''
             self.episode_reward_raw += self.reward_raw[0]
 
-        if self.episode_length > 1:
-            '''if episode<=1. it might be the environment is sleeping,
-            thus do no summary reward under this circonstance'''
+        if (self.episode_length <= 1) and (self.episode_reward==0.0):
+            '''if episode<=1 and no reward returned. it might be the environment is sleeping,
+            thus do no summary reward under this circonstance. This is a ugly way to detect if
+            the environment is sleeping.'''
+            pass
+        else:
             if self.done[0]:
                 self.final_reward = self.episode_reward
                 self.episode_reward = 0.0
@@ -298,7 +299,7 @@ class HierarchyLayer(object):
                 )
                 self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id))
             except Exception as e:
-                print("Save checkpoint failed")
+                print("[H-{}] Save checkpoint failed.".format(self.hierarchy_id))
 
         '''print info'''
         if self.j % args.log_interval == 0:
@@ -352,6 +353,7 @@ class HierarchyLayer(object):
                 raise Exception('Done')
 
     def reset(self):
+        # print('[H-{}] Reset()'.format(self.hierarchy_id))
         '''as a environment, it has reset method'''
         obs = self.envs.reset()
         self.update_current_obs(obs)
