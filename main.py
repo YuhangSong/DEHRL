@@ -19,6 +19,8 @@ from model import Policy
 from storage import RolloutStorage
 import tensorflow as tf
 
+import utils
+
 import algo
 
 args = get_args()
@@ -65,6 +67,12 @@ if bottom_envs.action_space.__class__.__name__ == "Discrete":
     action_shape = 1
 else:
     action_shape = bottom_envs.action_space.shape[0]
+
+input_actions_onehot_global = []
+for hierarchy_i in range(args.num_hierarchy):
+    input_actions_onehot_global += [torch.zeros(args.num_processes, macro_action_space.n)]
+
+sess = tf.Session()
 
 class HierarchyLayer(object):
     """docstring for HierarchyLayer."""
@@ -134,12 +142,12 @@ class HierarchyLayer(object):
             self.episode_reward_raw = 0.0
             self.final_reward_raw = 0.0
 
-        self.input_gpu_actions_onehot = torch.zeros(args.num_processes, macro_action_space.n)
+        input_actions_onehot_global[self.hierarchy_id] = input_actions_onehot_global[self.hierarchy_id]
 
         if args.cuda:
             self.current_obs = self.current_obs.cuda()
             self.rollouts.cuda()
-            self.input_gpu_actions_onehot = self.input_gpu_actions_onehot.cuda()
+            input_actions_onehot_global[self.hierarchy_id] = input_actions_onehot_global[self.hierarchy_id].cuda()
 
         '''try to load checkpoint'''
         try:
@@ -158,13 +166,15 @@ class HierarchyLayer(object):
         self.j = 0
         self.step_i = 0
 
+        self.summary = tf.Summary()
+
     def step(self, input_cpu_actions):
         '''as a environment, it has step method'''
 
-        '''convert: input_cpu_actions >> self.input_gpu_actions_onehot'''
-        self.input_gpu_actions_onehot *= 0.0
+        '''convert: input_cpu_actions >> input_actions_onehot_global[self.hierarchy_id]'''
+        input_actions_onehot_global[self.hierarchy_id] *= 0.0
         for process_i in range(args.num_processes):
-            self.input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
+            input_actions_onehot_global[self.hierarchy_id][process_i,input_cpu_actions[process_i]] = 1.0
 
         '''macro step forward'''
         reward_macro = None
@@ -200,7 +210,7 @@ class HierarchyLayer(object):
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
 
-        self.rollouts.input_actions[self.step_i].copy_(self.input_gpu_actions_onehot)
+        self.rollouts.input_actions[self.step_i].copy_(input_actions_onehot_global[self.hierarchy_id])
 
         # Sample actions
         with torch.no_grad():
@@ -216,6 +226,29 @@ class HierarchyLayer(object):
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.cpu_actions)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
+
+        if self.hierarchy_id in [0]:
+            if args.log_behavior:
+                macro_action_img = utils.actions_onehot_visualize(
+                    actions_onehot = torch.stack(input_actions_onehot_global)[:,0,:].cpu().numpy(),
+                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy*args.num_hierarchy))
+                )
+                bottom_action_img = utils.actions_onehot_visualize(
+                    actions_onehot = np.expand_dims(
+                        utils.action_to_onehot(
+                            action = self.action.squeeze().cpu().numpy()[0],
+                            action_space = bottom_envs.action_space,
+                        ),
+                        axis = 0,
+                    ),
+                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/bottom_envs.action_space.n*1))
+                )
+                state_img = utils.gray_to_rgb(self.obs[0,0])
+                img = np.concatenate((macro_action_img, bottom_action_img, state_img),0)
+                try:
+                    self.visilize_stack += [img]
+                except Exception as e:
+                    self.visilize_stack = [img]
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
             '''top hierarchy layer is responsible for reseting env if all env has done'''
@@ -252,6 +285,32 @@ class HierarchyLayer(object):
                 if self.hierarchy_id in [0]:
                     self.final_reward_raw = self.episode_reward_raw
                     self.episode_reward_raw = 0.0
+
+                    if args.log_behavior:
+
+                        print('[H-{}] Log_behavior...'.format(self.hierarchy_id))
+
+                        try:
+                            self.log_behavior_episodes += 1
+                        except Exception as e:
+                            self.log_behavior_episodes = 1
+                        if self.log_behavior_episodes > 16:
+                            raise Exception('Done')
+
+                        self.visilize_stack = np.stack(self.visilize_stack)
+                        image_summary_op = tf.summary.image(
+                            'frames_{}_episode_{}'.format(
+                                self.num_trained_frames,
+                                self.log_behavior_episodes,
+                            ),
+                            self.visilize_stack,
+                        )
+                        image_summary = sess.run(image_summary_op)
+                        summary_writer.add_summary(image_summary, self.num_trained_frames)
+                        summary_writer.flush()
+                        self.visilize_stack = None
+
+
 
         self.reward = torch.from_numpy(np.expand_dims(np.stack(self.reward), 1)).float()
 
@@ -321,26 +380,25 @@ class HierarchyLayer(object):
         '''visualize results'''
         if args.vis and self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
-            self.summary = tf.Summary()
             if self.hierarchy_id in [0]:
                 self.summary.value.add(
-                    tag = 'hierarchy_{}_final_reward_raw'.format(self.hierarchy_id),
+                    tag = 'hierarchy_{}/final_reward_raw'.format(self.hierarchy_id),
                     simple_value = self.final_reward_raw,
                 )
             self.summary.value.add(
-                tag = 'hierarchy_{}_final_reward'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/final_reward'.format(self.hierarchy_id),
                 simple_value = self.final_reward,
             )
             self.summary.value.add(
-                tag = 'hierarchy_{}_value_loss'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/value_loss'.format(self.hierarchy_id),
                 simple_value = self.value_loss,
             )
             self.summary.value.add(
-                tag = 'hierarchy_{}_action_loss'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/action_loss'.format(self.hierarchy_id),
                 simple_value = self.action_loss,
             )
             self.summary.value.add(
-                tag = 'hierarchy_{}_dist_entropy'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/dist_entropy'.format(self.hierarchy_id),
                 simple_value = self.dist_entropy,
             )
             summary_writer.add_summary(self.summary, self.num_trained_frames)

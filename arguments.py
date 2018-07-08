@@ -83,6 +83,10 @@ def get_args():
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
 
+    '''for behavior visualize'''
+    parser.add_argument('--log-behavior', type=bool, default=False,
+                        help='log agent behavior')
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
