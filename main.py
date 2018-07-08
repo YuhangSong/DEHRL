@@ -245,8 +245,20 @@ class HierarchyLayer(object):
             )
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
+        if args.use_fake_reward_bounty and (self.hierarchy_id in [0]):
+            actions_to_step = [None]*args.num_processes
+            for process_i in range(args.num_processes):
+                actions_to_step[process_i] = []
+                actions_to_step[process_i] += [self.cpu_actions[process_i]]
+                for hierarchy_i in range(args.num_hierarchy-1):
+                    actions_to_step[process_i] += [utils.onehot_to_index(
+                        input_actions_onehot_global[hierarchy_i][process_i].cpu().numpy()
+                    )]
+        else:
+            actions_to_step = self.cpu_actions
+
         # Obser reward and next obs
-        self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.cpu_actions)
+        self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(actions_to_step)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
 
         if self.hierarchy_id in [0]:

@@ -152,6 +152,11 @@ class OverCooked(gym.Env):
         return [seed]
 
     def step(self, action_id):
+        print(action_id)
+        # action_id is a list, the first element is the bottom action
+        # the second is input_actions_onehot_global[0]
+        # ...
+        print(s)
         done = False
         self.eposide_length += 1
         reward = 0
