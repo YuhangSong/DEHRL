@@ -7,6 +7,9 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
+def list_to_str(x):
+    return str(x).replace('[','').replace(']','').replace(', ','_')
+
 def figure_to_array(fig):
     canvas=fig.canvas
     buf = io.BytesIO()

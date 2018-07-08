@@ -43,6 +43,8 @@ except Exception as e:
     else:
         raise e
 
+print('Log to {}'.format(args.save_dir))
+
 torch.set_num_threads(1)
 
 if args.vis:
@@ -61,7 +63,13 @@ if len(bottom_envs.observation_space.shape) == 1:
 obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-macro_action_space = gym.spaces.Discrete(args.num_subpolicy)
+if len(args.num_subpolicy) != (args.num_hierarchy-1):
+    print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
+    args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
+
+if len(args.hierarchy_interval) != (args.num_hierarchy-1):
+    print('# WARNING: Exlicity hierarchy_interval is not matching args.num_hierarchy, use the first hierarchy_interval for all layers')
+    args.hierarchy_interval = [args.hierarchy_interval[0]]*(args.num_hierarchy-1)
 
 if bottom_envs.action_space.__class__.__name__ == "Discrete":
     action_shape = 1
@@ -69,8 +77,16 @@ else:
     action_shape = bottom_envs.action_space.shape[0]
 
 input_actions_onehot_global = []
-for hierarchy_i in range(args.num_hierarchy):
-    input_actions_onehot_global += [torch.zeros(args.num_processes, macro_action_space.n)]
+for hierarchy_i in range(args.num_hierarchy-1):
+    input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i])]
+
+'''for top hierarchy layer, action space is not necessary,
+actually it is feed with a zero vector (the initial input_actions_onehot_global)'''
+input_actions_onehot_global += [torch.zeros(args.num_processes, 1)]
+
+if args.cuda:
+    for hierarchy_i in range(args.num_hierarchy):
+        input_actions_onehot_global[hierarchy_i] = input_actions_onehot_global[hierarchy_i].cuda()
 
 sess = tf.Session()
 
@@ -83,14 +99,23 @@ class HierarchyLayer(object):
     def __init__(self, envs, hierarchy_id):
         super(HierarchyLayer, self).__init__()
 
-        print('[H-{}] Building hierarchy layer..........................................................'.format(hierarchy_id))
-
         self.envs = envs
         self.hierarchy_id = hierarchy_id
 
         '''as an env, it should have action_space and observation space'''
-        self.action_space = macro_action_space
+        self.action_space = gym.spaces.Discrete((input_actions_onehot_global[self.hierarchy_id]).size()[1])
         self.observation_space = self.envs.observation_space
+        if self.hierarchy_id not in [args.num_hierarchy-1]:
+            self.hierarchy_interval = args.hierarchy_interval[self.hierarchy_id]
+        else:
+            self.hierarchy_interval = None
+
+        print('[H-{}] Building hierarchy layer. Action space {}. Observation_space {}. Hierarchy interval {}'.format(
+            self.hierarchy_id,
+            self.action_space,
+            self.observation_space,
+            self.hierarchy_interval,
+        ))
 
         self.actor_critic = Policy(
             obs_shape = obs_shape,
@@ -127,7 +152,7 @@ class HierarchyLayer(object):
             num_steps = args.num_steps,
             num_processes = args.num_processes,
             obs_shape = obs_shape,
-            macro_action_space = macro_action_space,
+            input_actions = self.action_space,
             action_space = self.envs.action_space,
             state_size = self.actor_critic.state_size,
         )
@@ -142,12 +167,9 @@ class HierarchyLayer(object):
             self.episode_reward_raw = 0.0
             self.final_reward_raw = 0.0
 
-        input_actions_onehot_global[self.hierarchy_id] = input_actions_onehot_global[self.hierarchy_id]
-
         if args.cuda:
             self.current_obs = self.current_obs.cuda()
             self.rollouts.cuda()
-            input_actions_onehot_global[self.hierarchy_id] = input_actions_onehot_global[self.hierarchy_id].cuda()
 
         '''try to load checkpoint'''
         try:
@@ -178,7 +200,7 @@ class HierarchyLayer(object):
 
         '''macro step forward'''
         reward_macro = None
-        for macro_step_i in range(args.hierarchy_interval):
+        for macro_step_i in range(self.hierarchy_interval):
 
             obs, reward, done, info = self.one_step()
 
