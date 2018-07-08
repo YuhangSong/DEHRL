@@ -60,7 +60,19 @@ if len(bottom_envs.observation_space.shape) == 1:
 obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-macro_action_space = gym.spaces.Discrete(args.num_subpolicy)
+num_subpolicy = args.num_subpolicy
+update_interval = args.hierarchy_interval
+
+while len(num_subpolicy)<args.num_hierarchy:
+    num_subpolicy.append(num_subpolicy[-1])
+while len(update_interval)<args.num_hierarchy:
+    update_interval.append(update_interval[-1])
+
+for action_space_i in range(len(num_subpolicy)):
+    try:
+        macro_action_space += [gym.spaces.Discrete(num_subpolicy[action_space_i])]
+    except Exception as e:
+        macro_action_space = [gym.spaces.Discrete(num_subpolicy[action_space_i])]
 
 if bottom_envs.action_space.__class__.__name__ == "Discrete":
     action_shape = 1
@@ -85,12 +97,13 @@ class HierarchyLayer(object):
         self.hierarchy_id = hierarchy_id
 
         '''as an env, it should have action_space and observation space'''
-        self.action_space = macro_action_space
+        self.action_space = macro_action_space[self.hierarchy_id]
+        
         self.observation_space = self.envs.observation_space
 
         self.actor_critic = Policy(
             obs_shape = obs_shape,
-            input_action_space = macro_action_space,
+            input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
         )
@@ -123,7 +136,7 @@ class HierarchyLayer(object):
             num_steps = args.num_steps,
             num_processes = args.num_processes,
             obs_shape = obs_shape,
-            macro_action_space = macro_action_space,
+            macro_action_space = macro_action_space[self.hierarchy_id],
             action_space = self.envs.action_space,
             state_size = self.actor_critic.state_size,
         )
@@ -138,7 +151,7 @@ class HierarchyLayer(object):
             self.episode_reward_raw = 0.0
             self.final_reward_raw = 0.0
 
-        self.input_gpu_actions_onehot = torch.zeros(args.num_processes, macro_action_space.n)
+        self.input_gpu_actions_onehot = torch.zeros(args.num_processes, macro_action_space[self.hierarchy_id].n)
 
         if args.cuda:
             self.current_obs = self.current_obs.cuda()
@@ -172,7 +185,7 @@ class HierarchyLayer(object):
 
         '''macro step forward'''
         reward_macro = None
-        for macro_step_i in range(args.hierarchy_interval):
+        for macro_step_i in range(update_interval[self.hierarchy_id]):
 
             obs, reward, done, info = self.one_step()
 

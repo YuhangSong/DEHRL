@@ -72,11 +72,11 @@ def get_args():
                         help='level of reward in games like OverCooked')
 
     '''policy details'''
-    parser.add_argument('--num-hierarchy', type=int,
+    parser.add_argument('--num-hierarchy', type=int, default = 1,
                         help='num of the hierarchical_policy' )
-    parser.add_argument('--num-subpolicy', type=int,
+    parser.add_argument('--num-subpolicy', type=int, nargs='*', default = 1,
                         help='num of the subpolicies per hierarchy' )
-    parser.add_argument('--hierarchy-interval', type=int,
+    parser.add_argument('--hierarchy-interval', type=int, nargs='*', default = 1,
                         help='the interval between the subpolicies')
 
     '''reward bounty details'''
@@ -99,8 +99,8 @@ def get_args():
 
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
-    args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(args.num_subpolicy))
-    args.save_dir = os.path.join(args.save_dir, 'hierarchy_interval-{}'.format(args.hierarchy_interval))
+    args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(args.num_subpolicy[0]))
+    args.save_dir = os.path.join(args.save_dir, 'hierarchy_interval-{}'.format(args.hierarchy_interval[0]))
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
