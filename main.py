@@ -110,7 +110,7 @@ class HierarchyLayer(object):
         else:
             self.hierarchy_interval = None
 
-        print('[H-{}] Building hierarchy layer. Action space {}. Observation_space {}. Hierarchy interval {}'.format(
+        print('[H-{:2}] Building hierarchy layer. Action space {}. Observation_space {}. Hierarchy interval {}'.format(
             self.hierarchy_id,
             self.action_space,
             self.observation_space,
@@ -176,12 +176,12 @@ class HierarchyLayer(object):
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
                 self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id)))
-                print('[H-{}] Load learner previous point: Successed'.format(self.hierarchy_id))
+                print('[H-{:2}] Load learner previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
-                print('[H-{}] Load learner previous point: Failed, due to {}'.format(self.hierarchy_id,e))
+                print('[H-{:2}] Load learner previous point: Failed, due to {}'.format(self.hierarchy_id,e))
         except Exception as e:
             self.num_trained_frames = 0
-        print('[H-{}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
+        print('[H-{:2}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
         self.num_trained_frames_at_start = self.num_trained_frames
 
         self.start = time.time()
@@ -310,7 +310,7 @@ class HierarchyLayer(object):
 
                     if args.log_behavior:
 
-                        print('[H-{}] Log_behavior...'.format(self.hierarchy_id))
+                        print('[H-{:2}] Log_behavior...'.format(self.hierarchy_id))
 
                         try:
                             self.log_behavior_episodes += 1
@@ -380,20 +380,20 @@ class HierarchyLayer(object):
                 )
                 self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id))
             except Exception as e:
-                print("[H-{}] Save checkpoint failed.".format(self.hierarchy_id))
+                print("[H-{:2}] Save checkpoint failed.".format(self.hierarchy_id))
 
         '''print info'''
         if self.j % args.log_interval == 0:
             self.end = time.time()
             self.total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
-            print_string = "[H-{}][{}/{}], FPS {}, final_reward {:.2f}".format(
+            print_string = "[H-{:2}][{:9}/{}], FPS {:7}, final_reward {:4}".format(
                 self.hierarchy_id,
                 self.num_trained_frames, args.num_frames,
                 int(self.num_trained_frames / (self.end - self.start)),
                 self.final_reward,
             )
             if self.hierarchy_id in [0]:
-                print_string += ', remaining {} hours'.format(
+                print_string += ', remaining {:4} hours'.format(
                     (self.end - self.start)/(self.num_trained_frames-self.num_trained_frames_at_start)*(args.num_frames-self.num_trained_frames)/60.0/60.0,
                 )
             print(print_string)
@@ -433,7 +433,7 @@ class HierarchyLayer(object):
                 raise Exception('Done')
 
     def reset(self):
-        # print('[H-{}] Reset()'.format(self.hierarchy_id))
+        # print('[H-{:2}] Reset()'.format(self.hierarchy_id))
         '''as a environment, it has reset method'''
         obs = self.envs.reset()
         self.update_current_obs(obs)
