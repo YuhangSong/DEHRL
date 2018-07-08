@@ -251,10 +251,22 @@ class HierarchyLayer(object):
 
         if self.hierarchy_id in [0]:
             if args.log_behavior:
-                macro_action_img = utils.actions_onehot_visualize(
-                    actions_onehot = torch.stack(input_actions_onehot_global)[:,0,:].cpu().numpy(),
-                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy*args.num_hierarchy))
-                )
+                img = None
+
+                for hierarchy_i in range(args.num_hierarchy-1):
+                    hierarchy_i_back = (args.num_hierarchy-1)-1-hierarchy_i
+                    macro_action_img = utils.actions_onehot_visualize(
+                        actions_onehot = np.expand_dims(
+                            input_actions_onehot_global[hierarchy_i_back][0].cpu().numpy(),
+                            axis = 0,
+                        ),
+                        figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy[hierarchy_i_back]*1))
+                    )
+                    try:
+                        img = np.concatenate((img, macro_action_img),0)
+                    except Exception as e:
+                        img = macro_action_img
+
                 bottom_action_img = utils.actions_onehot_visualize(
                     actions_onehot = np.expand_dims(
                         utils.action_to_onehot(
@@ -265,8 +277,11 @@ class HierarchyLayer(object):
                     ),
                     figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/bottom_envs.action_space.n*1))
                 )
+                img = np.concatenate((img, bottom_action_img),0)
+
                 state_img = utils.gray_to_rgb(self.obs[0,0])
-                img = np.concatenate((macro_action_img, bottom_action_img, state_img),0)
+                img = np.concatenate((img, state_img),0)
+
                 try:
                     self.visilize_stack += [img]
                 except Exception as e:

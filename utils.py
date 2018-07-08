@@ -23,7 +23,6 @@ def figure_to_array(fig):
     return img
 
 def actions_onehot_visualize(actions_onehot,figsize):
-    actions_onehot = np.flip(actions_onehot, 0)
     plt.clf()
     fig, ax = plt.subplots(frameon=False,figsize=(figsize[0]/100.0, figsize[1]/100.0))
     im = ax.imshow(actions_onehot)
