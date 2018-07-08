@@ -77,8 +77,6 @@ class OverCooked(gym.Env):
 
         self.goal_ram = np.zeros(self.goal_num)
 
-        self.reset()
-
     def canvas_clear(self):
         # canvas
         self.img = np.ones((int(self.screen_width + self.screen_width / 5), int(self.screen_height), 3), np.uint8) * 255

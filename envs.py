@@ -37,12 +37,12 @@ class SleepAfterDone(gym.Wrapper):
 
     def step(self, ac):
         if not self.sleeping:
-            self.obs, reward, done, self.info = self.env.step(ac)
+            self.obs, self.reward, done, self.info = self.env.step(ac)
             if done:
-                self.sleep = True
+                self.sleeping = True
         else:
-            reward, done, self.info = 0.0, True, self.info
-        return self.obs, reward, done, self.info
+            self.reward, done, self.info = type(self.reward)(0), True, self.info
+        return self.obs, self.reward, done, self.info
 
 def make_env(rank, args):
     def _thunk():

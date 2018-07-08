@@ -1,6 +1,7 @@
 import os
 import argparse
 import torch
+import utils
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
@@ -83,6 +84,10 @@ def get_args():
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
 
+    '''for behavior visualize'''
+    parser.add_argument('--log-behavior', type=bool, default=False,
+                        help='log agent behavior')
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -99,8 +104,8 @@ def get_args():
 
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
-    args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(args.num_subpolicy[0]))
-    args.save_dir = os.path.join(args.save_dir, 'hierarchy_interval-{}'.format(args.hierarchy_interval[0]))
+    args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(utils.list_to_str(args.num_subpolicy)))
+    args.save_dir = os.path.join(args.save_dir, 'hierarchy_interval-{}'.format(utils.list_to_str(args.hierarchy_interval)))
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))

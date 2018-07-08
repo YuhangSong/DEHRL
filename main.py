@@ -19,6 +19,8 @@ from model import Policy
 from storage import RolloutStorage
 import tensorflow as tf
 
+import utils
+
 import algo
 
 args = get_args()
@@ -33,11 +35,15 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 try:
+    print('Dir empty, making new log dir...')
     os.makedirs(args.save_dir)
-except OSError:
-    files = glob.glob(os.path.join(args.save_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
+except Exception as e:
+    if e.__class__.__name__ in ['FileExistsError']:
+        print('Dir exsit, checking checkpoint...')
+    else:
+        raise e
+
+print('Log to {}'.format(args.save_dir))
 
 torch.set_num_threads(1)
 
@@ -47,10 +53,7 @@ if args.vis:
 bottom_envs = [make_env(i, args=args)
             for i in range(args.num_processes)]
 
-if args.num_processes > 1:
-    bottom_envs = SubprocVecEnv(bottom_envs)
-else:
-    bottom_envs = DummyVecEnv(bottom_envs)
+bottom_envs = SubprocVecEnv(bottom_envs)
 
 if len(bottom_envs.observation_space.shape) == 1:
     if args.env_name in ['OverCooked']:
@@ -60,24 +63,32 @@ if len(bottom_envs.observation_space.shape) == 1:
 obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-num_subpolicy = args.num_subpolicy
-update_interval = args.hierarchy_interval
+if len(args.num_subpolicy) != (args.num_hierarchy-1):
+    print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
+    args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
 
-while len(num_subpolicy)<args.num_hierarchy:
-    num_subpolicy.append(num_subpolicy[-1])
-while len(update_interval)<args.num_hierarchy:
-    update_interval.append(update_interval[-1])
-
-for action_space_i in range(len(num_subpolicy)):
-    try:
-        macro_action_space += [gym.spaces.Discrete(num_subpolicy[action_space_i])]
-    except Exception as e:
-        macro_action_space = [gym.spaces.Discrete(num_subpolicy[action_space_i])]
+if len(args.hierarchy_interval) != (args.num_hierarchy-1):
+    print('# WARNING: Exlicity hierarchy_interval is not matching args.num_hierarchy, use the first hierarchy_interval for all layers')
+    args.hierarchy_interval = [args.hierarchy_interval[0]]*(args.num_hierarchy-1)
 
 if bottom_envs.action_space.__class__.__name__ == "Discrete":
     action_shape = 1
 else:
     action_shape = bottom_envs.action_space.shape[0]
+
+input_actions_onehot_global = []
+for hierarchy_i in range(args.num_hierarchy-1):
+    input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i])]
+
+'''for top hierarchy layer, action space is not necessary,
+actually it is feed with a zero vector (the initial input_actions_onehot_global)'''
+input_actions_onehot_global += [torch.zeros(args.num_processes, 1)]
+
+if args.cuda:
+    for hierarchy_i in range(args.num_hierarchy):
+        input_actions_onehot_global[hierarchy_i] = input_actions_onehot_global[hierarchy_i].cuda()
+
+sess = tf.Session()
 
 class HierarchyLayer(object):
     """docstring for HierarchyLayer."""
@@ -88,18 +99,23 @@ class HierarchyLayer(object):
     def __init__(self, envs, hierarchy_id):
         super(HierarchyLayer, self).__init__()
 
-        print('================================================================')
-        print('Building hierarchy layer: {}'.format(
-            hierarchy_id
-        ))
-
         self.envs = envs
         self.hierarchy_id = hierarchy_id
 
         '''as an env, it should have action_space and observation space'''
-        self.action_space = macro_action_space[self.hierarchy_id]
-        
+        self.action_space = gym.spaces.Discrete((input_actions_onehot_global[self.hierarchy_id]).size()[1])
         self.observation_space = self.envs.observation_space
+        if self.hierarchy_id not in [args.num_hierarchy-1]:
+            self.hierarchy_interval = args.hierarchy_interval[self.hierarchy_id]
+        else:
+            self.hierarchy_interval = None
+
+        print('[H-{}] Building hierarchy layer. Action space {}. Observation_space {}. Hierarchy interval {}'.format(
+            self.hierarchy_id,
+            self.action_space,
+            self.observation_space,
+            self.hierarchy_interval,
+        ))
 
         self.actor_critic = Policy(
             obs_shape = obs_shape,
@@ -136,7 +152,7 @@ class HierarchyLayer(object):
             num_steps = args.num_steps,
             num_processes = args.num_processes,
             obs_shape = obs_shape,
-            macro_action_space = macro_action_space[self.hierarchy_id],
+            input_actions = self.action_space,
             action_space = self.envs.action_space,
             state_size = self.actor_critic.state_size,
         )
@@ -151,41 +167,40 @@ class HierarchyLayer(object):
             self.episode_reward_raw = 0.0
             self.final_reward_raw = 0.0
 
-        self.input_gpu_actions_onehot = torch.zeros(args.num_processes, macro_action_space[self.hierarchy_id].n)
-
         if args.cuda:
             self.current_obs = self.current_obs.cuda()
             self.rollouts.cuda()
-            self.input_gpu_actions_onehot = self.input_gpu_actions_onehot.cuda()
 
         '''try to load checkpoint'''
         try:
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
                 self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id)))
-                print('Load learner previous point: Successed')
+                print('[H-{}] Load learner previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
-                print('Load learner previous point: Failed, due to {}'.format(e))
+                print('[H-{}] Load learner previous point: Failed, due to {}'.format(self.hierarchy_id,e))
         except Exception as e:
             self.num_trained_frames = 0
-        print('Learner has been trained to step: '+str(self.num_trained_frames))
+        print('[H-{}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
         self.num_trained_frames_at_start = self.num_trained_frames
 
         self.start = time.time()
         self.j = 0
         self.step_i = 0
 
+        self.summary = tf.Summary()
+
     def step(self, input_cpu_actions):
         '''as a environment, it has step method'''
 
-        '''convert: input_cpu_actions >> self.input_gpu_actions_onehot'''
-        self.input_gpu_actions_onehot *= 0.0
+        '''convert: input_cpu_actions >> input_actions_onehot_global[self.hierarchy_id]'''
+        input_actions_onehot_global[self.hierarchy_id] *= 0.0
         for process_i in range(args.num_processes):
-            self.input_gpu_actions_onehot[process_i,input_cpu_actions[process_i]] = 1.0
+            input_actions_onehot_global[self.hierarchy_id][process_i,input_cpu_actions[process_i]] = 1.0
 
         '''macro step forward'''
         reward_macro = None
-        for macro_step_i in range(update_interval[self.hierarchy_id]):
+        for macro_step_i in range(self.hierarchy_interval):
 
             obs, reward, done, info = self.one_step()
 
@@ -217,7 +232,7 @@ class HierarchyLayer(object):
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
 
-        self.rollouts.input_actions[self.step_i].copy_(self.input_gpu_actions_onehot)
+        self.rollouts.input_actions[self.step_i].copy_(input_actions_onehot_global[self.hierarchy_id])
 
         # Sample actions
         with torch.no_grad():
@@ -234,10 +249,35 @@ class HierarchyLayer(object):
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.cpu_actions)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
 
+        if self.hierarchy_id in [0]:
+            if args.log_behavior:
+                macro_action_img = utils.actions_onehot_visualize(
+                    actions_onehot = torch.stack(input_actions_onehot_global)[:,0,:].cpu().numpy(),
+                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy*args.num_hierarchy))
+                )
+                bottom_action_img = utils.actions_onehot_visualize(
+                    actions_onehot = np.expand_dims(
+                        utils.action_to_onehot(
+                            action = self.action.squeeze().cpu().numpy()[0],
+                            action_space = bottom_envs.action_space,
+                        ),
+                        axis = 0,
+                    ),
+                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/bottom_envs.action_space.n*1))
+                )
+                state_img = utils.gray_to_rgb(self.obs[0,0])
+                img = np.concatenate((macro_action_img, bottom_action_img, state_img),0)
+                try:
+                    self.visilize_stack += [img]
+                except Exception as e:
+                    self.visilize_stack = [img]
+
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
             '''top hierarchy layer is responsible for reseting env if all env has done'''
             if self.masks.sum() == 0.0:
+                # print('Top layer reseting')
                 self.obs = self.reset()
+                # print('Top layer reset done')
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
@@ -254,9 +294,12 @@ class HierarchyLayer(object):
             '''for hierarchy_id=0, summarize reward_raw'''
             self.episode_reward_raw += self.reward_raw[0]
 
-        if self.episode_length > 1:
-            '''if episode<=1. it might be the environment is sleeping,
-            thus do no summary reward under this circonstance'''
+        if (self.episode_length <= 1) and (self.episode_reward==0.0):
+            '''if episode<=1 and no reward returned. it might be the environment is sleeping,
+            thus do no summary reward under this circonstance. This is a ugly way to detect if
+            the environment is sleeping.'''
+            pass
+        else:
             if self.done[0]:
                 self.final_reward = self.episode_reward
                 self.episode_reward = 0.0
@@ -264,6 +307,32 @@ class HierarchyLayer(object):
                 if self.hierarchy_id in [0]:
                     self.final_reward_raw = self.episode_reward_raw
                     self.episode_reward_raw = 0.0
+
+                    if args.log_behavior:
+
+                        print('[H-{}] Log_behavior...'.format(self.hierarchy_id))
+
+                        try:
+                            self.log_behavior_episodes += 1
+                        except Exception as e:
+                            self.log_behavior_episodes = 1
+                        if self.log_behavior_episodes > 16:
+                            raise Exception('Done')
+
+                        self.visilize_stack = np.stack(self.visilize_stack)
+                        image_summary_op = tf.summary.image(
+                            'frames_{}_episode_{}'.format(
+                                self.num_trained_frames,
+                                self.log_behavior_episodes,
+                            ),
+                            self.visilize_stack,
+                        )
+                        image_summary = sess.run(image_summary_op)
+                        summary_writer.add_summary(image_summary, self.num_trained_frames)
+                        summary_writer.flush()
+                        self.visilize_stack = None
+
+
 
         self.reward = torch.from_numpy(np.expand_dims(np.stack(self.reward), 1)).float()
 
@@ -311,7 +380,7 @@ class HierarchyLayer(object):
                 )
                 self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id))
             except Exception as e:
-                print("Save checkpoint failed")
+                print("[H-{}] Save checkpoint failed.".format(self.hierarchy_id))
 
         '''print info'''
         if self.j % args.log_interval == 0:
@@ -333,26 +402,25 @@ class HierarchyLayer(object):
         '''visualize results'''
         if args.vis and self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
-            self.summary = tf.Summary()
             if self.hierarchy_id in [0]:
                 self.summary.value.add(
-                    tag = 'hierarchy_{}_final_reward_raw'.format(self.hierarchy_id),
+                    tag = 'hierarchy_{}/final_reward_raw'.format(self.hierarchy_id),
                     simple_value = self.final_reward_raw,
                 )
             self.summary.value.add(
-                tag = 'hierarchy_{}_final_reward'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/final_reward'.format(self.hierarchy_id),
                 simple_value = self.final_reward,
             )
             self.summary.value.add(
-                tag = 'hierarchy_{}_value_loss'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/value_loss'.format(self.hierarchy_id),
                 simple_value = self.value_loss,
             )
             self.summary.value.add(
-                tag = 'hierarchy_{}_action_loss'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/action_loss'.format(self.hierarchy_id),
                 simple_value = self.action_loss,
             )
             self.summary.value.add(
-                tag = 'hierarchy_{}_dist_entropy'.format(self.hierarchy_id),
+                tag = 'hierarchy_{}/dist_entropy'.format(self.hierarchy_id),
                 simple_value = self.dist_entropy,
             )
             summary_writer.add_summary(self.summary, self.num_trained_frames)
@@ -365,6 +433,7 @@ class HierarchyLayer(object):
                 raise Exception('Done')
 
     def reset(self):
+        # print('[H-{}] Reset()'.format(self.hierarchy_id))
         '''as a environment, it has reset method'''
         obs = self.envs.reset()
         self.update_current_obs(obs)
