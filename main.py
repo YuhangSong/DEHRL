@@ -191,6 +191,10 @@ class HierarchyLayer(object):
 
         self.summary = tf.Summary()
 
+        if self.hierarchy_id in [0]:
+            self.last_time_log_behavior = time.time()
+            self.log_behavior = True
+
     def step(self, input_cpu_actions):
         '''as a environment, it has step method'''
 
@@ -413,9 +417,18 @@ class HierarchyLayer(object):
 
     def step_summary_from_env_0(self):
 
+
         '''for log behavior'''
-        if self.hierarchy_id in [0] and args.log_behavior:
-            self.summary_behavior_at_step()
+        if self.hierarchy_id in [0]:
+
+            if (time.time()-self.last_time_log_behavior)/60.0 > 1.0:
+                '''log behavior every 10 minutes'''
+                if self.episode_length==0:
+                    self.last_time_log_behavior = time.time()
+                    self.log_behavior = True
+
+            if self.log_behavior:
+                self.summary_behavior_at_step()
 
         '''summarize reward'''
         self.episode_reward += self.reward[0]
@@ -433,10 +446,15 @@ class HierarchyLayer(object):
                 self.final_reward_raw = self.episode_reward_raw
                 self.episode_reward_raw = 0.0
 
-            if self.hierarchy_id in [0] and args.log_behavior:
-                self.summary_behavior_at_done()
+            if self.hierarchy_id in [0]:
+                if self.log_behavior:
+                    self.summary_behavior_at_done()
+                    self.log_behavior = False
 
     def summary_behavior_at_step(self):
+
+        print('[H-{:1}] Logging behavior.'.format(self.hierarchy_id))
+
         img = None
 
         for hierarchy_i in range(args.num_hierarchy-1):
@@ -475,7 +493,7 @@ class HierarchyLayer(object):
 
     def summary_behavior_at_done(self):
 
-        print('[H-{:1}] Log_behavior...'.format(self.hierarchy_id))
+        print('[H-{:1}] Log behavior done.'.format(self.hierarchy_id))
 
         try:
             self.log_behavior_episodes += 1
