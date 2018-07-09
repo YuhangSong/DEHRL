@@ -424,8 +424,8 @@ class HierarchyLayer(object):
         '''for log behavior'''
         if self.hierarchy_id in [0]:
 
-            if (time.time()-self.last_time_log_behavior)/60.0 > 1.0:
-                '''log behavior every 10 minutes'''
+            if (time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval:
+                '''log behavior every x minutes'''
                 if self.episode_length==0:
                     self.last_time_log_behavior = time.time()
                     self.log_behavior = True
