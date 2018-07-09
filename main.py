@@ -250,6 +250,10 @@ class HierarchyLayer(object):
             )
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
+        if self.hierarchy_id in [1]:
+            # this is for debug
+            self.cpu_actions = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+
         if args.use_fake_reward_bounty and (self.hierarchy_id in [0]):
             actions_to_step = [None]*args.num_processes
             for process_i in range(args.num_processes):
@@ -417,7 +421,6 @@ class HierarchyLayer(object):
 
     def step_summary_from_env_0(self):
 
-
         '''for log behavior'''
         if self.hierarchy_id in [0]:
 
@@ -495,18 +498,10 @@ class HierarchyLayer(object):
 
         print('[H-{:1}] Log behavior done.'.format(self.hierarchy_id))
 
-        try:
-            self.log_behavior_episodes += 1
-        except Exception as e:
-            self.log_behavior_episodes = 1
-        if self.log_behavior_episodes > 16:
-            raise Exception('Done')
-
         self.visilize_stack = np.stack(self.visilize_stack)
         image_summary_op = tf.summary.image(
-            'frames_{}_episode_{}'.format(
+            'hehavior_at_{}'.format(
                 self.num_trained_frames,
-                self.log_behavior_episodes,
             ),
             self.visilize_stack,
             max_outputs = self.visilize_stack.shape[0],
