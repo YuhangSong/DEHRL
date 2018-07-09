@@ -7,6 +7,9 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
+def onehot_to_index(x):
+    return np.where(x==1.0)[0][0]
+
 def list_to_str(x):
     return str(x).replace('[','').replace(']','').replace(', ','_')
 

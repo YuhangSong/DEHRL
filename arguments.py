@@ -71,6 +71,8 @@ def get_args():
                         help='environment to train on')
     parser.add_argument('--reward-level', type=int, default=2,
                         help='level of reward in games like OverCooked')
+    parser.add_argument('--use-fake-reward-bounty', type=bool, default=False,
+                        help='if use fake reward bounty')
 
     '''policy details'''
     parser.add_argument('--num-hierarchy', type=int, default = 1,
@@ -101,6 +103,7 @@ def get_args():
     args.save_dir = os.path.join(args.save_dir, 'env_name-{}'.format(args.env_name))
     if args.env_name in ['OverCooked']:
         args.save_dir = os.path.join(args.save_dir, 'reward_level-{}'.format(args.reward_level))
+        args.save_dir = os.path.join(args.save_dir, 'use_fake_reward_bounty-{}'.format(args.use_fake_reward_bounty))
 
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))

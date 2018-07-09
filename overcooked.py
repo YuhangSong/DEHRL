@@ -151,10 +151,20 @@ class OverCooked(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, action_id):
+    def step(self, action_list):
+        # action_list is a list, the first element is the bottom action
+        # the second is input_actions_onehot_global[0]
+        # ...
+        add_fake_bounty = False
+        if isinstance(action_list,list):
+            action_id = action_list[0]
+            add_fake_bounty = True
+        else:
+            action_id = action_list
+        # print(stop)
         done = False
         self.eposide_length += 1
-        reward = 0
+        reward = 0.0
         if action_id<17:
             self.leg_id = int((action_id - 1) / 4)
             action = action_id-self.leg_id*4
@@ -186,18 +196,26 @@ class OverCooked(gym.Env):
                 body_action = action_box[0]
                 if body_action == 1:
                     self.position[0] = self.position[0]+self.screen_width/self.move_discount
+                    if add_fake_bounty and action_list[1] == 0:
+                        reward = 1.0
                 elif body_action == 2:
                     self.position[0] = self.position[0]-self.screen_width/self.move_discount
+                    if add_fake_bounty and action_list[1] == 1:
+                        reward = 1.0
                 elif body_action == 3:
                     self.position[1] = self.position[1]+self.screen_height/self.move_discount
+                    if add_fake_bounty and action_list[1] == 2:
+                        reward = 1.0
                 elif body_action == 4:
                     self.position[1] = self.position[1]-self.screen_height/self.move_discount
+                    if add_fake_bounty and action_list[1] == 3:
+                        reward = 1.0
                 if self.reward_level == 0:
                     if body_action in [self.single_goal]:
-                        reward = 1
+                        reward = 1.0
                         done = True
                     else:
-                        reward = 0
+                        reward = 0.0
                         done = False
 
 
@@ -235,41 +253,57 @@ class OverCooked(gym.Env):
             if 1 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 1
                 self.goal_id += 1
+                if add_fake_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 0:
+                            reward = 1.0
                 if self.reward_level == 1:
                     if self.single_goal == 0:
-                        reward = 1
+                        reward = 1.0
                     done = True
         elif distance_2 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 2 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 2
                 self.goal_id += 1
+                if add_fake_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 1:
+                            reward = 1.0
                 if self.reward_level == 1:
                     if self.single_goal == 1:
-                        reward = 1
+                        reward = 1.0
                     done = True
         elif distance_3 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 3 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 3
                 self.goal_id += 1
+                if add_fake_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 2:
+                            reward = 1.0
                 if self.reward_level == 1:
                     if self.single_goal == 2:
-                        reward = 1
+                        reward = 1.0
                     done = True
         elif distance_4 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 4 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 4
                 self.goal_id += 1
+                if add_fake_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 3:
+                            reward = 1.0
                 if self.reward_level == 1:
                     if self.single_goal == 3:
-                        reward = 1
+                        reward = 1.0
                     done = True
 
         if self.reward_level == 2:
             if (self.realgoal==self.cur_goal).all():
-                reward = 1
+                reward = 1.0
                 done = True
             elif self.cur_goal[self.goal_num-1]>0:
-                reward = 0
+                reward = 0.0
                 done = True
 
         obs = self.obs()
