@@ -52,7 +52,7 @@ def make_env(rank, args):
         elif args.env_name in ['OverCooked']:
             import overcooked
             env = overcooked.OverCooked(
-                reward_level = args.reward_level,
+                args = args,
             )
         else:
             env = gym.make(args.env_name)

@@ -63,6 +63,8 @@ def get_args():
                         help='use a recurrent policy')
     parser.add_argument('--no-vis', action='store_true', default=False,
                         help='disables visdom visualization')
+    parser.add_argument('--render', action='store_true',
+                        help='render environment in a window')
 
     '''environment details'''
     parser.add_argument('--obs-type', type=str, default='image',
@@ -71,7 +73,7 @@ def get_args():
                         help='environment to train on')
     parser.add_argument('--reward-level', type=int, default=2,
                         help='level of reward in games like OverCooked')
-    parser.add_argument('--use-fake-reward-bounty', type=bool, default=False,
+    parser.add_argument('--use-fake-reward-bounty', action='store_true',
                         help='if use fake reward bounty')
 
     '''policy details'''
@@ -87,7 +89,7 @@ def get_args():
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
 
     '''for behavior visualize'''
-    parser.add_argument('--log-behavior', type=bool, default=False,
+    parser.add_argument('--log-behavior', action='store_true',
                         help='log agent behavior')
 
     args = parser.parse_args()
