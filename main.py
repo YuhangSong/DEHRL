@@ -47,8 +47,7 @@ print('Log to {}'.format(args.save_dir))
 
 torch.set_num_threads(1)
 
-if args.vis:
-    summary_writer = tf.summary.FileWriter(args.save_dir)
+summary_writer = tf.summary.FileWriter(args.save_dir)
 
 bottom_envs = [make_env(i, args=args)
             for i in range(args.num_processes)]

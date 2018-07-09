@@ -25,7 +25,7 @@ class OverCooked(gym.Env):
     def __init__(self, args=None):
 
         self.args = args
-        
+
         self.action_space = spaces.Discrete(18)
         self.screen_width = 84
         self.screen_height = 84
@@ -150,12 +150,16 @@ class OverCooked(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, action_id):
-        print(action_id)
-        # action_id is a list, the first element is the bottom action
-        # the second is input_actions_onehot_global[0]
-        # ...
-        print(s)
+    def step(self, action_list):
+        if self.args.use_fake_reward_bounty:
+            # for use_fake_reward_bounty
+            # action_list is a list, the first element is the bottom action
+            # the second is input_actions_onehot_global[0]
+            # ...
+            action_id = action_list[0]
+        else:
+            action_id = action_list
+
         done = False
         self.eposide_length += 1
         reward = 0
@@ -167,15 +171,27 @@ class OverCooked(gym.Env):
             if action == 1:
                 self.state[self.leg_id][0] = self.screen_width/40
                 self.state[self.leg_id][1] = 0
+                if self.args.use_fake_reward_bounty:
+                    if action_list[1] == 0:
+                        reward = 1
             elif action == 2:
                 self.state[self.leg_id][0] = -self.screen_width/40
                 self.state[self.leg_id][1] = 0
+                if self.args.use_fake_reward_bounty:
+                    if action_list[1] == 1:
+                        reward = 1
             elif action == 3:
                 self.state[self.leg_id][0] = 0
                 self.state[self.leg_id][1] = self.screen_height/40
+                if self.args.use_fake_reward_bounty:
+                    if action_list[1] == 2:
+                        reward = 1
             elif action == 4:
                 self.state[self.leg_id][0] = 0
                 self.state[self.leg_id][1] = -self.screen_height/40
+                if self.args.use_fake_reward_bounty:
+                    if action_list[1] == 3:
+                        reward = 1
             else:
                 self.state[self.leg_id][0] = 0
                 self.state[self.leg_id][1] = 0
@@ -239,6 +255,10 @@ class OverCooked(gym.Env):
             if 1 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 1
                 self.goal_id += 1
+                if self.args.use_fake_reward_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 0:
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 0:
                         reward = 1
@@ -247,6 +267,10 @@ class OverCooked(gym.Env):
             if 2 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 2
                 self.goal_id += 1
+                if self.args.use_fake_reward_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 1:
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 1:
                         reward = 1
@@ -255,6 +279,10 @@ class OverCooked(gym.Env):
             if 3 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 3
                 self.goal_id += 1
+                if self.args.use_fake_reward_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 2:
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 2:
                         reward = 1
@@ -263,6 +291,10 @@ class OverCooked(gym.Env):
             if 4 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 4
                 self.goal_id += 1
+                if self.args.use_fake_reward_bounty:
+                    if len(action_list)>2:
+                        if action_list[2] == 3:
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 3:
                         reward = 1
@@ -354,7 +386,8 @@ class OverCooked(gym.Env):
         self.goal_ram = np.zeros(self.goal_num)
 
         if self.args.reward_level == 1:
-            self.single_goal = np.random.randint(0,self.goal_num)
+            # self.single_goal = np.random.randint(0,self.goal_num)
+            self.single_goal = 1
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
