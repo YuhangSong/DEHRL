@@ -26,6 +26,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
             break
         elif cmd == 'get_spaces':
             remote.send((env.observation_space, env.action_space))
+        elif cmd == 'get_sleeping':
+            remote.send(env.sleeping)
         else:
             raise NotImplementedError
 
@@ -55,6 +57,11 @@ class SubprocVecEnv(VecEnv):
         for remote, action in zip(self.remotes, actions):
             remote.send(('step', action))
         self.waiting = True
+
+    def get_sleeping(self, env_index):
+        self.remotes[env_index].send(('get_sleeping', None))
+        sleeping = self.remotes[env_index].recv()
+        return sleeping
 
     def step_wait(self):
         results = [remote.recv() for remote in self.remotes]

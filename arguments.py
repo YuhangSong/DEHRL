@@ -61,8 +61,6 @@ def get_args():
                         help='add timestep to observations')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
                         help='use a recurrent policy')
-    parser.add_argument('--no-vis', action='store_true', default=False,
-                        help='disables visdom visualization')
     parser.add_argument('--render', action='store_true',
                         help='render environment in a window')
 
@@ -95,7 +93,6 @@ def get_args():
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
-    args.vis = not args.no_vis
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)

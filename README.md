@@ -74,11 +74,8 @@ source activate ehrl
 ```
 
 ```bash
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_56 --obs-type 'image' --env-name "OverCooked" --reward-level 0 --num-hierarchy 3 --num-subpolicy 4 5 --hierarchy-interval 2 3 --reward-bounty 0.0
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_67 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --reward-bounty 0.0 --use-fake-reward-bounty
 ```
-Note that when setting ```--num-hierarchy 1```, the ```--num-subpolicy 2 --hierarchy-interval 2``` shouldn't matter anymore.
-
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_56 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --reward-bounty 0.0 --use-fake-reward-bounty True
 
 ## TODO list
 * check the logic of the game under reward_level=1(finished)
