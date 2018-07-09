@@ -74,7 +74,7 @@ source activate ehrl
 ```
 
 ```bash
-python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --exp temp_67 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --reward-bounty 0.0 --use-fake-reward-bounty
+python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --mini-batch-size 256 --exp temp_67 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.0 --use-fake-reward-bounty
 ```
 
 ## TODO list

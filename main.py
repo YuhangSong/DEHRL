@@ -65,10 +65,16 @@ obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 if len(args.num_subpolicy) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
     args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
+'''for top hierarchy layer'''
+args.num_subpolicy += [1]
 
 if len(args.hierarchy_interval) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity hierarchy_interval is not matching args.num_hierarchy, use the first hierarchy_interval for all layers')
     args.hierarchy_interval = [args.hierarchy_interval[0]]*(args.num_hierarchy-1)
+
+if len(args.num_steps) != (args.num_hierarchy):
+    print('# WARNING: Exlicity num_steps is not matching args.num_hierarchy, use the first num_steps for all layers')
+    args.num_steps = [args.num_steps[0]]*(args.num_hierarchy-1)
 
 if bottom_envs.action_space.__class__.__name__ == "Discrete":
     action_shape = 1
@@ -76,12 +82,8 @@ else:
     action_shape = bottom_envs.action_space.shape[0]
 
 input_actions_onehot_global = []
-for hierarchy_i in range(args.num_hierarchy-1):
+for hierarchy_i in range(args.num_hierarchy):
     input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i])]
-
-'''for top hierarchy layer, action space is not necessary,
-actually it is feed with a zero vector (the initial input_actions_onehot_global)'''
-input_actions_onehot_global += [torch.zeros(args.num_processes, 1)]
 
 if args.cuda:
     for hierarchy_i in range(args.num_hierarchy):
@@ -136,10 +138,9 @@ class HierarchyLayer(object):
             )
         elif args.algo == 'ppo':
             self.agent = algo.PPO(
-                self.actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch, args.value_loss_coef, args.entropy_coef,
-                lr=args.lr,
-                eps=args.eps,
-                max_grad_norm=args.max_grad_norm,
+                args = args,
+                actor_critic = self.actor_critic,
+                hierarchy_id = self.hierarchy_id,
             )
         elif args.algo == 'acktr':
             self.agent = algo.A2C_ACKTR(
@@ -148,7 +149,7 @@ class HierarchyLayer(object):
             )
 
         self.rollouts = RolloutStorage(
-            num_steps = args.num_steps,
+            num_steps = args.num_steps[self.hierarchy_id],
             num_processes = args.num_processes,
             obs_shape = obs_shape,
             input_actions = self.action_space,
@@ -222,8 +223,8 @@ class HierarchyLayer(object):
         obs, reward, done, info = self.interact_one_step()
 
         self.step_i += 1
-        if self.step_i==args.num_steps:
-            '''if reach args.num_steps, update agent for one step with the experiences stored in rollouts'''
+        if self.step_i==args.num_steps[self.hierarchy_id]:
+            '''if reach args.num_steps[self.hierarchy_id], update agent for one step with the experiences stored in rollouts'''
             self.update_agent_one_step()
             self.step_i = 0
 
@@ -326,7 +327,7 @@ class HierarchyLayer(object):
 
         self.rollouts.after_update()
 
-        self.num_trained_frames += (args.num_steps*args.num_processes)
+        self.num_trained_frames += (args.num_steps[self.hierarchy_id]*args.num_processes)
         self.j += 1
 
         '''save checkpoint'''
@@ -343,7 +344,6 @@ class HierarchyLayer(object):
         '''print info'''
         if self.j % args.log_interval == 0:
             self.end = time.time()
-            self.total_num_steps = (self.j + 1) * args.num_processes * args.num_steps
             print_string = "[H-{:1}][{:9}/{}], FPS {:4}, final_reward {:4}, episode_length {:4}".format(
                 self.hierarchy_id,
                 self.num_trained_frames, args.num_frames,

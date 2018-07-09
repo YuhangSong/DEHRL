@@ -37,12 +37,10 @@ def get_args():
                         help='random seed (default: 1)')
     parser.add_argument('--num-processes', type=int, default=16,
                         help='how many training CPU processes to use (default: 16)')
-    parser.add_argument('--num-steps', type=int, default=5,
-                        help='number of forward steps in A2C (default: 5)')
     parser.add_argument('--ppo-epoch', type=int, default=4,
                         help='number of ppo epochs (default: 4)')
-    parser.add_argument('--num-mini-batch', type=int, default=32,
-                        help='number of batches for ppo (default: 32)')
+    parser.add_argument('--mini-batch-size', type=int, default=32,
+                        help='mini batch size for ppo (default: 32)')
     parser.add_argument('--clip-param', type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument('--num-stack', type=int, default=4,
@@ -75,12 +73,14 @@ def get_args():
                         help='if use fake reward bounty')
 
     '''policy details'''
-    parser.add_argument('--num-hierarchy', type=int, default = 1,
+    parser.add_argument('--num-hierarchy',      type=int,
                         help='num of the hierarchical_policy' )
-    parser.add_argument('--num-subpolicy', type=int, nargs='*', default = 1,
+    parser.add_argument('--num-subpolicy',      type=int, nargs='*',
                         help='num of the subpolicies per hierarchy' )
-    parser.add_argument('--hierarchy-interval', type=int, nargs='*', default = 1,
+    parser.add_argument('--hierarchy-interval', type=int, nargs='*',
                         help='the interval between the subpolicies')
+    parser.add_argument('--num-steps',          type=int, nargs='*',
+                        help='number of forward steps before update agent')
 
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
@@ -108,6 +108,7 @@ def get_args():
     args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
     args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(utils.list_to_str(args.num_subpolicy)))
     args.save_dir = os.path.join(args.save_dir, 'hierarchy_interval-{}'.format(utils.list_to_str(args.hierarchy_interval)))
+    args.save_dir = os.path.join(args.save_dir, 'num_steps-{}'.format(utils.list_to_str(args.num_steps)))
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
