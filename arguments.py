@@ -87,7 +87,7 @@ def get_args():
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
 
     '''for log behavior'''
-    parser.add_argument('--log-behavior-interval', type=int, default=10,
+    parser.add_argument('--log-behavior-interval', type=int, default=1,
                         help='log behavior every x minutes')
 
     args = parser.parse_args()

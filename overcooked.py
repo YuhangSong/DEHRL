@@ -171,25 +171,25 @@ class OverCooked(gym.Env):
             self.leg_position[self.leg_id][0] = self.reset_legposi[self.leg_id][0]
             self.leg_position[self.leg_id][1] = self.reset_legposi[self.leg_id][1]
 
-            if action == 1:
-                self.state[self.leg_id][0] = self.screen_width/40
-                self.state[self.leg_id][1] = 0
-
-            elif action == 2:
-                self.state[self.leg_id][0] = -self.screen_width/40
-                self.state[self.leg_id][1] = 0
-
-            elif action == 3:
-                self.state[self.leg_id][0] = 0
-                self.state[self.leg_id][1] = self.screen_height/40
-
-            elif action == 4:
-                self.state[self.leg_id][0] = 0
-                self.state[self.leg_id][1] = -self.screen_height/40
-
-            else:
-                self.state[self.leg_id][0] = 0
-                self.state[self.leg_id][1] = 0
+            # if action == 1:
+            #     self.state[self.leg_id][0] = self.screen_width/40
+            #     self.state[self.leg_id][1] = 0
+            #
+            # elif action == 2:
+            #     self.state[self.leg_id][0] = -self.screen_width/40
+            #     self.state[self.leg_id][1] = 0
+            #
+            # elif action == 3:
+            #     self.state[self.leg_id][0] = 0
+            #     self.state[self.leg_id][1] = self.screen_height/40
+            #
+            # elif action == 4:
+            #     self.state[self.leg_id][0] = 0
+            #     self.state[self.leg_id][1] = -self.screen_height/40
+            #
+            # else:
+            #     self.state[self.leg_id][0] = 0
+            #     self.state[self.leg_id][1] = 0
 
             self.action_mem[self.leg_id] = action
             self.leg_position[self.leg_id][0] = self.leg_position[self.leg_id][0]+self.state[self.leg_id][0]
