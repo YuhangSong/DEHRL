@@ -165,7 +165,7 @@ class OverCooked(gym.Env):
         self.eposide_length += 1
         reward = 0
         if action_id<17:
-
+            self.leg_move_count += 1
             self.leg_id = int((action_id - 1) / 4)
             action = action_id-self.leg_id*4
             self.leg_position[self.leg_id][0] = self.reset_legposi[self.leg_id][0]
@@ -240,7 +240,11 @@ class OverCooked(gym.Env):
 
             self.position = self.position_constrain(self.position,[self.max_x,self.max_y],[self.min_x,self.min_y])
             self.action_mem = np.zeros(self.leg_num)
-
+            
+        '''
+        reset legs after four steps, no matter whether every leg has moved or not
+        '''
+        if self.leg_move_count % 4 == 0:
             self.leg_position = []
             self.leg_position.append(
                 np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
@@ -251,15 +255,15 @@ class OverCooked(gym.Env):
             self.leg_position.append(
                 np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
-            self.reset_legposi = []
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.screen_width / 20, self.position[1] + self.screen_height / 10]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.screen_height / 20]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+             self.reset_legposi = []
+             self.reset_legposi.append(
+                 np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
+             self.reset_legposi.append(
+                 np.array([self.position[0] - self.screen_width / 20, self.position[1] + self.screen_height / 10]))
+             self.reset_legposi.append(
+                 np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.screen_height / 20]))
+             self.reset_legposi.append(
+                 np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
         # if action_id==17:
         distance_1 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
@@ -397,6 +401,7 @@ class OverCooked(gym.Env):
         self.leg_id = 0
         self.goal_id = 0
         self.eposide_length = 0
+        self.leg_move_count = 0
         self.action_mem = np.zeros(self.leg_num)
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)

@@ -2,6 +2,7 @@ import copy
 import glob
 import os
 import time
+import random
 
 import gym
 import numpy as np
@@ -200,8 +201,12 @@ class HierarchyLayer(object):
 
         '''convert: input_cpu_actions >> input_actions_onehot_global[self.hierarchy_id]'''
         input_actions_onehot_global[self.hierarchy_id] *= 0.0
-        for process_i in range(args.num_processes):
-            input_actions_onehot_global[self.hierarchy_id][process_i,input_cpu_actions[process_i]] = 1.0
+        if not args.warm_up:
+            for process_i in range(args.num_processes):
+                input_actions_onehot_global[self.hierarchy_id][process_i,input_cpu_actions[process_i]] = 1.0
+        else:
+            for process_i in range(args.num_processes):
+                input_actions_onehot_global[self.hierarchy_id][process_i,random.randint(1,2)] = 1.0
 
         '''macro step forward'''
         reward_macro = None
@@ -335,15 +340,18 @@ class HierarchyLayer(object):
         self.j += 1
 
         '''save checkpoint'''
-        if self.j % args.save_interval == 0 and args.save_dir != "":
-            try:
-                np.save(
-                    args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
-                    np.array([self.num_trained_frames]),
-                )
-                self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id))
-            except Exception as e:
-                print("[H-{:1}] Save checkpoint failed.".format(self.hierarchy_id))
+        if args.warm_up and self.hierarchy_id not in [0]:
+            pass
+        else:
+            if self.j % args.save_interval == 0 and args.save_dir != "":
+                try:
+                    np.save(
+                        args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
+                        np.array([self.num_trained_frames]),
+                    )
+                    self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id))
+                except Exception as e:
+                    print("[H-{:1}] Save checkpoint failed.".format(self.hierarchy_id))
 
         '''print info'''
         if self.j % args.log_interval == 0:
@@ -499,8 +507,8 @@ class HierarchyLayer(object):
             self.log_behavior_episodes += 1
         except Exception as e:
             self.log_behavior_episodes = 1
-        if self.log_behavior_episodes > 16:
-            raise Exception('Done')
+        # if self.log_behavior_episodes > 16:
+        #     raise Exception('Done')
 
         self.visilize_stack = np.stack(self.visilize_stack)
         image_summary_op = tf.summary.image(

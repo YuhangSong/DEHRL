@@ -61,6 +61,8 @@ def get_args():
                         help='use a recurrent policy')
     parser.add_argument('--render', action='store_true',
                         help='render environment in a window')
+    parser.add_argument('--warm-up', action='store_true', default=False,
+                        help='use random one_hot for test')
 
     '''environment details'''
     parser.add_argument('--obs-type', type=str, default='image',
