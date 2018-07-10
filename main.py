@@ -18,6 +18,7 @@ from envs import make_env
 from model import Policy
 from storage import RolloutStorage
 import tensorflow as tf
+import cv2
 
 import utils
 
@@ -456,8 +457,6 @@ class HierarchyLayer(object):
 
     def summary_behavior_at_step(self):
 
-        print('[H-{:1}] Logging behavior.'.format(self.hierarchy_id))
-
         img = None
 
         for hierarchy_i in range(args.num_hierarchy-1):
@@ -487,6 +486,16 @@ class HierarchyLayer(object):
         img = np.concatenate((img, bottom_action_img),0)
 
         state_img = utils.gray_to_rgb(self.obs[0,0])
+        state_img = cv2.putText(
+            state_img,
+            'Reward: {}'.format(
+                self.reward_raw_OR_reward[0],
+            ),
+            (30,10),
+            cv2.FONT_HERSHEY_COMPLEX,
+            0.2,
+            (0,0,255),
+        )
         img = np.concatenate((img, state_img),0)
 
         try:
@@ -496,7 +505,10 @@ class HierarchyLayer(object):
 
     def summary_behavior_at_done(self):
 
-        print('[H-{:1}] Log behavior done.'.format(self.hierarchy_id))
+        print('[H-{:1}] Log behavior done at {}.'.format(
+            self.hierarchy_id,
+            self.num_trained_frames,
+        ))
 
         self.visilize_stack = np.stack(self.visilize_stack)
         image_summary_op = tf.summary.image(
