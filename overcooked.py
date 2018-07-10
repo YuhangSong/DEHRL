@@ -241,6 +241,26 @@ class OverCooked(gym.Env):
             self.position = self.position_constrain(self.position,[self.max_x,self.max_y],[self.min_x,self.min_y])
             self.action_mem = np.zeros(self.leg_num)
 
+            self.leg_position = []
+            self.leg_position.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
+            self.leg_position.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] + self.screen_height / 10]))
+            self.leg_position.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.screen_height / 20]))
+            self.leg_position.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+
+            self.reset_legposi = []
+            self.reset_legposi.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
+            self.reset_legposi.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] + self.screen_height / 10]))
+            self.reset_legposi.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.screen_height / 20]))
+            self.reset_legposi.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+
         '''
         reset legs after four steps, no matter whether every leg has moved or not
         '''
