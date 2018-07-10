@@ -206,7 +206,7 @@ class HierarchyLayer(object):
                 input_actions_onehot_global[self.hierarchy_id][process_i,input_cpu_actions[process_i]] = 1.0
         else:
             for process_i in range(args.num_processes):
-                input_actions_onehot_global[self.hierarchy_id][process_i,random.randint(1,2)] = 1.0
+                input_actions_onehot_global[self.hierarchy_id][process_i,random.randint(0,self.action_space.n-1)] = 1.0
 
         '''macro step forward'''
         reward_macro = None
