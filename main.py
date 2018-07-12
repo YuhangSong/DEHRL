@@ -160,14 +160,23 @@ class HierarchyLayer(object):
         self.current_obs = torch.zeros(args.num_processes, *obs_shape)
 
         '''for summarizing reward'''
-        self.episode_reward = 0.0
-        self.final_reward = 0.0
-        self.episode_length = 0
-        self.final_episode_length = 0
+        self.episode_reward = {}
+        self.final_reward = {}
+
+        self.episode_reward['norm'] = 0.0
+        self.final_reward['norm'] = 0.0
+
+        self.episode_reward['len'] = 0.0
+        self.final_reward['len'] = 0.0
+
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
-            self.episode_reward_raw = 0.0
-            self.final_reward_raw = 0.0
+            self.episode_reward['raw'] = 0.0
+            self.final_reward['raw'] = 0.0
+            if args.use_fake_reward_bounty:
+                for sub_policy_i in range(args.num_subpolicy[self.hierarchy_id]):
+                    self.episode_reward['sp_{}'.format(sub_policy_i)] = 0.0
+                    self.final_reward['sp_{}'.format(sub_policy_i)] = 0.0
 
         if args.cuda:
             self.current_obs = self.current_obs.cuda()
@@ -256,21 +265,21 @@ class HierarchyLayer(object):
             self.cpu_actions = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
 
         if args.use_fake_reward_bounty and (self.hierarchy_id in [0]):
-            actions_to_step = [None]*args.num_processes
+            self.actions_to_step = [None]*args.num_processes
             for process_i in range(args.num_processes):
-                actions_to_step[process_i] = []
-                actions_to_step[process_i] += [self.cpu_actions[process_i]]
+                self.actions_to_step[process_i] = []
+                self.actions_to_step[process_i] += [self.cpu_actions[process_i]]
                 for hierarchy_i in range(args.num_hierarchy-1):
-                    actions_to_step[process_i] += [utils.onehot_to_index(
+                    self.actions_to_step[process_i] += [utils.onehot_to_index(
                         input_actions_onehot_global[hierarchy_i][process_i].cpu().numpy()
                     )]
         else:
-            actions_to_step = self.cpu_actions
+            self.actions_to_step = self.cpu_actions
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
         # Obser reward and next obs
-        self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(actions_to_step)
+        self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
@@ -353,13 +362,19 @@ class HierarchyLayer(object):
         '''print info'''
         if self.j % args.log_interval == 0:
             self.end = time.time()
-            print_string = "[H-{:1}][{:9}/{}], FPS {:4}, final_reward {:4}, episode_length {:4}".format(
+            print_string = "[H-{:1}][{:9}/{}], FPS {:4}".format(
                 self.hierarchy_id,
                 self.num_trained_frames, args.num_frames,
                 int(self.num_trained_frames / (self.end - self.start)),
-                self.final_reward,
-                self.final_episode_length,
             )
+
+            print_string += ', final_reward '
+            for episode_reward_type in self.episode_reward.keys():
+                print_string += '[{}:{:3}]'.format(
+                    episode_reward_type,
+                    self.final_reward[episode_reward_type]
+                )
+
             if self.hierarchy_id in [0]:
                 print_string += ', remaining {:4.1f} hours'.format(
                     (self.end - self.start)/(self.num_trained_frames-self.num_trained_frames_at_start)*(args.num_frames-self.num_trained_frames)/60.0/60.0,
@@ -370,19 +385,14 @@ class HierarchyLayer(object):
         '''visualize results'''
         if self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
-            if self.hierarchy_id in [0]:
+            for episode_reward_type in self.episode_reward.keys():
                 self.summary.value.add(
-                    tag = 'hierarchy_{}/final_reward_raw'.format(self.hierarchy_id),
-                    simple_value = self.final_reward_raw,
+                    tag = 'hierarchy_{}/final_reward_{}'.format(
+                        self.hierarchy_id,
+                        episode_reward_type,
+                    ),
+                    simple_value = self.final_reward[episode_reward_type],
                 )
-            self.summary.value.add(
-                tag = 'hierarchy_{}/final_reward'.format(self.hierarchy_id),
-                simple_value = self.final_reward,
-            )
-            self.summary.value.add(
-                tag = 'hierarchy_{}/final_episode_length'.format(self.hierarchy_id),
-                simple_value = self.final_episode_length,
-            )
             self.summary.value.add(
                 tag = 'hierarchy_{}/value_loss'.format(self.hierarchy_id),
                 simple_value = self.value_loss,
@@ -435,20 +445,19 @@ class HierarchyLayer(object):
                 self.summary_behavior_at_step()
 
         '''summarize reward'''
-        self.episode_reward += self.reward[0]
-        self.episode_length += 1
+        self.episode_reward['norm'] += self.reward[0]
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, summarize reward_raw'''
-            self.episode_reward_raw += self.reward_raw[0]
+            self.episode_reward['raw'] += self.reward_raw[0]
+            if args.use_fake_reward_bounty:
+                self.episode_reward['sp_{}'.format(self.actions_to_step[0][1])] += self.reward_raw[0]
+
+        self.episode_reward['len'] += 1
 
         if self.done[0]:
-            self.final_reward = self.episode_reward
-            self.episode_reward = 0.0
-            self.final_episode_length = self.episode_length
-            self.episode_length = 0
-            if self.hierarchy_id in [0]:
-                self.final_reward_raw = self.episode_reward_raw
-                self.episode_reward_raw = 0.0
+            for episode_reward_type in self.episode_reward.keys():
+                self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
+                self.episode_reward[episode_reward_type] = 0.0
 
             if self.hierarchy_id in [0]:
                 if self.log_behavior:
