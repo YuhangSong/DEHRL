@@ -437,7 +437,7 @@ class HierarchyLayer(object):
 
             if (time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval:
                 '''log behavior every x minutes'''
-                if self.episode_length==0:
+                if self.episode_reward['len']==0:
                     self.last_time_log_behavior = time.time()
                     self.log_behavior = True
 
@@ -456,6 +456,9 @@ class HierarchyLayer(object):
 
         if self.done[0]:
             for episode_reward_type in self.episode_reward.keys():
+                if 'sp' in episode_reward_type:
+                    if int(episode_reward_type.split('_')[1]) != self.actions_to_step[0][1]:
+                        continue
                 self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
                 self.episode_reward[episode_reward_type] = 0.0
 
