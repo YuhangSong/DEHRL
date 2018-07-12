@@ -48,7 +48,7 @@ class OverCooked(gym.Env):
         if self.args.reward_level in [0]:
             self.episode_length_limit = 5
         elif self.args.reward_level in [1]:
-            self.episode_length_limit = 4
+            self.episode_length_limit = 8
         elif self.args.reward_level in [2]:
             self.episode_length_limit = 50*4
 
@@ -206,7 +206,6 @@ class OverCooked(gym.Env):
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 0:
                             reward = 1
-                            done = True
 
                 elif body_action == 2:
                     self.position[0] = self.position[0]-self.screen_width/self.move_discount
@@ -214,7 +213,6 @@ class OverCooked(gym.Env):
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 1:
                             reward = 1
-                            done = True
 
                 elif body_action == 3:
                     self.position[1] = self.position[1]+self.screen_height/self.move_discount
@@ -222,7 +220,6 @@ class OverCooked(gym.Env):
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 2:
                             reward = 1
-                            done = True
 
                 elif body_action == 4:
                     self.position[1] = self.position[1]-self.screen_height/self.move_discount
@@ -230,7 +227,6 @@ class OverCooked(gym.Env):
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 3:
                             reward = 1
-                            done = True
 
                 if self.args.reward_level == 0:
 
