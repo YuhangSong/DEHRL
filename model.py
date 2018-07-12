@@ -39,7 +39,19 @@ class Policy(nn.Module):
         self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
         self.input_action_space = input_action_space
-        self.input_action_linear = self.base.linear_init_(nn.Linear(self.input_action_space.n,self.base.linear_size))
+        self.input_action_linear = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            nn.ReLU(),
+        )
+
+        self.final_feature_linear_critic = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.ReLU(),
+        )
+        self.final_feature_linear_dist = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.ReLU(),
+        )
 
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
@@ -49,12 +61,14 @@ class Policy(nn.Module):
         base_features, states = self.base(inputs, states, masks)
         input_action_features = self.input_action_linear(input_action)
         final_features = base_features*input_action_features
-        return final_features, states
+        final_features_critic = self.final_feature_linear_critic(final_features)
+        final_features_dist = self.final_feature_linear_dist(final_features)
+        return final_features_critic, final_features_dist, states
 
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
-        final_features, states = self.get_final_features(inputs, states, masks, input_action)
-        value = self.critic_linear(final_features)
-        dist = self.dist(final_features)
+        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
+        value = self.critic_linear(final_features_critic)
+        dist = self.dist(final_features_dist)
 
         if deterministic:
             action = dist.mode()
@@ -67,14 +81,14 @@ class Policy(nn.Module):
         return value, action, action_log_probs, states
 
     def get_value(self, inputs, states, masks, input_action=None):
-        final_features, _ = self.get_final_features(inputs, states, masks, input_action)
-        value = self.critic_linear(final_features)
+        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
+        value = self.critic_linear(final_features_critic)
         return value
 
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
-        final_features, states = self.get_final_features(inputs, states, masks, input_action)
-        value = self.critic_linear(final_features)
-        dist = self.dist(final_features)
+        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
+        value = self.critic_linear(final_features_critic)
+        dist = self.dist(final_features_dist)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
@@ -90,20 +104,20 @@ class CNNBase(nn.Module):
 
         self.linear_size = linear_size
 
-        self.conv_init_ = lambda m: init(m,
+        self.relu_init_ = lambda m: init(m,
                       nn.init.orthogonal_,
                       lambda x: nn.init.constant_(x, 0),
                       nn.init.calculate_gain('relu'))
 
         self.main = nn.Sequential(
-            self.conv_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            self.relu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
             nn.ReLU(),
-            self.conv_init_(nn.Conv2d(32, 64, 4, stride=2)),
+            self.relu_init_(nn.Conv2d(32, 64, 4, stride=2)),
             nn.ReLU(),
-            self.conv_init_(nn.Conv2d(64, 32, 3, stride=1)),
+            self.relu_init_(nn.Conv2d(64, 32, 3, stride=1)),
             nn.ReLU(),
             Flatten(),
-            self.conv_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            self.relu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
             nn.ReLU()
         )
 
