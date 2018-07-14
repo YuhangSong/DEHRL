@@ -42,10 +42,23 @@ class Policy(nn.Module):
 
         self.input_action_linear_critic = nn.Sequential(
             self.base.relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
             nn.ReLU(),
         )
         self.input_action_linear_dist = nn.Sequential(
             self.base.relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
+            nn.ReLU(),
+        )
+
+        self.final_features_linear_critic = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
+            nn.ReLU(),
+        )
+        self.final_features_linear_dist = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
             nn.ReLU(),
         )
 
@@ -57,10 +70,10 @@ class Policy(nn.Module):
         base_features, states = self.base(inputs, states, masks)
 
         input_action_features_critic = self.input_action_linear_critic(input_action)
-        input_action_features_dist = self.input_action_linear_dist(input_action)
+        input_action_features_dist   = self.input_action_linear_dist  (input_action)
 
-        final_features_critic = base_features * input_action_features_critic
-        final_features_dist = base_features * input_action_features_dist
+        final_features_critic = self.final_features_linear_critic(base_features * input_action_features_critic)
+        final_features_dist   = self.final_features_linear_dist  (base_features * input_action_features_dist  )
 
         return final_features_critic, final_features_dist, states
 
@@ -117,6 +130,7 @@ class CNNBase(nn.Module):
             nn.ReLU(),
             Flatten(),
             self.relu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            nn.LayerNorm(self.linear_size),
             nn.ReLU()
         )
 

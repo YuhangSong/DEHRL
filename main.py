@@ -101,6 +101,10 @@ class HierarchyLayer(object):
     def __init__(self, envs, hierarchy_id):
         super(HierarchyLayer, self).__init__()
 
+        print('[H-{:1}] ============================================ Init Begin ================================================='.format(
+            self.hierarchy_id,
+        ))
+
         self.envs = envs
         self.hierarchy_id = hierarchy_id
 
@@ -125,6 +129,7 @@ class HierarchyLayer(object):
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
         )
+        print(self.actor_critic)
 
         if args.cuda:
             self.actor_critic.cuda()
@@ -204,6 +209,10 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             self.last_time_log_behavior = time.time()
             self.log_behavior = True
+
+        print('[H-{:1}] ============================================= Init End ================================================'.format(
+            self.hierarchy_id,
+        ))
 
     def step(self, input_cpu_actions):
         '''as a environment, it has step method'''
