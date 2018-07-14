@@ -49,6 +49,24 @@ class Policy(nn.Module):
             nn.ReLU(),
         )
 
+        self.final_feature_linear_critic = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.ReLU(),
+        )
+        self.final_feature_linear_dist = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.ReLU(),
+        )
+
+        self.final_feature_linear_critic = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.ReLU(),
+        )
+        self.final_feature_linear_dist = nn.Sequential(
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.ReLU(),
+        )
+
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
 
@@ -84,112 +102,4 @@ class Policy(nn.Module):
         value = self.critic_linear(final_features_critic)
         return value
 
-    def evaluate_actions(self, inputs, states, masks, action, input_action=None):
-        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        value = self.critic_linear(final_features_critic)
-        dist = self.dist(final_features_dist)
-
-        action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
-
-        return value, action_log_probs, dist_entropy, states
-
-    def save_model(self, save_path):
-        torch.save(self.state_dict(), save_path)
-
-class CNNBase(nn.Module):
-    def __init__(self, num_inputs, use_gru, linear_size=512):
-        super(CNNBase, self).__init__()
-
-        self.linear_size = linear_size
-
-        self.relu_init_ = lambda m: init(m,
-                      nn.init.orthogonal_,
-                      lambda x: nn.init.constant_(x, 0),
-                      nn.init.calculate_gain('relu'))
-
-        self.main = nn.Sequential(
-            self.relu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
-            nn.ReLU(),
-            self.relu_init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.ReLU(),
-            self.relu_init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.ReLU(),
-            Flatten(),
-            self.relu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
-            nn.ReLU()
-        )
-
-        if use_gru:
-            self.gru = nn.GRUCell(self.linear_size, self.linear_size)
-            nn.init.orthogonal_(self.gru.weight_ih.data)
-            nn.init.orthogonal_(self.gru.weight_hh.data)
-            self.gru.bias_ih.data.fill_(0)
-            self.gru.bias_hh.data.fill_(0)
-
-        self.linear_init_ = lambda m: init(m,
-          nn.init.orthogonal_,
-          lambda x: nn.init.constant_(x, 0))
-
-        self.train()
-
-    @property
-    def state_size(self):
-        if hasattr(self, 'gru'):
-            return self.linear_size
-        else:
-            return 1
-
-    @property
-    def output_size(self):
-        return self.linear_size
-
-    def forward(self, inputs, states, masks):
-        x = self.main(inputs / 255.0)
-
-        if hasattr(self, 'gru'):
-            if inputs.size(0) == states.size(0):
-                x = states = self.gru(x, states * masks)
-            else:
-                x = x.view(-1, states.size(0), x.size(1))
-                masks = masks.view(-1, states.size(0), 1)
-                outputs = []
-                for i in range(x.size(0)):
-                    hx = states = self.gru(x[i], states * masks[i])
-                    outputs.append(hx)
-                x = torch.cat(outputs, 0)
-
-        return x, states
-
-
-class MLPBase(nn.Module):
-    def __init__(self, num_inputs, linear_size=64):
-        super(MLPBase, self).__init__()
-
-        self.linear_size = linear_size
-
-        self.linear_init_ = lambda m: init(m,
-              init_normc_,
-              lambda x: nn.init.constant_(x, 0))
-
-        self.main = nn.Sequential(
-            self.linear_init_(nn.Linear(num_inputs, self.linear_size)),
-            nn.Tanh(),
-            self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-            nn.Tanh()
-        )
-
-        self.train()
-
-    @property
-    def state_size(self):
-        return 1
-
-    @property
-    def output_size(self):
-        return 64
-
-    def forward(self, inputs, states, masks):
-        x = self.main(inputs)
-
-        return x, states
+    def evaluate_actions(self, inputs, states, masks, action, input_a
