@@ -101,12 +101,12 @@ class HierarchyLayer(object):
     def __init__(self, envs, hierarchy_id):
         super(HierarchyLayer, self).__init__()
 
+        self.hierarchy_id = hierarchy_id
+        self.envs = envs
+
         print('[H-{:1}] ============================================ Init Begin ================================================='.format(
             self.hierarchy_id,
         ))
-
-        self.envs = envs
-        self.hierarchy_id = hierarchy_id
 
         '''as an env, it should have action_space and observation space'''
         self.action_space = gym.spaces.Discrete((input_actions_onehot_global[self.hierarchy_id]).size()[1])
