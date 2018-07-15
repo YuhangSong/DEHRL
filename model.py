@@ -41,25 +41,25 @@ class Policy(nn.Module):
         self.input_action_space = input_action_space
 
         self.input_action_linear_critic = nn.Sequential(
-            self.base.tanh_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            self.base.leaky_relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
         )
         self.input_action_linear_dist = nn.Sequential(
-            self.base.tanh_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            self.base.leaky_relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
         )
 
         self.final_features_linear_critic = nn.Sequential(
-            self.base.tanh_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            self.base.leaky_relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
         )
         self.final_features_linear_dist = nn.Sequential(
-            self.base.tanh_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            self.base.leaky_relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
         )
 
     def forward(self, inputs, states, input_action, masks):
@@ -116,6 +116,11 @@ class CNNBase(nn.Module):
 
         self.linear_size = linear_size
 
+        self.leaky_relu_init_ = lambda m: init(m,
+                      nn.init.orthogonal_,
+                      lambda x: nn.init.constant_(x, 0),
+                      nn.init.calculate_gain('leaky_relu'))
+
         self.relu_init_ = lambda m: init(m,
                       nn.init.orthogonal_,
                       lambda x: nn.init.constant_(x, 0),
@@ -127,16 +132,16 @@ class CNNBase(nn.Module):
                       nn.init.calculate_gain('tanh'))
 
         self.main = nn.Sequential(
-            self.tanh_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
-            nn.Tanh(),
-            self.tanh_init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.Tanh(),
-            self.tanh_init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.Tanh(),
+            self.leaky_relu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            nn.LeakyReLU(),
+            self.leaky_relu_init_(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.LeakyReLU(),
+            self.leaky_relu_init_(nn.Conv2d(64, 32, 3, stride=1)),
+            nn.LeakyReLU(),
             Flatten(),
-            self.tanh_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            self.leaky_relu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
             nn.LayerNorm(self.linear_size),
-            nn.Tanh()
+            nn.LeakyReLU()
         )
 
         if use_gru:
@@ -193,9 +198,9 @@ class MLPBase(nn.Module):
 
         self.main = nn.Sequential(
             self.linear_init_(nn.Linear(num_inputs, self.linear_size)),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-            nn.Tanh()
+            nn.LeakyReLU()
         )
 
         self.train()
