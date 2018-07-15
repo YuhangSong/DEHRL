@@ -41,15 +41,18 @@ class Policy(nn.Module):
         self.input_action_space = input_action_space
         self.input_action_linear = nn.Sequential(
             self.base.relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
             nn.ReLU(),
         )
 
         self.final_feature_linear_critic = nn.Sequential(
             self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
             nn.ReLU(),
         )
         self.final_feature_linear_dist = nn.Sequential(
             self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
             nn.ReLU(),
         )
 
@@ -118,6 +121,7 @@ class CNNBase(nn.Module):
             nn.ReLU(),
             Flatten(),
             self.relu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            nn.LayerNorm(self.linear_size),
             nn.ReLU()
         )
 
