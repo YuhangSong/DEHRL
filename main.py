@@ -199,8 +199,6 @@ class HierarchyLayer(object):
         self.j = 0
         self.step_i = 0
 
-        self.summary = tf.Summary()
-
         if self.hierarchy_id in [0]:
             self.last_time_log_behavior = time.time()
             self.log_behavior = True
@@ -385,6 +383,7 @@ class HierarchyLayer(object):
         '''visualize results'''
         if self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
+            self.summary = tf.Summary()
             for episode_reward_type in self.episode_reward.keys():
                 self.summary.value.add(
                     tag = 'hierarchy_{}/final_reward_{}'.format(
