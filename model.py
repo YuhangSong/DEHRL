@@ -40,20 +40,20 @@ class Policy(nn.Module):
 
         self.input_action_space = input_action_space
         self.input_action_linear = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            self.base.relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
+            nn.ReLU(),
         )
 
         self.final_feature_linear_critic = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
+            nn.ReLU(),
         )
         self.final_feature_linear_dist = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
+            nn.ReLU(),
         )
 
     def forward(self, inputs, states, input_action, masks):
@@ -118,16 +118,16 @@ class CNNBase(nn.Module):
                       nn.init.calculate_gain('leaky_relu'))
 
         self.main = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
-            nn.LeakyReLU(),
-            self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.LeakyReLU(),
-            self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.LeakyReLU(),
+            self.relu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            nn.ReLU(),
+            self.relu_init_(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.ReLU(),
+            self.relu_init_(nn.Conv2d(64, 32, 3, stride=1)),
+            nn.ReLU(),
             Flatten(),
-            self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            self.relu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
             nn.LayerNorm(self.linear_size),
-            nn.LeakyReLU()
+            nn.ReLU()
         )
 
         if use_gru:
