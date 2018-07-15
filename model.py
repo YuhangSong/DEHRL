@@ -40,20 +40,20 @@ class Policy(nn.Module):
 
         self.input_action_space = input_action_space
         self.input_action_linear = nn.Sequential(
-            self.base.relu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
 
         self.final_feature_linear_critic = nn.Sequential(
-            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
         self.final_feature_linear_dist = nn.Sequential(
-            self.base.relu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
 
     def forward(self, inputs, states, input_action, masks):
@@ -112,17 +112,22 @@ class CNNBase(nn.Module):
                       lambda x: nn.init.constant_(x, 0),
                       nn.init.calculate_gain('relu'))
 
+        self.leakrelu_init_ = lambda m: init(m,
+                      nn.init.orthogonal_,
+                      lambda x: nn.init.constant_(x, 0),
+                      nn.init.calculate_gain('leaky_relu'))
+
         self.main = nn.Sequential(
-            self.relu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
-            nn.ReLU(),
-            self.relu_init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.ReLU(),
-            self.relu_init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.ReLU(),
+            self.leakrelu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            nn.LeakyReLU(),
+            self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.LeakyReLU(),
+            self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
+            nn.LeakyReLU(),
             Flatten(),
-            self.relu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
             nn.LayerNorm(self.linear_size),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
 
         if use_gru:
