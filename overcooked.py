@@ -35,7 +35,7 @@ class OverCooked(gym.Env):
         '''
         move distance: screen_width/move_discount, default:10---3 step
         '''
-        self.move_discount = 10
+        self.move_discount = 10/3
 
         assert self.args.obs_type in ('ram', 'image')
         if self.args.obs_type == 'ram':
