@@ -173,11 +173,7 @@ class HierarchyLayer(object):
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
             self.final_reward['raw'] = 0.0
-            # if args.use_fake_reward_bounty:
-            #     for sub_policy_i in range(args.num_subpolicy[self.hierarchy_id]):
-            #         self.episode_reward['sp_{}'.format(sub_policy_i)] = 0.0
-            #         self.final_reward['sp_{}'.format(sub_policy_i)] = 0.0
-
+            
         if args.cuda:
             self.current_obs = self.current_obs.cuda()
             self.rollouts.cuda()
@@ -448,8 +444,6 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, summarize reward_raw'''
             self.episode_reward['raw'] += self.reward_raw[0]
-            # if args.use_fake_reward_bounty:
-            #     self.episode_reward['sp_{}'.format(self.actions_to_step[0][1])] += self.reward_raw[0]
 
         self.episode_reward['len'] += 1
 
