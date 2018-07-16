@@ -39,7 +39,13 @@ class Policy(nn.Module):
         self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
         self.input_action_space = input_action_space
-        self.input_action_linear = nn.Sequential(
+
+        self.input_action_linear_critic = nn.Sequential(
+            self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
+            nn.LeakyReLU(),
+        )
+        self.input_action_linear_dist = nn.Sequential(
             self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
             nn.LayerNorm(self.base.linear_size),
             nn.LeakyReLU(),
@@ -62,10 +68,12 @@ class Policy(nn.Module):
     def get_final_features(self, inputs, states, masks, input_action=None):
         # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
-        input_action_features = self.input_action_linear(input_action)
-        final_features = base_features*input_action_features
-        final_features_critic = self.final_feature_linear_critic(final_features)
-        final_features_dist = self.final_feature_linear_dist(final_features)
+        final_features_critic = self.final_feature_linear_critic(
+            self.input_action_linear_critic(input_action)*base_features
+        )
+        final_features_dist = self.final_feature_linear_dist(
+            self.input_action_linear_dist(input_action)*base_features
+        )
         return final_features_critic, final_features_dist, states
 
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
