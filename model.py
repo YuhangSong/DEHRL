@@ -45,17 +45,6 @@ class Policy(nn.Module):
             nn.LeakyReLU(),
         )
 
-        self.final_feature_linear_critic = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
-        self.final_feature_linear_dist = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
-
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
 
@@ -64,8 +53,8 @@ class Policy(nn.Module):
         base_features, states = self.base(inputs, states, masks)
         input_action_features = self.input_action_linear(input_action)
         final_features = base_features*input_action_features
-        final_features_critic = self.final_feature_linear_critic(final_features)
-        final_features_dist = self.final_feature_linear_dist(final_features)
+        final_features_critic = final_features
+        final_features_dist = final_features
         return final_features_critic, final_features_dist, states
 
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
