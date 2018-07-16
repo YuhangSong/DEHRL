@@ -41,7 +41,7 @@ class Policy(nn.Module):
         self.input_action_space = input_action_space
         self.input_action_linear = nn.Sequential(
             self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
+            # input donot normalize
             nn.LeakyReLU(),
         )
 
