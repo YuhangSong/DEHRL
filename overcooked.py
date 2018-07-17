@@ -41,7 +41,7 @@ class OverCooked(gym.Env):
         if self.args.obs_type == 'ram':
             self.observation_space = spaces.Box(low=0, high=1.0, dtype=np.float64, shape=(26,))
         elif self.args.obs_type == 'image':
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self.screen_height, self.screen_width, 3),dtype=np.uint8)
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self.screen_height, self.screen_width, 1),dtype=np.uint8)
         else:
             raise error.Error('Unrecognized observation type: {}'.format(self.args.obs_type))
 
@@ -158,6 +158,7 @@ class OverCooked(gym.Env):
             # the second is input_actions_onehot_global[0]
             # ...
             action_id = action_list[0]
+            raise Exception('Do not support this any more')
         else:
             action_id = action_list
 

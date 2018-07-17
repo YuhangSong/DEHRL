@@ -3,7 +3,8 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 
 class RolloutStorage(object):
-    def __init__(self, num_steps, num_processes, obs_shape, input_actions, action_space, state_size):
+    def __init__(self, num_steps, num_processes, obs_shape, input_actions, action_space, state_size, observation_space):
+        self.observation_space = observation_space
         self.observations = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.input_actions = torch.zeros(num_steps + 1, num_processes, input_actions.n)
         self.states = torch.zeros(num_steps + 1, num_processes, state_size)
@@ -74,7 +75,7 @@ class RolloutStorage(object):
             observations_batch = self.observations[:-1].view(-1,
                                         *self.observations.size()[2:])[indices]
             next_observations_batch = self.observations[1:].view(-1,
-                                        *self.observations.size()[2:])[indices][:,-3:,:,:]
+                                        *self.observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
             input_actions_batch = self.input_actions[:-1].view(-1,
                                         *self.input_actions.size()[2:])[indices]
             states_batch = self.states[:-1].view(-1, self.states.size(-1))[indices]

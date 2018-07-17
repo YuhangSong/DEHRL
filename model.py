@@ -211,9 +211,11 @@ class MLPBase(nn.Module):
         return x, states
 
 class TransitionModel(nn.Module):
-    def __init__(self, num_inputs, input_action_space, linear_size=512):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_space, linear_size=512):
         super(TransitionModel, self).__init__()
 
+        self.input_observation_shape = input_observation_shape
+        self.output_observation_space = output_observation_space
         self.linear_size = linear_size
 
         self.linear_init_ = lambda m: init(m,
@@ -231,7 +233,7 @@ class TransitionModel(nn.Module):
             nn.init.calculate_gain('leaky_relu'))
 
         self.conv = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
             nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
@@ -264,7 +266,7 @@ class TransitionModel(nn.Module):
             self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
             nn.BatchNorm2d(32),
             nn.LeakyReLU(),
-            self.leakrelu_init_(nn.ConvTranspose2d(32, 3, 8, stride=4)),
+            self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_space.shape[0], 8, stride=4)),
             # output do not normalize
             nn.Sigmoid(),
         )
