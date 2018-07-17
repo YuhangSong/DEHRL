@@ -403,8 +403,7 @@ class OverCooked(gym.Env):
         self.goal_ram = np.zeros(self.goal_num)
 
         if self.args.reward_level == 1:
-            # self.single_goal = np.random.randint(0,self.goal_num)
-            self.single_goal = 1
+            self.single_goal = np.random.randint(0,self.goal_num)
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
