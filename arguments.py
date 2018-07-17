@@ -53,8 +53,6 @@ def get_args():
                         help='vis interval, one log per n updates')
     parser.add_argument('--num-frames', type=int, default=10e7,
                         help='number of frames to train (default: 10e6)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
-                        help='disables CUDA training')
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
@@ -94,8 +92,6 @@ def get_args():
                         help='some aux information you may want to record along with this run')
 
     args = parser.parse_args()
-
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)

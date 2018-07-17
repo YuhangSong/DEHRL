@@ -32,8 +32,7 @@ if args.recurrent_policy:
         'Recurrent policy is not implemented for ACKTR'
 
 torch.manual_seed(args.seed)
-if args.cuda:
-    torch.cuda.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
 
 try:
     print('Dir empty, making new log dir...')
@@ -84,11 +83,7 @@ else:
 
 input_actions_onehot_global = []
 for hierarchy_i in range(args.num_hierarchy):
-    input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i])]
-
-if args.cuda:
-    for hierarchy_i in range(args.num_hierarchy):
-        input_actions_onehot_global[hierarchy_i] = input_actions_onehot_global[hierarchy_i].cuda()
+    input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i]).cuda()]
 
 sess = tf.Session()
 
@@ -124,10 +119,19 @@ class HierarchyLayer(object):
             input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
-        )
+        ).cuda()
 
-        if args.cuda:
-            self.actor_critic.cuda()
+        if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
+            from model import TransitionModel
+            self.transition_model = TransitionModel(obs_shape[0], self.envs.action_space).cuda()
+            self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
+            batch_i = 0
+            for action_i in range(self.envs.action_space.n):
+                for process_i in range(args.num_processes):
+                    self.action_onehot_batch[batch_i][action_i] = 1.0
+                    batch_i += 1
+        else:
+            self.transition_model = None
 
         if args.algo == 'a2c':
             self.agent = algo.A2C_ACKTR(
@@ -142,6 +146,7 @@ class HierarchyLayer(object):
                 args = args,
                 actor_critic = self.actor_critic,
                 hierarchy_id = self.hierarchy_id,
+                transition_model = self.transition_model,
             )
         elif args.algo == 'acktr':
             self.agent = algo.A2C_ACKTR(
@@ -156,8 +161,8 @@ class HierarchyLayer(object):
             input_actions = self.action_space,
             action_space = self.envs.action_space,
             state_size = self.actor_critic.state_size,
-        )
-        self.current_obs = torch.zeros(args.num_processes, *obs_shape)
+        ).cuda()
+        self.current_obs = torch.zeros(args.num_processes, *obs_shape).cuda()
 
         '''for summarizing reward'''
         self.episode_reward = {}
@@ -173,19 +178,21 @@ class HierarchyLayer(object):
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
             self.final_reward['raw'] = 0.0
-            
-        if args.cuda:
-            self.current_obs = self.current_obs.cuda()
-            self.rollouts.cuda()
 
         '''try to load checkpoint'''
         try:
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
-                self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id)))
-                print('[H-{:1}] Load learner previous point: Successed'.format(self.hierarchy_id))
+                self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
+                print('[H-{:1}] Load actor_critic previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
-                print('[H-{:1}] Load learner previous point: Failed, due to {}'.format(self.hierarchy_id,e))
+                print('[H-{:1}] Load actor_critic previous point: Failed, due to {}'.format(self.hierarchy_id,e))
+            if self.transition_model is not None:
+                try:
+                    self.transition_model.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id)))
+                    print('[H-{:1}] Load transition_model previous point: Successed'.format(self.hierarchy_id))
+                except Exception as e:
+                    print('[H-{:1}] Load transition_model previous point: Failed, due to {}'.format(self.hierarchy_id,e))
         except Exception as e:
             self.num_trained_frames = 0
         print('[H-{:1}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
@@ -195,9 +202,9 @@ class HierarchyLayer(object):
         self.j = 0
         self.step_i = 0
 
-        if self.hierarchy_id in [0]:
-            self.last_time_log_behavior = time.time()
-            self.log_behavior = True
+        self.last_time_log_behavior = time.time()
+        self.log_behavior = True
+        self.episode_visilize_stack = {}
 
     def step(self, input_cpu_actions):
         '''as a environment, it has step method'''
@@ -272,9 +279,29 @@ class HierarchyLayer(object):
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
+        if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
+            '''predict states'''
+            self.transition_model.eval()
+            with torch.no_grad():
+                predicted_next_observations_batch = self.transition_model(
+                    inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
+                    input_action = self.action_onehot_batch,
+                )
+            predicted_next_observations_batch = predicted_next_observations_batch.view(self.envs.action_space.n,args.num_processes,*predicted_next_observations_batch.size()[1:])
+
+            if self.log_behavior:
+                img = self.rollouts.observations[self.step_i][0,-3:,:,:].permute(1,2,0)
+                for action_i in range(self.envs.action_space.n):
+                    img = torch.cat([img,predicted_next_observations_batch[action_i,0,:,:,:].permute(1,2,0)],1)
+                img = img.cpu().numpy()
+                try:
+                    self.episode_visilize_stack['state_prediction'] += [img]
+                except Exception as e:
+                    self.episode_visilize_stack['state_prediction'] = [img]
+
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
-        self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done])
+        self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).cuda()
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
             '''top hierarchy layer is responsible for reseting env if all env has done'''
@@ -298,9 +325,6 @@ class HierarchyLayer(object):
 
         if not env_0_sleeping:
             self.step_summary_from_env_0()
-
-        if args.cuda:
-            self.masks = self.masks.cuda()
 
         '''If done then clean the history of observations'''
         if self.current_obs.dim() == 4:
@@ -335,7 +359,7 @@ class HierarchyLayer(object):
 
         self.rollouts.compute_returns(self.next_value, args.use_gae, args.gamma, args.tau)
 
-        self.value_loss, self.action_loss, self.dist_entropy = self.agent.update(self.rollouts)
+        self.value_loss, self.action_loss, self.dist_entropy, self.mse_loss = self.agent.update(self.rollouts)
 
         self.rollouts.after_update()
 
@@ -349,7 +373,9 @@ class HierarchyLayer(object):
                     args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
                     np.array([self.num_trained_frames]),
                 )
-                self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_trained_learner.pth'.format(self.hierarchy_id))
+                self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
+                if self.transition_model is not None:
+                    self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
             except Exception as e:
                 print("[H-{:1}] Save checkpoint failed.".format(self.hierarchy_id))
 
@@ -400,6 +426,11 @@ class HierarchyLayer(object):
                 tag = 'hierarchy_{}/dist_entropy'.format(self.hierarchy_id),
                 simple_value = self.dist_entropy,
             )
+            if self.mse_loss is not None:
+                self.summary.value.add(
+                    tag = 'hierarchy_{}/mse_loss'.format(self.hierarchy_id),
+                    simple_value = self.mse_loss,
+                )
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
 
@@ -410,7 +441,6 @@ class HierarchyLayer(object):
                 raise Exception('Done')
 
     def reset(self):
-        # print('[H-{:1}] Reset()'.format(self.hierarchy_id))
         '''as a environment, it has reset method'''
         obs = self.envs.reset()
         self.update_current_obs(obs)
@@ -428,16 +458,14 @@ class HierarchyLayer(object):
     def step_summary_from_env_0(self):
 
         '''for log behavior'''
-        if self.hierarchy_id in [0]:
+        if (time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval:
+            '''log behavior every x minutes'''
+            if self.episode_reward['len']==0:
+                self.last_time_log_behavior = time.time()
+                self.log_behavior = True
 
-            if (time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval:
-                '''log behavior every x minutes'''
-                if self.episode_reward['len']==0:
-                    self.last_time_log_behavior = time.time()
-                    self.log_behavior = True
-
-            if self.log_behavior:
-                self.summary_behavior_at_step()
+        if self.log_behavior:
+            self.summary_behavior_at_step()
 
         '''summarize reward'''
         self.episode_reward['norm'] += self.reward[0]
@@ -455,10 +483,9 @@ class HierarchyLayer(object):
                 self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
                 self.episode_reward[episode_reward_type] = 0.0
 
-            if self.hierarchy_id in [0]:
-                if self.log_behavior:
-                    self.summary_behavior_at_done()
-                    self.log_behavior = False
+            if self.log_behavior:
+                self.summary_behavior_at_done()
+                self.log_behavior = False
 
     def summary_behavior_at_step(self):
 
@@ -504,9 +531,9 @@ class HierarchyLayer(object):
         img = np.concatenate((img, state_img),0)
 
         try:
-            self.visilize_stack += [img]
+            self.episode_visilize_stack['state'] += [img]
         except Exception as e:
-            self.visilize_stack = [img]
+            self.episode_visilize_stack['state'] = [img]
 
     def summary_behavior_at_done(self):
 
@@ -515,18 +542,23 @@ class HierarchyLayer(object):
             self.num_trained_frames,
         ))
 
-        self.visilize_stack = np.stack(self.visilize_stack)
-        image_summary_op = tf.summary.image(
-            'hehavior_at_{}'.format(
-                self.num_trained_frames,
-            ),
-            self.visilize_stack,
-            max_outputs = self.visilize_stack.shape[0],
-        )
-        image_summary = sess.run(image_summary_op)
-        summary_writer.add_summary(image_summary, self.num_trained_frames)
+        for episode_visilize_stack_name in self.episode_visilize_stack.keys():
+            self.episode_visilize_stack[episode_visilize_stack_name] = np.stack(
+                self.episode_visilize_stack[episode_visilize_stack_name]
+            )
+            image_summary_op = tf.summary.image(
+                'H-{}_F-{}_{}'.format(
+                    self.hierarchy_id,
+                    self.num_trained_frames,
+                    episode_visilize_stack_name,
+                ),
+                self.episode_visilize_stack[episode_visilize_stack_name],
+                max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
+            )
+            self.episode_visilize_stack[episode_visilize_stack_name] = None
+            image_summary = sess.run(image_summary_op)
+            summary_writer.add_summary(image_summary, self.num_trained_frames)
         summary_writer.flush()
-        self.visilize_stack = None
 
     def get_sleeping(self, env_index):
         return self.envs.get_sleeping(env_index)

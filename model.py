@@ -9,6 +9,12 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
+class DeFlatten(nn.Module):
+    def __init__(self, shape):
+        super(DeFlatten, self).__init__()
+        self.shape = shape
+    def forward(self, x):
+        return x.view(x.size(0), *self.shape)
 
 class Policy(nn.Module):
     def __init__(self, obs_shape, input_action_space,output_action_space, recurrent_policy):
@@ -26,11 +32,12 @@ class Policy(nn.Module):
         self.state_size = self.base.state_size
 
         '''build actor model'''
-        if output_action_space.__class__.__name__ == "Discrete":
-            num_outputs = output_action_space.n
+        self.output_action_space = output_action_space
+        if self.output_action_space.__class__.__name__ == "Discrete":
+            num_outputs = self.output_action_space.n
             self.dist = Categorical(self.base.output_size, num_outputs)
-        elif output_action_space.__class__.__name__ == "Box":
-            num_outputs = output_action_space.shape[0]
+        elif self.output_action_space.__class__.__name__ == "Box":
+            num_outputs = self.output_action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
         else:
             raise NotImplementedError
@@ -171,7 +178,6 @@ class CNNBase(nn.Module):
 
         return x, states
 
-
 class MLPBase(nn.Module):
     def __init__(self, num_inputs, linear_size=64):
         super(MLPBase, self).__init__()
@@ -203,3 +209,65 @@ class MLPBase(nn.Module):
         x = self.main(inputs)
 
         return x, states
+
+class TransitionModel(nn.Module):
+    def __init__(self, num_inputs, input_action_space, linear_size=512):
+        super(TransitionModel, self).__init__()
+
+        self.linear_size = linear_size
+
+        self.linear_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.relu_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        self.leakrelu_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('leaky_relu'))
+
+        self.conv = nn.Sequential(
+            self.leakrelu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            Flatten(),
+            self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            nn.BatchNorm1d(self.linear_size),
+            nn.LeakyReLU()
+        )
+
+        self.input_action_space = input_action_space
+        self.input_action_linear = nn.Sequential(
+            self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
+            nn.BatchNorm1d(self.linear_size),
+            nn.LeakyReLU(),
+        )
+
+        self.deconv = nn.Sequential(
+            self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
+            nn.BatchNorm1d(32 * 7 * 7),
+            nn.LeakyReLU(),
+            DeFlatten((32,7,7)),
+            self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            self.leakrelu_init_(nn.ConvTranspose2d(32, 3, 8, stride=4)),
+            # output do not normalize
+            nn.Sigmoid(),
+        )
+
+    def forward(self, inputs, input_action):
+        return self.deconv(self.conv(inputs/255.0)*self.input_action_linear(input_action))*255.0

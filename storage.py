@@ -33,6 +33,7 @@ class RolloutStorage(object):
         self.action_log_probs = self.action_log_probs.cuda()
         self.actions = self.actions.cuda()
         self.masks = self.masks.cuda()
+        return self
 
     def insert(self, current_obs, state, action, action_log_prob, value_pred, reward, mask):
         self.observations[self.step + 1].copy_(current_obs)
@@ -72,6 +73,8 @@ class RolloutStorage(object):
         for indices in sampler:
             observations_batch = self.observations[:-1].view(-1,
                                         *self.observations.size()[2:])[indices]
+            next_observations_batch = self.observations[1:].view(-1,
+                                        *self.observations.size()[2:])[indices][:,-3:,:,:]
             input_actions_batch = self.input_actions[:-1].view(-1,
                                         *self.input_actions.size()[2:])[indices]
             states_batch = self.states[:-1].view(-1, self.states.size(-1))[indices]
@@ -81,7 +84,7 @@ class RolloutStorage(object):
             old_action_log_probs_batch = self.action_log_probs.view(-1, 1)[indices]
             adv_targ = advantages.view(-1, 1)[indices]
 
-            yield observations_batch, input_actions_batch, states_batch, actions_batch, \
+            yield observations_batch, next_observations_batch, input_actions_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
     def recurrent_generator(self, advantages, num_mini_batch):
