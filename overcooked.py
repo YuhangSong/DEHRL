@@ -408,7 +408,7 @@ class OverCooked(gym.Env):
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
             self.single_goal = 1
-        # self.randomizeCorrect()
+
         self.position = [self.screen_width/2-self.screen_width/20, self.screen_height/2-self.screen_height/20]
         self.state = np.zeros((self.leg_num,2))
         self.leg_position = []

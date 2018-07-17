@@ -261,10 +261,6 @@ class HierarchyLayer(object):
             )
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
-        if self.hierarchy_id in [1]:
-            # this is for debug
-            self.cpu_actions = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
-
         if args.use_fake_reward_bounty and (self.hierarchy_id in [0]):
             self.actions_to_step = [None]*args.num_processes
             for process_i in range(args.num_processes):
