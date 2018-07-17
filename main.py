@@ -324,7 +324,7 @@ class HierarchyLayer(object):
                 dim = 0,
                 keepdim=False,
             )
-            self.reward_bounty = ((torch.from_numpy(self.obs).float().cuda()-mass_center_of_predicted_next_observations_by_upper_layer)/255.0).mean(
+            self.reward_bounty = ((torch.from_numpy(self.obs).float().cuda()-mass_center_of_predicted_next_observations_by_upper_layer).abs()/255.0).mean(
                 dim = 2,
                 keepdim = False,
             ).mean(
