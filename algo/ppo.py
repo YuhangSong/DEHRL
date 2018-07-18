@@ -74,31 +74,33 @@ class PPO(object):
                 dist_entropy_epoch += dist_entropy.item()
 
                 if self.transition_model is not None:
+
                     '''convert actions_batch to action_onehot_batch'''
                     self.action_onehot_batch.fill_(0.0)
                     self.action_onehot_batch.scatter_(1,actions_batch.long(),1.0)
 
+                    '''generate indexs'''
+                    # next_masks_batch_index = utils.remove_zero_elements(
+                    #     a = next_masks_batch.squeeze(1).long()*self.batch_index,
+                    # ).unsqueeze(1).unsqueeze(2).unsqueeze(3).detach()
+                    next_masks_batch_index = utils.remove_zero_elements(
+                        self.batch_index,
+                    ).detach()
+                    next_masks_batch_index_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch.size()[1:])
+                    next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
+                    next_masks_batch_index_action_onehot_batch = next_masks_batch_index.unsqueeze(1).expand(next_masks_batch_index.size()[0],*self.action_onehot_batch.size()[1:])
+
                     '''forward'''
                     self.transition_model.train()
                     predicted_next_observations_batch = self.transition_model(
-                        inputs = observations_batch,
-                        input_action = self.action_onehot_batch,
-                    )
-
-                    predicted_next_observations_batch = predicted_next_observations_batch.view(self.args.mini_batch_size,-1)
-                    next_observations_batch = next_observations_batch.view(self.args.mini_batch_size,-1)
-
-                    next_masks_batch_index = utils.expand_dim_0(
-                        a = utils.remove_zero_elements(
-                            a = next_masks_batch.squeeze(1).long()*self.batch_index,
-                        ),
-                        expand_to = next_observations_batch.size()[1],
+                        inputs = observations_batch.gather(0,next_masks_batch_index_observations_batch),
+                        input_action = self.action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch),
                     )
 
                     '''compute mse loss'''
                     mse_loss = self.mse_loss_model(
-                        input = predicted_next_observations_batch.gather(0,next_masks_batch_index),
-                        target = next_observations_batch.gather(0,next_masks_batch_index),
+                        input = predicted_next_observations_batch,
+                        target = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch),
                     )
 
                     '''backward'''
