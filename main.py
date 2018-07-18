@@ -209,6 +209,8 @@ class HierarchyLayer(object):
         self.log_behavior = True
         self.episode_visilize_stack = {}
 
+        self.masks = None
+
     def step(self, inputs):
         '''as a environment, it has step method'''
         if args.reward_bounty > 0.0:
@@ -260,6 +262,12 @@ class HierarchyLayer(object):
     def interact_one_step(self, predicted_next_observations_by_upper_layer, is_final_step_by_upper_layer):
         '''interact with self.envs for one step and store experience into self.rollouts'''
 
+        if self.hierarchy_id in [(args.num_hierarchy-1)]:
+            '''top hierarchy layer is responsible for reseting env if all env has done'''
+            if self.masks is not None:
+                if self.masks.sum() == 0.0:
+                    self.obs = self.reset()
+
         self.rollouts.input_actions[self.step_i].copy_(input_actions_onehot_global[self.hierarchy_id])
 
         # Sample actions
@@ -302,13 +310,6 @@ class HierarchyLayer(object):
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).cuda()
-
-        if self.hierarchy_id in [(args.num_hierarchy-1)]:
-            '''top hierarchy layer is responsible for reseting env if all env has done'''
-            if self.masks.sum() == 0.0:
-                # print('Top layer reseting')
-                self.obs = self.reset()
-                # print('Top layer reset done')
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
@@ -467,8 +468,9 @@ class HierarchyLayer(object):
     def reset(self):
         '''as a environment, it has reset method'''
         obs = self.envs.reset()
+        self.current_obs *= 0.0
         self.update_current_obs(obs)
-        self.rollouts.observations[0].copy_(self.current_obs)
+        self.rollouts.observations[self.step_i].copy_(self.current_obs)
         return obs
 
     def update_current_obs(self, obs):
