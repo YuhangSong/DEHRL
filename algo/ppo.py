@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import utils
 
 
 class PPO(object):
@@ -16,7 +17,7 @@ class PPO(object):
 
         if self.transition_model is not None:
             self.action_onehot_batch = torch.zeros(self.args.mini_batch_size,self.actor_critic.output_action_space.n).cuda()
-            self.mse_loss_model = torch.nn.MSELoss(reduce=False)
+            self.mse_loss_model = torch.nn.MSELoss(size_average=True,reduce=True)
             self.optimizer_transition_model = optim.Adam(self.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
             self.batch_index = torch.LongTensor(range(self.args.mini_batch_size)).cuda()
 
@@ -84,22 +85,21 @@ class PPO(object):
                         input_action = self.action_onehot_batch,
                     )
 
-                    '''compute mse loss'''
-                    mse_loss = self.mse_loss_model(
-                        input = predicted_next_observations_batch,
-                        target = next_observations_batch,
-                    ).view(self.args.mini_batch_size,-1).mean(
-                        dim = 1,
-                        keepdim = False,
+                    predicted_next_observations_batch = predicted_next_observations_batch.view(self.args.mini_batch_size,-1)
+                    next_observations_batch = next_observations_batch.view(self.args.mini_batch_size,-1)
+
+                    next_masks_batch_index = utils.expand_dim_0(
+                        a = utils.remove_zero_elements(
+                            a = next_masks_batch.squeeze(1).long()*self.batch_index,
+                        ),
+                        expand_to = next_observations_batch.size()[1],
                     )
 
-                    next_masks_batch_index = next_masks_batch.squeeze(1).long()*self.batch_index
-                    next_masks_batch_index = next_masks_batch_index[next_masks_batch_index.nonzero()].squeeze(1)
-
-                    mse_loss = mse_loss.gather(
-                        dim = 0,
-                        index = next_masks_batch_index,
-                    ).mean(0)
+                    '''compute mse loss'''
+                    mse_loss = self.mse_loss_model(
+                        input = predicted_next_observations_batch.gather(0,next_masks_batch_index),
+                        target = next_observations_batch.gather(0,next_masks_batch_index),
+                    )
 
                     '''backward'''
                     self.optimizer_transition_model.zero_grad()

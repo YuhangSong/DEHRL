@@ -7,6 +7,12 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
+def remove_zero_elements(a):
+    return a[a.nonzero()]
+
+def expand_dim_0(a, expand_to):
+    return a.expand(a.size()[0],expand_to)
+
 def onehot_to_index(x):
     return np.where(x==1.0)[0][0]
 
