@@ -16,6 +16,7 @@ class PPO(object):
 
         if self.transition_model is not None:
             self.action_onehot_batch = torch.zeros(self.args.mini_batch_size,self.actor_critic.output_action_space.n).cuda()
+            self.mse_loss_model = torch.nn.MSELoss(reduce=False)
             self.optimizer_transition_model = optim.Adam(self.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
 
     def update(self, rollouts):
@@ -82,21 +83,17 @@ class PPO(object):
                         inputs = observations_batch,
                         input_action = self.action_onehot_batch,
                     )
+
                     '''compute mse loss'''
-                    mse_loss = ((predicted_next_observations_batch-next_observations_batch).pow(
-                        2
-                    ).squeeze(
-                        1
-                    ).sum(
+                    mse_loss = self.mse_loss_model(
+                        input = predicted_next_observations_batch,
+                        target = next_observations_batch,
+                    ).view(self.args.mini_batch_size,-1).mean(
                         dim = 1,
                         keepdim = False,
-                    ).sum(
-                        dim = 1,
-                        keepdim = False,
-                    )*next_masks_batch.squeeze(1)).sum(
-                        dim = 0,
-                        keepdim = False,
-                    )/(next_masks_batch.squeeze(1).sum(dim=0, keepdim=False))
+                    )
+
+                    mse_loss = (mse_loss*next_masks_batch.squeeze(1)).sum()/next_masks_batch.sum()
 
                     '''backward'''
                     self.optimizer_transition_model.zero_grad()
