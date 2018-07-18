@@ -18,6 +18,7 @@ class PPO(object):
             self.action_onehot_batch = torch.zeros(self.args.mini_batch_size,self.actor_critic.output_action_space.n).cuda()
             self.mse_loss_model = torch.nn.MSELoss(reduce=False)
             self.optimizer_transition_model = optim.Adam(self.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
+            self.batch_index = torch.LongTensor(range(self.args.mini_batch_size)).cuda()
 
     def update(self, rollouts):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
@@ -51,7 +52,6 @@ class PPO(object):
                     action = actions_batch,
                     input_action = input_actions_batch,
                 )
-
 
                 ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
                 surr1 = ratio * adv_targ
@@ -93,7 +93,13 @@ class PPO(object):
                         keepdim = False,
                     )
 
-                    mse_loss = (mse_loss*next_masks_batch.squeeze(1)).sum()/next_masks_batch.sum()
+                    next_masks_batch_index = next_masks_batch.squeeze(1).long()*self.batch_index
+                    next_masks_batch_index = next_masks_batch_index[next_masks_batch_index.nonzero()].squeeze(1)
+
+                    mse_loss = mse_loss.gather(
+                        dim = 0,
+                        index = next_masks_batch_index,
+                    ).mean(0)
 
                     '''backward'''
                     self.optimizer_transition_model.zero_grad()
