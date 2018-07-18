@@ -209,6 +209,8 @@ class HierarchyLayer(object):
         self.log_behavior = True
         self.episode_visilize_stack = {}
 
+        self.predicted_next_observations_to_downer_layer = None
+
     def step(self, inputs):
         '''as a environment, it has step method'''
         if args.reward_bounty > 0.0:
@@ -281,23 +283,13 @@ class HierarchyLayer(object):
             '''predict states'''
             self.transition_model.eval()
             with torch.no_grad():
-                predicted_next_observations_to_downer_layer = self.transition_model(
+                self.predicted_next_observations_to_downer_layer = self.transition_model(
                     inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
                     input_action = self.action_onehot_batch,
                 )
-            predicted_next_observations_to_downer_layer = predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*predicted_next_observations_to_downer_layer.size()[1:])
+            self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
 
-            if self.log_behavior:
-                img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:,:,:].permute(1,2,0)
-                for action_i in range(self.envs.action_space.n):
-                    img = torch.cat([img,predicted_next_observations_to_downer_layer[action_i,0,:,:,:].permute(1,2,0)],1)
-                img = img.cpu().numpy()
-                try:
-                    self.episode_visilize_stack['state_prediction'] += [img]
-                except Exception as e:
-                    self.episode_visilize_stack['state_prediction'] = [img]
-
-            self.actions_to_step = [self.actions_to_step, predicted_next_observations_to_downer_layer]
+            self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
 
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
@@ -515,6 +507,8 @@ class HierarchyLayer(object):
 
     def summary_behavior_at_step(self):
 
+        '''Summary observation'''
+
         img = None
 
         for hierarchy_i in range(args.num_hierarchy-1):
@@ -560,6 +554,17 @@ class HierarchyLayer(object):
             self.episode_visilize_stack['observation'] += [img]
         except Exception as e:
             self.episode_visilize_stack['observation'] = [img]
+
+        '''Summery state_prediction'''
+        if self.predicted_next_observations_to_downer_layer is not None:
+            img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:,:,:].permute(1,2,0)
+            for action_i in range(self.envs.action_space.n):
+                img = torch.cat([img,self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:].permute(1,2,0)],1)
+            img = img.cpu().numpy()
+            try:
+                self.episode_visilize_stack['state_prediction'] += [img]
+            except Exception as e:
+                self.episode_visilize_stack['state_prediction'] = [img]
 
     def summary_behavior_at_done(self):
 
