@@ -306,9 +306,7 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
             '''top hierarchy layer is responsible for reseting env if all env has done'''
             if self.masks.sum() == 0.0:
-                # print('Top layer reseting')
                 self.obs = self.reset()
-                # print('Top layer reset done')
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
@@ -331,6 +329,9 @@ class HierarchyLayer(object):
                 dim = 2,
                 keepdim = False,
             ).cpu().squeeze(1).numpy()
+            # mask reward bounty, since the final state is start state,
+            # and the estimation from transition model is not accurate
+            self.reward_bounty *= self.masks.squeeze(1).cpu().numpy()
         else:
             self.reward_bounty = np.copy(self.reward)
             self.reward_bounty.fill(0.0)
@@ -556,9 +557,9 @@ class HierarchyLayer(object):
         img = np.concatenate((img, state_img),0)
 
         try:
-            self.episode_visilize_stack['state'] += [img]
+            self.episode_visilize_stack['observation'] += [img]
         except Exception as e:
-            self.episode_visilize_stack['state'] = [img]
+            self.episode_visilize_stack['observation'] = [img]
 
     def summary_behavior_at_done(self):
 
