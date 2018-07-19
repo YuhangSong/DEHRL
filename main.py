@@ -310,11 +310,19 @@ class HierarchyLayer(object):
 
         if (predicted_next_observations_by_upper_layer is not None) and is_final_step_by_upper_layer:
             # I am not sure if this is right, I want to compute the mass center over action dim
+            onehot_index = np.where(input_actions_onehot_global[self.hierarchy_id]==1.0)[1]
+            onehot_mask = torch.arange(0, args.num_processes)*predicted_next_observations_by_upper_layer.shape[0]
+            onehot_fix = onehot_index+onehot_mask
+            onehot_fix = onehot_fix.long().cuda()
+            tran_pre_next_obs_by_upper_layer = torch.transpose(predicted_next_observations_by_upper_layer,0,1)
+            reshape_next_obs_by_upper_layer = tran_pre_next_obs_by_upper_layer.reshape((predicted_next_observations_by_upper_layer.shape[0]*args.num_processes,1,84,84))
+            cur_action_predict = torch.index_select(reshape_next_obs_by_upper_layer,0,onehot_fix)
+
             sum_of_predicted_next_observations_by_upper_layer = predicted_next_observations_by_upper_layer.sum(
                 dim = 0,
                 keepdim=False,
             )
-            mass_center_of_predicted_next_observations_by_upper_layer = (sum_of_predicted_next_observations_by_upper_layer-torch.from_numpy(self.obs).float().cuda())/(predicted_next_observations_by_upper_layer.shape[0]-1)
+            mass_center_of_predicted_next_observations_by_upper_layer = (sum_of_predicted_next_observations_by_upper_layer-cur_action_predict)/(predicted_next_observations_by_upper_layer.shape[0]-1)
 
             self.reward_bounty = ((torch.from_numpy(self.obs).float().cuda()-mass_center_of_predicted_next_observations_by_upper_layer).abs()/255.0).mean(
                 dim = 2,
