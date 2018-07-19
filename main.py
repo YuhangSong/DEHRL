@@ -221,9 +221,8 @@ class HierarchyLayer(object):
             predicted_next_observations_by_upper_layer = None
 
         '''convert: input_cpu_actions >> input_actions_onehot_global[self.hierarchy_id]'''
-        input_actions_onehot_global[self.hierarchy_id] *= 0.0
-        for process_i in range(args.num_processes):
-            input_actions_onehot_global[self.hierarchy_id][process_i,input_cpu_actions[process_i]] = 1.0
+        input_actions_onehot_global[self.hierarchy_id].fill_(0.0)
+        input_actions_onehot_global[self.hierarchy_id].scatter_(1,torch.from_numpy(input_cpu_actions).long().unsqueeze(1).cuda(),1.0)
 
         '''macro step forward'''
         reward_macro = None
@@ -309,21 +308,26 @@ class HierarchyLayer(object):
             self.reward = self.reward_raw_OR_reward
 
         if (predicted_next_observations_by_upper_layer is not None) and is_final_step_by_upper_layer:
-            # I am not sure if this is right, I want to compute the mass center over action dim
-            mass_center_of_predicted_next_observations_by_upper_layer = predicted_next_observations_by_upper_layer.mean(
-                dim = 0,
-                keepdim=False,
-            )
-            self.reward_bounty = ((torch.from_numpy(self.obs).float().cuda()-mass_center_of_predicted_next_observations_by_upper_layer).abs()/255.0).mean(
-                dim = 2,
-                keepdim = False,
-            ).mean(
-                dim = 2,
-                keepdim = False,
-            ).cpu().squeeze(1).numpy()
-            # mask reward bounty, since the final state is start state,
-            # and the estimation from transition model is not accurate
-            self.reward_bounty *= self.masks.squeeze(1).cpu().numpy()
+
+            obs_rb = torch.from_numpy(self.obs).float().cuda()
+            prediction_rb = predicted_next_observations_by_upper_layer
+            obs_rb = obs_rb.view(obs_rb.size()[0],-1)/255.0
+            prediction_rb = prediction_rb.view(*prediction_rb.size()[:2],-1)/255.0
+            action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
+
+            self.reward_bounty = torch.zeros(args.num_processes).cuda()
+            for process_i in range(args.num_processes):
+                for action_i in range(prediction_rb.size()[0]):
+                    if action_i==action_rb[process_i]:
+                        continue
+                    self.reward_bounty[process_i] += (obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()
+            self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)
+
+            '''mask reward bounty, since the final state is start state,
+            and the estimation from transition model is not accurate'''
+            self.reward_bounty *= self.masks.squeeze()
+            '''convert to numpy'''
+            self.reward_bounty = self.reward_bounty.cpu().numpy()
         else:
             self.reward_bounty = np.copy(self.reward)
             self.reward_bounty.fill(0.0)
