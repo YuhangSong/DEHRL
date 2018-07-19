@@ -310,10 +310,12 @@ class HierarchyLayer(object):
 
         if (predicted_next_observations_by_upper_layer is not None) and is_final_step_by_upper_layer:
             # I am not sure if this is right, I want to compute the mass center over action dim
-            mass_center_of_predicted_next_observations_by_upper_layer = predicted_next_observations_by_upper_layer.mean(
+            sum_of_predicted_next_observations_by_upper_layer = predicted_next_observations_by_upper_layer.sum(
                 dim = 0,
                 keepdim=False,
             )
+            mass_center_of_predicted_next_observations_by_upper_layer = (sum_of_predicted_next_observations_by_upper_layer-torch.from_numpy(self.obs).float().cuda())/(predicted_next_observations_by_upper_layer.shape[0]-1)
+
             self.reward_bounty = ((torch.from_numpy(self.obs).float().cuda()-mass_center_of_predicted_next_observations_by_upper_layer).abs()/255.0).mean(
                 dim = 2,
                 keepdim = False,
