@@ -310,10 +310,10 @@ class HierarchyLayer(object):
 
         if (predicted_next_observations_by_upper_layer is not None) and is_final_step_by_upper_layer:
             # I am not sure if this is right, I want to compute the mass center over action dim
-            onehot_index = np.where(input_actions_onehot_global[self.hierarchy_id]==1.0)[1]
+            onehot_index = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
             onehot_mask = torch.arange(0, args.num_processes)*predicted_next_observations_by_upper_layer.shape[0]
+            onehot_mask = onehot_mask.long().cuda()
             onehot_fix = onehot_index+onehot_mask
-            onehot_fix = onehot_fix.long().cuda()
             tran_pre_next_obs_by_upper_layer = torch.transpose(predicted_next_observations_by_upper_layer,0,1)
             reshape_next_obs_by_upper_layer = tran_pre_next_obs_by_upper_layer.reshape((predicted_next_observations_by_upper_layer.shape[0]*args.num_processes,1,84,84))
             cur_action_predict = torch.index_select(reshape_next_obs_by_upper_layer,0,onehot_fix)
@@ -331,6 +331,7 @@ class HierarchyLayer(object):
                 dim = 2,
                 keepdim = False,
             ).cpu().squeeze(1).numpy()
+            
             # mask reward bounty, since the final state is start state,
             # and the estimation from transition model is not accurate
             self.reward_bounty *= self.masks.squeeze(1).cpu().numpy()
