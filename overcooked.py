@@ -26,7 +26,7 @@ class OverCooked(gym.Env):
 
         self.args = args
 
-        self.action_space = spaces.Discrete(18)
+        self.action_space = spaces.Discrete(17)
         self.screen_width = 84
         self.screen_height = 84
         self.leg_num = 4
@@ -166,7 +166,7 @@ class OverCooked(gym.Env):
         self.eposide_length += 1
         reward = 0
         if action_id<17:
-
+            self.leg_move_count += 1
             self.leg_id = int((action_id - 1) / 4)
             action = action_id-self.leg_id*4
             self.leg_position[self.leg_id][0] = self.reset_legposi[self.leg_id][0]
@@ -262,6 +262,26 @@ class OverCooked(gym.Env):
             self.reset_legposi.append(
                 np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
+        if self.leg_move_count%4 == 0:
+            self.leg_position = []
+            self.leg_position.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
+            self.leg_position.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] + self.screen_height / 10]))
+            self.leg_position.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.screen_height / 20]))
+            self.leg_position.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+
+            self.reset_legposi = []
+            self.reset_legposi.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
+            self.reset_legposi.append(
+                np.array([self.position[0] - self.screen_width / 20, self.position[1] + self.screen_height / 10]))
+            self.reset_legposi.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.screen_height / 20]))
+            self.reset_legposi.append(
+                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
         # if action_id==17:
         distance_1 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
         distance_2 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
@@ -402,6 +422,7 @@ class OverCooked(gym.Env):
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)
         self.goal_ram = np.zeros(self.goal_num)
+        self.leg_move_count = 0
 
         if self.args.reward_level == 1:
             self.single_goal = np.random.randint(0,self.goal_num)
