@@ -38,7 +38,7 @@ class OverCooked(gym.Env):
         '''body thickness, default -- 2, -1 means solid'''
         self.body_thickness = -1
         '''leg size, default -- self.screen_width/20'''
-        self.leg_size = self.screen_width/20
+        self.leg_size = self.screen_width/40
 
 
         assert self.args.obs_type in ('ram', 'image')
@@ -438,18 +438,18 @@ class OverCooked(gym.Env):
         self.position = [self.screen_width/2-self.screen_width/20, self.screen_height/2-self.screen_height/20]
         self.state = np.zeros((self.leg_num,2))
         self.leg_position = []
-        self.leg_position.append(np.array([self.position[0]-self.screen_width/20, self.position[1]-self.screen_height/20]))
-        self.leg_position.append(np.array([self.position[0]-self.screen_width/20, self.position[1]+self.screen_height/10]))
-        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]-self.screen_height/20]))
+        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]-self.leg_size]))
+        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]+self.screen_height/10]))
+        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]-self.leg_size]))
         self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]+self.screen_height/10]))
 
         self.reset_legposi = []
         self.reset_legposi.append(
-            np.array([self.position[0] - self.screen_width / 20, self.position[1] - self.screen_height / 20]))
+            np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
         self.reset_legposi.append(
-            np.array([self.position[0] - self.screen_width / 20, self.position[1] + self.screen_height / 10]))
+            np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
         self.reset_legposi.append(
-            np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.screen_height / 20]))
+            np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
         self.reset_legposi.append(
             np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
