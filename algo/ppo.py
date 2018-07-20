@@ -80,7 +80,7 @@ class PPO(object):
                     self.action_onehot_batch.scatter_(1,actions_batch.long(),1.0)
 
                     '''generate indexs'''
-                    next_masks_batch_index = (0*next_masks_batch+1).squeeze().nonzero().squeeze()
+                    next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
                     next_masks_batch_index_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch.size()[1:])
                     next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
                     next_masks_batch_index_action_onehot_batch = next_masks_batch_index.unsqueeze(1).expand(next_masks_batch_index.size()[0],*self.action_onehot_batch.size()[1:])
