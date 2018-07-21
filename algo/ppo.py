@@ -29,14 +29,16 @@ class PPO(object):
             epoch_loss['value'] = 0
             epoch_loss['action'] = 0
             epoch_loss['dist_entropy'] = 0
+            epoch = self.this_layer.args.ppo_epoch
 
         elif update_type in ['transition_model']:
             epoch_loss['mse'] = 0
+            epoch = self.this_layer.args.transition_model_epoch
 
         else:
             raise Exception('Not Supported')
 
-        for e in range(self.this_layer.args.ppo_epoch):
+        for e in range(epoch):
 
             if update_type in ['actor_critic']:
                 data_generator = self.this_layer.rollouts.feed_forward_generator(
