@@ -98,6 +98,7 @@ class HierarchyLayer(object):
 
         self.envs = envs
         self.hierarchy_id = hierarchy_id
+        self.args = args
 
         '''as an env, it should have action_space and observation space'''
         self.action_space = gym.spaces.Discrete((input_actions_onehot_global[self.hierarchy_id]).size()[1])
@@ -146,11 +147,7 @@ class HierarchyLayer(object):
                 max_grad_norm=args.max_grad_norm,
             )
         elif args.algo == 'ppo':
-            self.agent = algo.PPO(
-                args = args,
-                actor_critic = self.actor_critic,
-                hierarchy_id = self.hierarchy_id,
-            )
+            self.agent = algo.PPO()
         elif args.algo == 'acktr':
             self.agent = algo.A2C_ACKTR(
                 self.actor_critic, args.value_loss_coef, args.entropy_coef,
@@ -203,12 +200,15 @@ class HierarchyLayer(object):
         self.start = time.time()
         self.j = 0
         self.step_i = 0
+        self.update_i = 0
 
         self.last_time_log_behavior = time.time()
         self.log_behavior = True
         self.episode_visilize_stack = {}
 
         self.predicted_next_observations_to_downer_layer = None
+
+        self.agent.set_this_layer(self)
 
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
@@ -374,20 +374,24 @@ class HierarchyLayer(object):
         '''update the self.actor_critic with self.agent,
         according to the experiences stored in self.rollouts'''
 
-        with torch.no_grad():
-            self.next_value = self.actor_critic.get_value(
-                inputs=self.rollouts.observations[-1],
-                states=self.rollouts.states[-1],
-                masks=self.rollouts.masks[-1],
-                input_action=self.rollouts.input_actions[-1],
-            ).detach()
+        self.update_i += 1
 
-        self.rollouts.compute_returns(self.next_value, args.use_gae, args.gamma, args.tau)
+        if (self.update_i%2 == 0) or (self.hierarchy_id in [args.num_hierarchy-1]):
+            update_type = 'actor_critic'
+        else:
+            update_type = 'transition_model'
 
-        self.value_loss, self.action_loss, self.dist_entropy, self.mse_loss = self.agent.update(
-            rollouts=self.rollouts,
-            hierarchy_interval=self.hierarchy_interval,
-        )
+        if update_type in ['actor_critic']:
+            with torch.no_grad():
+                self.next_value = self.actor_critic.get_value(
+                    inputs=self.rollouts.observations[-1],
+                    states=self.rollouts.states[-1],
+                    masks=self.rollouts.masks[-1],
+                    input_action=self.rollouts.input_actions[-1],
+                ).detach()
+            self.rollouts.compute_returns(self.next_value, args.use_gae, args.gamma, args.tau)
+
+        epoch_loss = self.agent.update(update_type)
 
         self.rollouts.after_update()
 
@@ -434,6 +438,7 @@ class HierarchyLayer(object):
         if self.j % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
+
             for episode_reward_type in self.episode_reward.keys():
                 self.summary.value.add(
                     tag = 'hierarchy_{}/final_reward_{}'.format(
@@ -442,23 +447,16 @@ class HierarchyLayer(object):
                     ),
                     simple_value = self.final_reward[episode_reward_type],
                 )
-            self.summary.value.add(
-                tag = 'hierarchy_{}/value_loss'.format(self.hierarchy_id),
-                simple_value = self.value_loss,
-            )
-            self.summary.value.add(
-                tag = 'hierarchy_{}/action_loss'.format(self.hierarchy_id),
-                simple_value = self.action_loss,
-            )
-            self.summary.value.add(
-                tag = 'hierarchy_{}/dist_entropy'.format(self.hierarchy_id),
-                simple_value = self.dist_entropy,
-            )
-            if self.mse_loss is not None:
+
+            for epoch_loss_type in epoch_loss.keys():
                 self.summary.value.add(
-                    tag = 'hierarchy_{}/mse_loss'.format(self.hierarchy_id),
-                    simple_value = self.mse_loss,
+                    tag = 'hierarchy_{}/epoch_loss_{}'.format(
+                        self.hierarchy_id,
+                        epoch_loss_type,
+                    ),
+                    simple_value = epoch_loss[epoch_loss_type],
                 )
+
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
 

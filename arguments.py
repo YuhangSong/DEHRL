@@ -39,7 +39,7 @@ def get_args():
                         help='how many training CPU processes to use (default: 16)')
     parser.add_argument('--ppo-epoch', type=int, default=4,
                         help='number of ppo epochs (default: 4)')
-    parser.add_argument('--mini-batch-size', type=int, default=32,
+    parser.add_argument('--actor-critic-mini-batch-size', type=int, default=32,
                         help='mini batch size for ppo (default: 32)')
     parser.add_argument('--clip-param', type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
@@ -92,6 +92,7 @@ def get_args():
                         help='some aux information you may want to record along with this run')
 
     args = parser.parse_args()
+    args.transition_model_mini_batch_size = int(args.actor_critic_mini_batch_size/4)
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
