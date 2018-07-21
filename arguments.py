@@ -93,7 +93,7 @@ def get_args():
 
     args = parser.parse_args()
     args.transition_model_mini_batch_size = int(args.actor_critic_mini_batch_size/4)
-    args.transition_model_epoch = int(args.ppo_epoch*4)
+    args.transition_model_epoch = int(args.ppo_epoch*8)
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)

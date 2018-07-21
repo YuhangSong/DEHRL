@@ -201,7 +201,6 @@ class HierarchyLayer(object):
         self.step_i = 0
         self.update_i = 0
 
-        self.update_type = 'transition_model'
         self.refresh_update_type()
 
         self.last_time_log_behavior = time.time()
