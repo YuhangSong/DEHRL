@@ -198,9 +198,11 @@ class HierarchyLayer(object):
         self.num_trained_frames_at_start = self.num_trained_frames
 
         self.start = time.time()
-        self.j = 0
         self.step_i = 0
         self.update_i = 0
+
+        self.update_type = 'transition_model'
+        self.refresh_update_type()
 
         self.last_time_log_behavior = time.time()
         self.log_behavior = True
@@ -272,7 +274,7 @@ class HierarchyLayer(object):
                 inputs = self.rollouts.observations[self.step_i],
                 states = self.rollouts.states[self.step_i],
                 masks = self.rollouts.masks[self.step_i],
-                deterministic = False,
+                deterministic = self.deterministic,
                 input_action = self.rollouts.input_actions[self.step_i],
             )
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
@@ -370,18 +372,20 @@ class HierarchyLayer(object):
         # since reward_bounty will stop upper layer from exploring
         return self.obs, self.reward, self.done, self.info
 
+    def refresh_update_type(self):
+        if (self.update_i%2 == 1) or (self.hierarchy_id in [args.num_hierarchy-1]):
+            self.update_type = 'actor_critic'
+            self.deterministic = False
+        else:
+            self.update_type = 'transition_model'
+            self.deterministic = True
+
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
         according to the experiences stored in self.rollouts'''
 
-        self.update_i += 1
-
-        if (self.update_i%2 == 0) or (self.hierarchy_id in [args.num_hierarchy-1]):
-            update_type = 'actor_critic'
-        else:
-            update_type = 'transition_model'
-
-        if update_type in ['actor_critic']:
+        '''prepare rollouts for updating actor_critic'''
+        if self.update_type in ['actor_critic']:
             with torch.no_grad():
                 self.next_value = self.actor_critic.get_value(
                     inputs=self.rollouts.observations[-1],
@@ -391,15 +395,16 @@ class HierarchyLayer(object):
                 ).detach()
             self.rollouts.compute_returns(self.next_value, args.use_gae, args.gamma, args.tau)
 
-        epoch_loss = self.agent.update(update_type)
+        '''update, either actor_critic or transition_model'''
+        epoch_loss = self.agent.update(self.update_type)
+        self.num_trained_frames += (args.num_steps[self.hierarchy_id]*args.num_processes)
+        self.update_i += 1
 
+        '''prepare rollouts for new round of interaction'''
         self.rollouts.after_update()
 
-        self.num_trained_frames += (args.num_steps[self.hierarchy_id]*args.num_processes)
-        self.j += 1
-
         '''save checkpoint'''
-        if self.j % args.save_interval == 0 and args.save_dir != "":
+        if self.update_i % args.save_interval == 0 and args.save_dir != "":
             try:
                 np.save(
                     args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
@@ -412,7 +417,7 @@ class HierarchyLayer(object):
                 print("[H-{:1}] Save checkpoint failed.".format(self.hierarchy_id))
 
         '''print info'''
-        if self.j % args.log_interval == 0:
+        if self.update_i % args.log_interval == 0:
             self.end = time.time()
             print_string = "[H-{:1}][{:9}/{}], FPS {:4}".format(
                 self.hierarchy_id,
@@ -427,15 +432,19 @@ class HierarchyLayer(object):
                     self.final_reward[episode_reward_type]
                 )
 
+            # print_string += ', update {}, deterministic act {}'.format(
+            #     self.update_type,
+            #     self.deterministic,
+            # )
+
             if self.hierarchy_id in [0]:
                 print_string += ', remaining {:4.1f} hours'.format(
                     (self.end - self.start)/(self.num_trained_frames-self.num_trained_frames_at_start)*(args.num_frames-self.num_trained_frames)/60.0/60.0,
                 )
             print(print_string)
 
-
         '''visualize results'''
-        if self.j % args.vis_interval == 0:
+        if self.update_i % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
 
@@ -460,6 +469,10 @@ class HierarchyLayer(object):
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
 
+        '''update system status'''
+        self.refresh_update_type()
+
+        '''check end condition'''
         if self.hierarchy_id in [0]:
             '''if hierarchy_id is 0, it is the basic env, then control the training
             progress by its num_trained_frames'''
