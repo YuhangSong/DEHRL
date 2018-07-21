@@ -4,6 +4,7 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, input_actions, action_space, state_size, observation_space):
+        self.num_steps = num_steps
         self.observation_space = observation_space
         self.observations = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.input_actions = torch.zeros(num_steps + 1, num_processes, input_actions.n)
@@ -74,8 +75,6 @@ class RolloutStorage(object):
         for indices in sampler:
             observations_batch = self.observations[:-1].view(-1,
                                         *self.observations.size()[2:])[indices]
-            next_observations_batch = self.observations[1:].view(-1,
-                                        *self.observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
             input_actions_batch = self.input_actions[:-1].view(-1,
                                         *self.input_actions.size()[2:])[indices]
             states_batch = self.states[:-1].view(-1, self.states.size(-1))[indices]
@@ -86,8 +85,22 @@ class RolloutStorage(object):
             old_action_log_probs_batch = self.action_log_probs.view(-1, 1)[indices]
             adv_targ = advantages.view(-1, 1)[indices]
 
-            yield observations_batch, next_observations_batch, input_actions_batch, states_batch, actions_batch, \
+            yield observations_batch, input_actions_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, next_masks_batch, old_action_log_probs_batch, adv_targ
+
+    def transition_model_feed_forward_generator(self, mini_batch_size, recent_steps):
+        num_steps, num_processes = self.rewards.size()[0:2]
+        batch_size = num_processes * num_steps
+        sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False)
+        for indices in sampler:
+            observations_batch = self.observations[:-1].view(-1,
+                                        *self.observations.size()[2:])[indices]
+            next_observations_batch = self.observations[1:].view(-1,
+                                        *self.observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
+            actions_batch = self.actions.view(-1, self.actions.size(-1))[indices]
+            next_masks_batch = self.masks[1:].view(-1, 1)[indices]
+
+            yield observations_batch, next_observations_batch, actions_batch, next_masks_batch
 
     def recurrent_generator(self, advantages, num_mini_batch):
         num_processes = self.rewards.size(1)

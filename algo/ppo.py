@@ -6,22 +6,23 @@ import utils
 
 
 class PPO(object):
-    def __init__(self,args,actor_critic,hierarchy_id,transition_model=None):
-
+    def __init__(self,args,actor_critic,hierarchy_id):
         self.actor_critic = actor_critic
         self.args = args
         self.hierarchy_id = hierarchy_id
-        self.transition_model = transition_model
+        self.upper_layer = None
 
         self.optimizer_actor_critic = optim.Adam(actor_critic.parameters(), lr=self.args.lr, eps=self.args.eps)
 
-        if self.transition_model is not None:
-            self.action_onehot_batch = torch.zeros(self.args.mini_batch_size,self.actor_critic.output_action_space.n).cuda()
-            self.mse_loss_model = torch.nn.MSELoss(size_average=True,reduce=True)
-            self.optimizer_transition_model = optim.Adam(self.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
-            self.batch_index = torch.LongTensor(range(self.args.mini_batch_size)).cuda()
+    def set_upper_layer(self, upper_layer):
+        self.upper_layer = upper_layer
 
-    def update(self, rollouts):
+        self.action_onehot_batch = torch.zeros(self.args.mini_batch_size,self.upper_layer.actor_critic.output_action_space.n).cuda()
+        self.mse_loss_model = torch.nn.MSELoss(size_average=True,reduce=True)
+        self.optimizer_transition_model = optim.Adam(self.upper_layer.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
+        self.batch_index = torch.LongTensor(range(self.args.mini_batch_size)).cuda()
+
+    def update(self, rollouts, hierarchy_interval):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
@@ -33,15 +34,14 @@ class PPO(object):
         mse_loss_epoch = 0
 
         for e in range(self.args.ppo_epoch):
-            if hasattr(self.actor_critic.base, 'gru'):
-                data_generator = rollouts.recurrent_generator(
-                    advantages, self.args.mini_batch_size)
-            else:
-                data_generator = rollouts.feed_forward_generator(
-                    advantages, self.args.mini_batch_size)
+
+            data_generator = rollouts.feed_forward_generator(
+                advantages = advantages,
+                mini_batch_size = self.args.mini_batch_size,
+            )
 
             for sample in data_generator:
-                observations_batch, next_observations_batch, input_actions_batch, states_batch, actions_batch, \
+                observations_batch, input_actions_batch, states_batch, actions_batch, \
                    return_batch, masks_batch, next_masks_batch, old_action_log_probs_batch, \
                         adv_targ = sample
 
@@ -73,7 +73,16 @@ class PPO(object):
                 action_loss_epoch += action_loss.item()
                 dist_entropy_epoch += dist_entropy.item()
 
-                if self.transition_model is not None:
+
+            if self.upper_layer is not None:
+
+                data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
+                    mini_batch_size = self.args.mini_batch_size,
+                    recent_steps = int(rollouts.num_steps/hierarchy_interval),
+                )
+
+                for sample in data_generator:
+                    observations_batch, next_observations_batch, actions_batch, next_masks_batch = sample
 
                     '''convert actions_batch to action_onehot_batch'''
                     self.action_onehot_batch.fill_(0.0)
@@ -86,8 +95,8 @@ class PPO(object):
                     next_masks_batch_index_action_onehot_batch = next_masks_batch_index.unsqueeze(1).expand(next_masks_batch_index.size()[0],*self.action_onehot_batch.size()[1:])
 
                     '''forward'''
-                    self.transition_model.train()
-                    predicted_next_observations_batch = self.transition_model(
+                    self.upper_layer.transition_model.train()
+                    predicted_next_observations_batch = self.upper_layer.transition_model(
                         inputs = observations_batch.gather(0,next_masks_batch_index_observations_batch),
                         input_action = self.action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch),
                     )
@@ -105,9 +114,9 @@ class PPO(object):
 
                     mse_loss_epoch += mse_loss.item()
 
-                else:
+            else:
 
-                    mse_loss_epoch = None
+                mse_loss_epoch = None
 
         num_updates = self.args.ppo_epoch * (self.args.num_processes * self.args.num_steps[self.hierarchy_id]//self.args.mini_batch_size)
 

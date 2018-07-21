@@ -150,7 +150,6 @@ class HierarchyLayer(object):
                 args = args,
                 actor_critic = self.actor_critic,
                 hierarchy_id = self.hierarchy_id,
-                transition_model = self.transition_model,
             )
         elif args.algo == 'acktr':
             self.agent = algo.A2C_ACKTR(
@@ -210,6 +209,10 @@ class HierarchyLayer(object):
         self.episode_visilize_stack = {}
 
         self.predicted_next_observations_to_downer_layer = None
+
+    def set_upper_layer(self, upper_layer):
+        self.upper_layer = upper_layer
+        self.agent.set_upper_layer(self.upper_layer)
 
     def step(self, inputs):
         '''as a environment, it has step method'''
@@ -381,7 +384,10 @@ class HierarchyLayer(object):
 
         self.rollouts.compute_returns(self.next_value, args.use_gae, args.gamma, args.tau)
 
-        self.value_loss, self.action_loss, self.dist_entropy, self.mse_loss = self.agent.update(self.rollouts)
+        self.value_loss, self.action_loss, self.dist_entropy, self.mse_loss = self.agent.update(
+            rollouts=self.rollouts,
+            hierarchy_interval=self.hierarchy_interval,
+        )
 
         self.rollouts.after_update()
 
@@ -611,6 +617,9 @@ def main():
             envs = hierarchy_layer[hierarchy_i-1],
             hierarchy_id=hierarchy_i,
         )]
+
+    for hierarchy_i in range(0,args.num_hierarchy-1):
+        hierarchy_layer[hierarchy_i].set_upper_layer(hierarchy_layer[hierarchy_i+1])
 
     hierarchy_layer[-1].reset()
 
