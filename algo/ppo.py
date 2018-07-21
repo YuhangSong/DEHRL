@@ -17,10 +17,8 @@ class PPO(object):
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
 
-        self.action_onehot_batch = torch.zeros(self.args.mini_batch_size,self.upper_layer.actor_critic.output_action_space.n).cuda()
         self.mse_loss_model = torch.nn.MSELoss(size_average=True,reduce=True)
         self.optimizer_transition_model = optim.Adam(self.upper_layer.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
-        self.batch_index = torch.LongTensor(range(self.args.mini_batch_size)).cuda()
 
     def update(self, rollouts, hierarchy_interval):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
@@ -42,7 +40,7 @@ class PPO(object):
 
             for sample in data_generator:
                 observations_batch, input_actions_batch, states_batch, actions_batch, \
-                   return_batch, masks_batch, next_masks_batch, old_action_log_probs_batch, \
+                   return_batch, masks_batch, old_action_log_probs_batch, \
                         adv_targ = sample
 
                 # Reshape to do in a single forward pass for all steps
@@ -78,27 +76,30 @@ class PPO(object):
 
                 data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
                     mini_batch_size = self.args.mini_batch_size,
-                    recent_steps = int(rollouts.num_steps/hierarchy_interval),
+                    recent_steps = int(rollouts.num_steps/hierarchy_interval)-1,
+                    recent_at = self.upper_layer.step_i,
                 )
 
                 for sample in data_generator:
                     observations_batch, next_observations_batch, actions_batch, next_masks_batch = sample
 
+                    action_onehot_batch = torch.zeros(observations_batch.size()[0],self.upper_layer.actor_critic.output_action_space.n).cuda()
+
                     '''convert actions_batch to action_onehot_batch'''
-                    self.action_onehot_batch.fill_(0.0)
-                    self.action_onehot_batch.scatter_(1,actions_batch.long(),1.0)
+                    action_onehot_batch.fill_(0.0)
+                    action_onehot_batch.scatter_(1,actions_batch.long(),1.0)
 
                     '''generate indexs'''
                     next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
                     next_masks_batch_index_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch.size()[1:])
                     next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
-                    next_masks_batch_index_action_onehot_batch = next_masks_batch_index.unsqueeze(1).expand(next_masks_batch_index.size()[0],*self.action_onehot_batch.size()[1:])
+                    next_masks_batch_index_action_onehot_batch = next_masks_batch_index.unsqueeze(1).expand(next_masks_batch_index.size()[0],*action_onehot_batch.size()[1:])
 
                     '''forward'''
                     self.upper_layer.transition_model.train()
                     predicted_next_observations_batch = self.upper_layer.transition_model(
                         inputs = observations_batch.gather(0,next_masks_batch_index_observations_batch),
-                        input_action = self.action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch),
+                        input_action = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch),
                     )
 
                     '''compute mse loss'''
