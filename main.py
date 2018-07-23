@@ -286,7 +286,7 @@ class HierarchyLayer(object):
             '''predict states'''
             self.transition_model.eval()
             with torch.no_grad():
-                self.predicted_next_observations_to_downer_layer = self.transition_model(
+                self.predicted_next_observations_to_downer_layer, _ = self.transition_model(
                     inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
                     input_action = self.action_onehot_batch,
                 )
@@ -421,7 +421,7 @@ class HierarchyLayer(object):
             print_string = "[H-{:1}][{:9}/{}], FPS {:4}".format(
                 self.hierarchy_id,
                 self.num_trained_frames, args.num_frames,
-                int(self.num_trained_frames / (self.end - self.start)),
+                int((self.num_trained_frames-self.num_trained_frames_at_start) / (self.end - self.start)),
             )
 
             print_string += ', final_reward '

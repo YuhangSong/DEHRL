@@ -83,6 +83,10 @@ def get_args():
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
+    parser.add_argument('--encourage-ac-connection', type=str,
+                        help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
+    parser.add_argument('--encourage-ac-connection-coefficient', type=float,
+                        help='coefficient of encourage-ac-connection')
 
     '''for log behavior'''
     parser.add_argument('--log-behavior-interval', type=int, default=10,
@@ -113,6 +117,10 @@ def get_args():
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
+    if args.reward_bounty > 0.0:
+        args.save_dir = os.path.join(args.save_dir, 'enc_ac_con-{}'.format(args.encourage_ac_connection))
+        if args.encourage_ac_connection not in ['none']:
+            args.save_dir = os.path.join(args.save_dir, 'enc_ac_con_co-{}'.format(args.encourage_ac_connection_coefficient))
 
     args.save_dir = os.path.join(args.save_dir, 'aux-{}'.format(args.aux))
 

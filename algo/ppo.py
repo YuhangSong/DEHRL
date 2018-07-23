@@ -10,6 +10,8 @@ class PPO(object):
     def set_this_layer(self, this_layer):
         self.this_layer = this_layer
         self.optimizer_actor_critic = optim.Adam(self.this_layer.actor_critic.parameters(), lr=self.this_layer.args.lr, eps=self.this_layer.args.eps)
+        self.one = torch.FloatTensor([1]).cuda()
+        self.mone = self.one * -1
 
     def set_upper_layer(self, upper_layer):
         '''this method will be called if we have a transition_model to generate reward bounty'''
@@ -18,6 +20,22 @@ class PPO(object):
         '''build essential things for training transition_model'''
         self.mse_loss_model = torch.nn.MSELoss(size_average=True,reduce=True)
         self.optimizer_transition_model = optim.Adam(self.upper_layer.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
+
+    def get_grad_norm(self, inputs, outputs):
+
+        gradients = torch.autograd.grad(
+            outputs=outputs,
+            inputs=inputs,
+            grad_outputs=torch.ones(outputs.size()).cuda(),
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
+        gradients = gradients.contiguous()
+        gradients_fl = gradients.view(gradients.size()[0],-1)
+        gradients_norm = gradients_fl.norm(2, dim=1) / ((gradients_fl.size()[1])**0.5)
+
+        return gradients_norm
 
     def update(self, update_type):
 
@@ -33,6 +51,8 @@ class PPO(object):
 
         elif update_type in ['transition_model']:
             epoch_loss['mse'] = 0
+            if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
+                epoch_loss['gradients_reward'] = 0
             epoch = self.this_layer.args.transition_model_epoch
 
         else:
@@ -105,11 +125,17 @@ class PPO(object):
                     next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
                     next_masks_batch_index_action_onehot_batch = next_masks_batch_index.unsqueeze(1).expand(next_masks_batch_index.size()[0],*action_onehot_batch.size()[1:])
 
+                    observations_batch = observations_batch.gather(0,next_masks_batch_index_observations_batch)
+                    action_onehot_batch = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch)
+
+                    if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
+                        action_onehot_batch = torch.autograd.Variable(action_onehot_batch, requires_grad=True)
+
                     '''forward'''
                     self.upper_layer.transition_model.train()
-                    predicted_next_observations_batch = self.upper_layer.transition_model(
-                        inputs = observations_batch.gather(0,next_masks_batch_index_observations_batch),
-                        input_action = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch),
+                    predicted_next_observations_batch, before_deconv = self.upper_layer.transition_model(
+                        inputs = observations_batch,
+                        input_action = action_onehot_batch,
                     )
 
                     '''compute mse loss'''
@@ -120,7 +146,17 @@ class PPO(object):
 
                     '''backward'''
                     self.optimizer_transition_model.zero_grad()
-                    mse_loss.backward()
+                    mse_loss.backward(
+                        retain_graph = (self.this_layer.args.encourage_ac_connection in ['transition_model','both']),
+                    )
+                    if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
+                        gradients_norm = self.get_grad_norm(
+                            inputs = action_onehot_batch,
+                            outputs = before_deconv,
+                        )
+                        gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
+                        epoch_loss['gradients_reward'] += gradients_reward.item()
+                        gradients_reward.backward(self.mone)
                     self.optimizer_transition_model.step()
 
                     epoch_loss['mse'] += mse_loss.item()
