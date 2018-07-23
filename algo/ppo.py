@@ -57,7 +57,8 @@ class PPO(object):
             raise Exception('Not Supported')
 
         if self.this_layer.args.encourage_ac_connection in ['transition_model','actor_critic','both']:
-            epoch_loss['gradients_reward'] = 0
+            if update_type in [self.this_layer.args.encourage_ac_connection]:
+                epoch_loss['gradients_reward'] = 0
 
         for e in range(epoch):
 
