@@ -152,7 +152,7 @@ class PPO(object):
                     if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
                         gradients_norm = self.get_grad_norm(
                             inputs = action_onehot_batch,
-                            outputs = before_deconv,
+                            outputs = predicted_next_observations_batch,
                         )
                         gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
                         epoch_loss['gradients_reward'] += gradients_reward.item()
