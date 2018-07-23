@@ -412,8 +412,9 @@ class HierarchyLayer(object):
                 self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
                 if self.transition_model is not None:
                     self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
+                print("[H-{:1}] Save checkpoint successed.".format(self.hierarchy_id))
             except Exception as e:
-                print("[H-{:1}] Save checkpoint failed.".format(self.hierarchy_id))
+                print("[H-{:1}] Save checkpoint failed, due to {}.".format(self.hierarchy_id,e))
 
         '''print info'''
         if self.update_i % args.log_interval == 0:

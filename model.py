@@ -274,3 +274,6 @@ class TransitionModel(nn.Module):
     def forward(self, inputs, input_action):
         before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
         return self.deconv(before_deconv)*255.0, before_deconv
+
+    def save_model(self, save_path):
+        torch.save(self.state_dict(), save_path)
