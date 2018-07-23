@@ -272,4 +272,5 @@ class TransitionModel(nn.Module):
         )
 
     def forward(self, inputs, input_action):
-        return self.deconv(self.conv(inputs/255.0)*self.input_action_linear(input_action))*255.0
+        predict_bef_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
+        return self.deconv(predict_bef_deconv)*255.0, predict_bef_deconv

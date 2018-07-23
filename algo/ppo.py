@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torch.autograd as autograd
 import utils
 
 
@@ -18,6 +19,24 @@ class PPO(object):
         '''build essential things for training transition_model'''
         self.mse_loss_model = torch.nn.MSELoss(size_average=True,reduce=True)
         self.optimizer_transition_model = optim.Adam(self.upper_layer.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
+        self.one = torch.FloatTensor([1]).cuda()
+        self.mone = self.one * -1
+
+    def get_grad_norm(self, inputs, outputs):
+
+        gradients = autograd.grad(
+            outputs=outputs,
+            inputs=inputs,
+            grad_outputs=torch.ones(outputs.size()).cuda(),
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
+        gradients = gradients.contiguous()
+        gradients_fl = gradients.view(gradients.size()[0],-1)
+        gradients_norm = gradients_fl.norm(2, dim=1) / ((gradients_fl.size()[1])**0.5)
+
+        return gradients_norm
 
     def update(self, update_type):
 
@@ -33,6 +52,7 @@ class PPO(object):
 
         elif update_type in ['transition_model']:
             epoch_loss['mse'] = 0
+            epoch_loss['gradients_reward'] = 0
             epoch = self.this_layer.args.transition_model_epoch
 
         else:
@@ -107,8 +127,10 @@ class PPO(object):
 
                     '''forward'''
                     self.upper_layer.transition_model.train()
-                    predicted_next_observations_batch = self.upper_layer.transition_model(
-                        inputs = observations_batch.gather(0,next_masks_batch_index_observations_batch),
+                    onehot_fix = observations_batch.gather(0,next_masks_batch_index_observations_batch)
+                    onehot_fix = autograd.Variable(onehot_fix, requires_grad=True)
+                    predicted_next_observations_batch, predict_bef_deconv = self.upper_layer.transition_model(
+                        inputs = onehot_fix,
                         input_action = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch),
                     )
 
@@ -120,7 +142,14 @@ class PPO(object):
 
                     '''backward'''
                     self.optimizer_transition_model.zero_grad()
-                    mse_loss.backward()
+                    mse_loss.backward(retain_graph=True)
+                    # gradients_norm = self.get_grad_norm(
+                    #     inputs = onehot_fix,
+                    #     outputs = predict_bef_deconv,
+                    # )
+                    # gradients_reward = (gradients_norm+1.0).log().mean()
+                    # epoch_loss['gradients_reward'] += gradients_reward.item()
+                    # gradients_reward.backward(self.mone)
                     self.optimizer_transition_model.step()
 
                     epoch_loss['mse'] += mse_loss.item()
