@@ -51,12 +51,13 @@ class PPO(object):
 
         elif update_type in ['transition_model']:
             epoch_loss['mse'] = 0
-            if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
-                epoch_loss['gradients_reward'] = 0
             epoch = self.this_layer.args.transition_model_epoch
 
         else:
             raise Exception('Not Supported')
+
+        if self.this_layer.args.encourage_ac_connection in ['transition_model','actor_critic','both']:
+            epoch_loss['gradients_reward'] = 0
 
         for e in range(epoch):
 
@@ -81,6 +82,9 @@ class PPO(object):
                        return_batch, masks_batch, old_action_log_probs_batch, \
                             adv_targ = sample
 
+                    if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
+                        input_actions_batch = torch.autograd.Variable(input_actions_batch, requires_grad=True)
+
                     # Reshape to do in a single forward pass for all steps
                     values, action_log_probs, dist_entropy, states = self.this_layer.actor_critic.evaluate_actions(
                         inputs = observations_batch,
@@ -99,8 +103,17 @@ class PPO(object):
                     value_loss = F.mse_loss(return_batch, values)
 
                     self.optimizer_actor_critic.zero_grad()
-                    (value_loss * self.this_layer.args.value_loss_coef + action_loss -
-                     dist_entropy * self.this_layer.args.entropy_coef).backward()
+                    (value_loss * self.this_layer.args.value_loss_coef + action_loss - dist_entropy * self.this_layer.args.entropy_coef).backward(
+                        retain_graph = (self.this_layer.args.encourage_ac_connection in ['actor_critic','both']),
+                    )
+                    if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
+                        gradients_norm = self.get_grad_norm(
+                            inputs = input_actions_batch,
+                            outputs = values,
+                        )
+                        gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
+                        epoch_loss['gradients_reward'] += gradients_reward.item()
+                        gradients_reward.backward(self.mone)
                     nn.utils.clip_grad_norm_(self.this_layer.actor_critic.parameters(),
                                              self.this_layer.args.max_grad_norm)
                     self.optimizer_actor_critic.step()
