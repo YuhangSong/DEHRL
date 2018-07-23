@@ -97,31 +97,43 @@ def get_args():
 
     args = parser.parse_args()
     args.transition_model_mini_batch_size = int(args.actor_critic_mini_batch_size/4)
-    args.transition_model_epoch = int(args.ppo_epoch*8)
+    args.transition_model_epoch = int(args.ppo_epoch*4)
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
 
     '''environment details'''
-    args.save_dir = os.path.join(args.save_dir, 'obs-type-{}'.format(args.obs_type))
-    args.save_dir = os.path.join(args.save_dir, 'env_name-{}'.format(args.env_name))
+    args.save_dir = os.path.join(args.save_dir, 'o_t-{}'.format(args.obs_type))
+    args.save_dir = os.path.join(args.save_dir, 'e_n-{}'.format(args.env_name))
     if args.env_name in ['OverCooked']:
-        args.save_dir = os.path.join(args.save_dir, 'reward_level-{}'.format(args.reward_level))
-        args.save_dir = os.path.join(args.save_dir, 'use_fake_reward_bounty-{}'.format(args.use_fake_reward_bounty))
+        args.save_dir = os.path.join(args.save_dir, 'r_l-{}'.format(args.reward_level))
+        args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
 
     '''policy details'''
-    args.save_dir = os.path.join(args.save_dir, 'num_hierarchy-{}'.format(args.num_hierarchy))
-    args.save_dir = os.path.join(args.save_dir, 'num_subpolicy-{}'.format(utils.list_to_str(args.num_subpolicy)))
-    args.save_dir = os.path.join(args.save_dir, 'hierarchy_interval-{}'.format(utils.list_to_str(args.hierarchy_interval)))
-    args.save_dir = os.path.join(args.save_dir, 'num_steps-{}'.format(utils.list_to_str(args.num_steps)))
+    args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
+    args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
+    args.save_dir = os.path.join(args.save_dir, 'h_i-{}'.format(utils.list_to_str(args.hierarchy_interval)))
+    args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_steps)))
 
     '''reward bounty details'''
-    args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
-    if args.reward_bounty > 0.0:
-        args.save_dir = os.path.join(args.save_dir, 'enc_ac_con-{}'.format(args.encourage_ac_connection))
-        if args.encourage_ac_connection not in ['none']:
-            args.save_dir = os.path.join(args.save_dir, 'enc_ac_con_co-{}'.format(args.encourage_ac_connection_coefficient))
+    args.save_dir = os.path.join(args.save_dir, 'r_b-{}'.format(args.reward_bounty))
 
-    args.save_dir = os.path.join(args.save_dir, 'aux-{}'.format(args.aux))
+    if args.reward_bounty > 0.0:
+        '''has a transition_model'''
+        args.save_dir = os.path.join(args.save_dir, 't_m_m_b_s-{}'.format(args.transition_model_mini_batch_size))
+        args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
+
+    if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
+        '''for encourage_ac_connection'''
+
+        if args.use_fake_reward_bounty:
+            '''if use_fake_reward_bounty, encourage_ac_connection can only be applied on actor_critic, or not applied'''
+            assert args.encourage_ac_connection in ['none','actor_critic']
+
+        args.save_dir = os.path.join(args.save_dir, 'e_a_c-{}'.format(args.encourage_ac_connection))
+        if args.encourage_ac_connection not in ['none']:
+            args.save_dir = os.path.join(args.save_dir, 'e_a_c_c-{}'.format(args.encourage_ac_connection_coefficient))
+
+    args.save_dir = os.path.join(args.save_dir, 'a-{}'.format(args.aux))
 
     return args
