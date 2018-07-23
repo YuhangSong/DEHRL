@@ -52,7 +52,7 @@ class OverCooked(gym.Env):
         if self.args.reward_level in [0]:
             self.episode_length_limit = 5
         elif self.args.reward_level in [1]:
-            self.episode_length_limit = 8*3
+            self.episode_length_limit = 8
         elif self.args.reward_level in [2]:
             self.episode_length_limit = 50*4
 
@@ -162,7 +162,7 @@ class OverCooked(gym.Env):
             # the second is input_actions_onehot_global[0]
             # ...
             action_id = action_list[0]
-            raise Exception('Do not support this any more')
+            # raise Exception('Do not support this any more')
         else:
             action_id = action_list
 

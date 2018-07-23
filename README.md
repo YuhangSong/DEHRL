@@ -81,6 +81,11 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 64 --exp temp_113 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 32 32 --reward-bounty 1.0 --encourage-ac-connection actor_critic --encourage-ac-connection-coefficient 1.0 --log-behavior-interval 5
 ```
 
+fake reward reward
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --exp temp_116 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.0 --encourage-ac-connection none --encourage-ac-connection-coefficient 1.0 --log-behavior-interval 5 --use-fake-reward-bounty
+```
+
 ## TODO list
 * check the logic of the game under reward_level=1(finished)
 * add observation_type = 'image' or 'ram' [float(0.0-1.0), float(0.0-1.0)] option in the game overcooked, and add support to run the game(finished)

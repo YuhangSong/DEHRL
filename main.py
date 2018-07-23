@@ -282,17 +282,34 @@ class HierarchyLayer(object):
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
-        if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
-            '''predict states'''
-            self.transition_model.eval()
-            with torch.no_grad():
-                self.predicted_next_observations_to_downer_layer, _ = self.transition_model(
-                    inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
-                    input_action = self.action_onehot_batch,
-                )
-            self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
+        if args.use_fake_reward_bounty:
 
-            self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
+            if self.hierarchy_id in [0]:
+                self.actions_to_step = [None]*args.num_processes
+                for process_i in range(args.num_processes):
+                    self.actions_to_step[process_i] = []
+                    self.actions_to_step[process_i] += [self.cpu_actions[process_i]]
+                    for hierarchy_i in range(args.num_hierarchy-1):
+                        self.actions_to_step[process_i] += [utils.onehot_to_index(
+                            input_actions_onehot_global[hierarchy_i][process_i].cpu().numpy()
+                        )]
+
+            elif self.hierarchy_id in [1]:
+                self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+
+        else:
+
+            if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
+                '''predict states'''
+                self.transition_model.eval()
+                with torch.no_grad():
+                    self.predicted_next_observations_to_downer_layer, _ = self.transition_model(
+                        inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
+                        input_action = self.action_onehot_batch,
+                    )
+                self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
+
+                self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
 
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
@@ -372,12 +389,16 @@ class HierarchyLayer(object):
         return self.obs, self.reward, self.done, self.info
 
     def refresh_update_type(self):
-        if (self.update_i%2 == 1) or (self.hierarchy_id in [args.num_hierarchy-1]):
+        if args.reward_bounty > 0.0:
+            if (self.update_i%2 == 1) or (self.hierarchy_id in [args.num_hierarchy-1]):
+                self.update_type = 'actor_critic'
+                self.deterministic = False
+            else:
+                self.update_type = 'transition_model'
+                self.deterministic = True
+        else:
             self.update_type = 'actor_critic'
             self.deterministic = False
-        else:
-            self.update_type = 'transition_model'
-            self.deterministic = True
 
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
@@ -629,8 +650,9 @@ def main():
             hierarchy_id=hierarchy_i,
         )]
 
-    for hierarchy_i in range(0,args.num_hierarchy-1):
-        hierarchy_layer[hierarchy_i].set_upper_layer(hierarchy_layer[hierarchy_i+1])
+    if args.reward_bounty>0.0:
+        for hierarchy_i in range(0,args.num_hierarchy-1):
+            hierarchy_layer[hierarchy_i].set_upper_layer(hierarchy_layer[hierarchy_i+1])
 
     hierarchy_layer[-1].reset()
 
