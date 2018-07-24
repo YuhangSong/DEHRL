@@ -658,9 +658,8 @@ def main():
             hierarchy_id=hierarchy_i,
         )]
 
-    if args.reward_bounty>0.0:
-        for hierarchy_i in range(0,args.num_hierarchy-1):
-            hierarchy_layer[hierarchy_i].set_upper_layer(hierarchy_layer[hierarchy_i+1])
+    for hierarchy_i in range(0,args.num_hierarchy-1):
+        hierarchy_layer[hierarchy_i].set_upper_layer(hierarchy_layer[hierarchy_i+1])
 
     hierarchy_layer[-1].reset()
 

@@ -101,7 +101,7 @@ class Policy(nn.Module):
         dist = self.dist(final_features_dist)
 
         action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
+        dist_entropy = dist.entropy()
 
         return value, action_log_probs, dist_entropy, states
 
