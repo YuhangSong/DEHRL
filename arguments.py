@@ -90,6 +90,9 @@ def get_args():
     parser.add_argument('--log-behavior-interval', type=int, default=10,
                         help='log behavior every x minutes')
 
+    parser.add_argument('--aux', type=str, default='',
+                        help='some aux information you may want to record along with this run')
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -112,5 +115,7 @@ def get_args():
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
+
+    args.save_dir = os.path.join(args.save_dir, 'aux-{}'.format(args.aux))
 
     return args
