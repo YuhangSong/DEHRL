@@ -79,6 +79,8 @@ class PPO(object):
 
                 if update_type in ['actor_critic']:
 
+                    self.optimizer_actor_critic.zero_grad()
+
                     observations_batch, input_actions_batch, states_batch, actions_batch, \
                        return_batch, masks_batch, old_action_log_probs_batch, \
                             adv_targ = sample
@@ -103,20 +105,27 @@ class PPO(object):
 
                     value_loss = F.mse_loss(return_batch, values)
 
-                    self.optimizer_actor_critic.zero_grad()
                     (value_loss * self.this_layer.args.value_loss_coef + action_loss - dist_entropy * self.this_layer.args.entropy_coef).backward(
                         retain_graph = (self.this_layer.args.encourage_ac_connection in ['actor_critic','both']),
                     )
+
                     if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
-                        gradients_norm = self.get_grad_norm(
-                            inputs = input_actions_batch,
-                            outputs = values,
-                        )
-                        gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
-                        epoch_loss['gradients_reward'] += gradients_reward.item()
-                        gradients_reward.backward(self.mone)
+
+                        if self.encourage_ac_connection_type in ['preserve_prediction']:
+                            raise Exception('Not implemented yet.')
+
+                        elif self.encourage_ac_connection_type in ['gradients_reward']:
+                            gradients_norm = self.get_grad_norm(
+                                inputs = input_actions_batch,
+                                outputs = values,
+                            )
+                            gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
+                            epoch_loss['gradients_reward'] += gradients_reward.item()
+                            gradients_reward.backward(self.mone)
+
                     nn.utils.clip_grad_norm_(self.this_layer.actor_critic.parameters(),
                                              self.this_layer.args.max_grad_norm)
+
                     self.optimizer_actor_critic.step()
 
                     epoch_loss['value'] += value_loss.item()
@@ -124,6 +133,8 @@ class PPO(object):
                     epoch_loss['dist_entropy'] += dist_entropy.item()
 
                 elif update_type in ['transition_model']:
+
+                    self.optimizer_transition_model.zero_grad()
 
                     observations_batch, next_observations_batch, actions_batch, next_masks_batch = sample
 
@@ -159,18 +170,24 @@ class PPO(object):
                     )
 
                     '''backward'''
-                    self.optimizer_transition_model.zero_grad()
                     mse_loss.backward(
                         retain_graph = (self.this_layer.args.encourage_ac_connection in ['transition_model','both']),
                     )
+
                     if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
-                        gradients_norm = self.get_grad_norm(
-                            inputs = action_onehot_batch,
-                            outputs = predicted_next_observations_batch,
-                        )
-                        gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
-                        epoch_loss['gradients_reward'] += gradients_reward.item()
-                        gradients_reward.backward(self.mone)
+
+                        if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
+                            raise Exception('Not implemented yet.')
+
+                        elif self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
+                            gradients_norm = self.get_grad_norm(
+                                inputs = action_onehot_batch,
+                                outputs = predicted_next_observations_batch,
+                            )
+                            gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
+                            epoch_loss['gradients_reward'] += gradients_reward.item()
+                            gradients_reward.backward(self.mone)
+
                     self.optimizer_transition_model.step()
 
                     epoch_loss['mse'] += mse_loss.item()
