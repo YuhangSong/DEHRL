@@ -91,6 +91,8 @@ def get_args():
     '''for log behavior'''
     parser.add_argument('--log-behavior-interval', type=int, default=10,
                         help='log behavior every x minutes')
+    parser.add_argument('--act-deterministically', action='store_true',
+                        help='if act deterministically when interactiong')
 
     parser.add_argument('--aux', type=str, default='',
                         help='some aux information you may want to record along with this run')

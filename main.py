@@ -87,6 +87,11 @@ for hierarchy_i in range(args.num_hierarchy):
 
 sess = tf.Session()
 
+if args.act_deterministically:
+    print('==========================================================================')
+    print("================ Note that I am acting deterministically =================")
+    print('==========================================================================')
+
 class HierarchyLayer(object):
     """docstring for HierarchyLayer."""
     """
@@ -399,6 +404,9 @@ class HierarchyLayer(object):
         else:
             self.update_type = 'actor_critic'
             self.deterministic = False
+
+        if args.act_deterministically:
+            self.deterministic = True
 
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
