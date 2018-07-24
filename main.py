@@ -153,6 +153,8 @@ class HierarchyLayer(object):
             )
         elif args.algo == 'ppo':
             self.agent = algo.PPO()
+            if args.ac_force:
+                self.agent.init_acforce_obj(args.num_subpolicy[self.hierarchy_id])
         elif args.algo == 'acktr':
             self.agent = algo.A2C_ACKTR(
                 self.actor_critic, args.value_loss_coef, args.entropy_coef,

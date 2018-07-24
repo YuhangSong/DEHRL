@@ -87,6 +87,8 @@ def get_args():
                         help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
     parser.add_argument('--encourage-ac-connection-coefficient', type=float,
                         help='coefficient of encourage-ac-connection')
+    parser.add_argument('--ac-force', action='store_true',
+                        help='use ac_force in mse_loss')
 
     '''for log behavior'''
     parser.add_argument('--log-behavior-interval', type=int, default=10,
