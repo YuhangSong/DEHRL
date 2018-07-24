@@ -117,7 +117,7 @@ def get_args():
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'reward_bounty-{}'.format(args.reward_bounty))
-    if args.reward_bounty > 0.0:
+    if args.reward_bounty > 0.0 or args.use_fake_reward_bounty:
         args.save_dir = os.path.join(args.save_dir, 'enc_ac_con-{}'.format(args.encourage_ac_connection))
         if args.encourage_ac_connection not in ['none']:
             args.save_dir = os.path.join(args.save_dir, 'enc_ac_con_co-{}'.format(args.encourage_ac_connection_coefficient))

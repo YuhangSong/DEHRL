@@ -113,6 +113,8 @@ class PPO(object):
                             outputs = values,
                         )
                         gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
+                        while gradients_reward > 0.01*value_loss:
+                            gradients_reward = gradients_reward*0.1
                         epoch_loss['gradients_reward'] += gradients_reward.item()
                         gradients_reward.backward(self.mone)
                     nn.utils.clip_grad_norm_(self.this_layer.actor_critic.parameters(),
