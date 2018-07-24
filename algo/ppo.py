@@ -133,9 +133,9 @@ class PPO(object):
 
                         '''repeat inputs so that every action has a simple'''
                         observations_batch = observations_batch.repeat(self.this_layer.action_space.n,1,1,1)
-                        states_batch = states_batch.repeat(self.this_layer.action_space.n,1)
-                        masks_batch = masks_batch.repeat(self.this_layer.action_space.n,1,1,1)
-                        actions_batch = actions_batch.repeat(self.this_layer.action_space.n,1)
+                        states_batch       = states_batch      .repeat(self.this_layer.action_space.n,1)
+                        masks_batch        = masks_batch       .repeat(self.this_layer.action_space.n,1)
+                        actions_batch      = actions_batch     .repeat(self.this_layer.action_space.n,1)
 
                         '''after repeat, it will be s0, s0, s1, s1, s2, s2...'''
 
@@ -144,10 +144,10 @@ class PPO(object):
 
                     # Reshape to do in a single forward pass for all steps
                     values, action_log_probs, dist_entropy, _ = self.this_layer.actor_critic.evaluate_actions(
-                        inputs = observations_batch,
-                        states = states_batch,
-                        masks = masks_batch,
-                        action = actions_batch,
+                        inputs       = observations_batch,
+                        states       = states_batch,
+                        masks        = masks_batch,
+                        action       = actions_batch,
                         input_action = input_actions_batch,
                     )
 
@@ -155,7 +155,7 @@ class PPO(object):
 
                         input_actions_index_for_acted_actions = (input_actions_index*self.this_layer.args.actor_critic_mini_batch_size+torch.LongTensor(range(self.this_layer.args.actor_critic_mini_batch_size)).long().cuda())
 
-                        input_actions_index_for_preserved_actions = torch.LongTensor(
+                        self.input_actions_index_for_preserved_actions = torch.LongTensor(
                             np.delete(
                                 arr = self.batch_index_travel,
                                 obj = input_actions_index_for_acted_actions.cpu().numpy(),
@@ -163,28 +163,19 @@ class PPO(object):
                             )
                         ).cuda()
 
-                        preserve_values = torch.index_select(values,0,input_actions_index_for_preserved_actions)
-                        preserve_action_log_probs = torch.index_select(action_log_probs,0,input_actions_index_for_preserved_actions)
-                        preserve_dist_entropy = torch.index_select(dist_entropy,0,input_actions_index_for_preserved_actions)
+                        def select_preserved(x):
+                            return torch.index_select(x, 0, self.input_actions_index_for_preserved_actions).detach()
 
-                        values = torch.index_select(values,0,input_actions_index_for_acted_actions)
-                        action_log_probs = torch.index_select(action_log_probs,0,input_actions_index_for_acted_actions)
-                        dist_entropy = torch.index_select(dist_entropy,0,input_actions_index_for_acted_actions)
+                        self.preserve_values           = select_preserved(values)
+                        self.preserve_action_log_probs = select_preserved(action_log_probs)
+                        self.preserve_dist_entropy     = select_preserved(dist_entropy)
 
-                        preserve_prediction_loss = (
-                            F.mse_loss(
-                                input = values,
-                                target = values.detach(),
-                            )*self.this_layer.args.value_loss_coef + F.mse_loss(
-                                input = preserve_action_log_probs,
-                                target = preserve_action_log_probs.detach(),
-                            ) + F.mse_loss(
-                                input = dist_entropy,
-                                target = dist_entropy.detach(),
-                            )*self.this_layer.args.entropy_coef
-                        )*self.this_layer.args.encourage_ac_connection_coefficient
+                        def select_acted(x):
+                            return torch.index_select(x, 0, input_actions_index_for_acted_actions)
 
-                        epoch_loss['preserve_prediction'] += preserve_prediction_loss.item()
+                        values           = select_acted(values)
+                        action_log_probs = select_acted(action_log_probs)
+                        dist_entropy     = select_acted(dist_entropy)
 
                     ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
                     surr1 = ratio * adv_targ
@@ -196,10 +187,7 @@ class PPO(object):
 
                     dist_entropy = dist_entropy.mean() * self.this_layer.args.entropy_coef
 
-                    if self.actor_critic_preserve_prediction:
-                        final_loss = value_loss + action_loss - dist_entropy + preserve_prediction_loss
-                    else:
-                        final_loss = value_loss + action_loss - dist_entropy
+                    final_loss = value_loss + action_loss - dist_entropy
 
                     final_loss.backward(
                         retain_graph = (self.this_layer.args.encourage_ac_connection in ['actor_critic','both']),
@@ -224,6 +212,46 @@ class PPO(object):
                     epoch_loss['value'] += value_loss.item()
                     epoch_loss['action'] += action_loss.item()
                     epoch_loss['dist_entropy'] += dist_entropy.item()
+
+                    if self.actor_critic_preserve_prediction:
+
+                        self.optimizer_actor_critic.zero_grad()
+
+                        def select_preserved(x):
+                            return torch.index_select(x  , 0, self.input_actions_index_for_preserved_actions)
+
+                        observations_batch = select_preserved(observations_batch)
+                        states_batch = select_preserved(states_batch)
+                        masks_batch = select_preserved(masks_batch)
+                        actions_batch = select_preserved(actions_batch)
+                        input_actions_batch = select_preserved(input_actions_batch)
+
+                        values, action_log_probs, dist_entropy, _ = self.this_layer.actor_critic.evaluate_actions(
+                            inputs       = observations_batch,
+                            states       = states_batch,
+                            masks        = masks_batch,
+                            action       = actions_batch,
+                            input_action = input_actions_batch,
+                        )
+
+                        preserve_prediction_loss = (
+                            F.mse_loss(
+                                input = values,
+                                target = self.preserve_values,
+                            )*self.this_layer.args.value_loss_coef + F.mse_loss(
+                                input = action_log_probs,
+                                target = self.preserve_action_log_probs,
+                            ) + F.mse_loss(
+                                input = dist_entropy,
+                                target = self.preserve_dist_entropy,
+                            )*self.this_layer.args.entropy_coef
+                        )*self.this_layer.args.encourage_ac_connection_coefficient
+
+                        preserve_prediction_loss.backward()
+
+                        self.optimizer_actor_critic.step()
+
+                        epoch_loss['preserve_prediction'] += preserve_prediction_loss.item()
 
                 elif update_type in ['transition_model']:
 
