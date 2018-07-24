@@ -37,7 +37,7 @@ def get_args():
                         help='random seed (default: 1)')
     parser.add_argument('--num-processes', type=int, default=16,
                         help='how many training CPU processes to use (default: 16)')
-    parser.add_argument('--ppo-epoch', type=int, default=4,
+    parser.add_argument('--actor-critic-epoch', type=int, default=4,
                         help='number of ppo epochs (default: 4)')
     parser.add_argument('--actor-critic-mini-batch-size', type=int, default=32,
                         help='mini batch size for ppo (default: 32)')
@@ -85,6 +85,8 @@ def get_args():
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
     parser.add_argument('--encourage-ac-connection', type=str,
                         help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
+    parser.add_argument('--encourage-ac-connection-type', type=str,
+                        help='type of encourage_ac_connection: gradients_reward, preserve_prediction' )
     parser.add_argument('--encourage-ac-connection-coefficient', type=float,
                         help='coefficient of encourage-ac-connection')
 
@@ -99,7 +101,7 @@ def get_args():
 
     args = parser.parse_args()
     args.transition_model_mini_batch_size = int(args.actor_critic_mini_batch_size/4)
-    args.transition_model_epoch = int(args.ppo_epoch*4)
+    args.transition_model_epoch = int(args.actor_critic_epoch*4)
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
@@ -120,8 +122,11 @@ def get_args():
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'r_b-{}'.format(args.reward_bounty))
 
+    '''actor_critic training details'''
+    args.save_dir = os.path.join(args.save_dir, 'a_c_m_b_s-{}'.format(args.actor_critic_mini_batch_size))
+    args.save_dir = os.path.join(args.save_dir, 'a_c_e-{}'.format(args.actor_critic_epoch))
     if args.reward_bounty > 0.0:
-        '''has a transition_model'''
+        '''transition_model training details'''
         args.save_dir = os.path.join(args.save_dir, 't_m_m_b_s-{}'.format(args.transition_model_mini_batch_size))
         args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
 
@@ -134,6 +139,7 @@ def get_args():
 
         args.save_dir = os.path.join(args.save_dir, 'e_a_c-{}'.format(args.encourage_ac_connection))
         if args.encourage_ac_connection not in ['none']:
+            args.save_dir = os.path.join(args.save_dir, 'e_a_c_t-{}'.format(args.encourage_ac_connection_type))
             args.save_dir = os.path.join(args.save_dir, 'e_a_c_c-{}'.format(args.encourage_ac_connection_coefficient))
 
     args.save_dir = os.path.join(args.save_dir, 'a-{}'.format(args.aux))

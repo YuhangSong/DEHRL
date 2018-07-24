@@ -47,7 +47,7 @@ class PPO(object):
             epoch_loss['value'] = 0
             epoch_loss['action'] = 0
             epoch_loss['dist_entropy'] = 0
-            epoch = self.this_layer.args.ppo_epoch
+            epoch = self.this_layer.args.actor_critic_epoch
 
         elif update_type in ['transition_model']:
             epoch_loss['mse'] = 0
