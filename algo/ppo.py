@@ -61,16 +61,27 @@ class PPO(object):
         self.mse_loss_model = torch.nn.MSELoss(size_average=True,reduce=True)
         self.optimizer_transition_model = optim.Adam(self.upper_layer.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
 
-    def get_grad_norm(self, inputs, outputs):
+    def get_grad_norm(self, inputs, outputs, update_type):
 
-        gradients = torch.autograd.grad(
-            outputs=outputs,
-            inputs=inputs,
-            grad_outputs=[torch.ones(outputs[0].size()).cuda(),torch.ones(outputs[1].size()).cuda(),torch.ones(outputs[2].size()).cuda()],
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True
-        )[0]
+        if update_type in ['actor_critic']:
+            gradients = torch.autograd.grad(
+                outputs=outputs,
+                inputs=inputs,
+                grad_outputs=[torch.ones(outputs[0].size()).cuda(),torch.ones(outputs[1].size()).cuda(),torch.ones(outputs[2].size()).cuda()],
+                create_graph=True,
+                retain_graph=True,
+                only_inputs=True
+            )[0]
+        elif update_type in ['transition_model']:
+            gradients = torch.autograd.grad(
+                outputs=outputs,
+                inputs=inputs,
+                grad_outputs=torch.ones(outputs.size()).cuda(),
+                create_graph=True,
+                retain_graph=True,
+                only_inputs=True
+            )[0]
+
         gradients = gradients.contiguous()
         gradients_fl = gradients.view(gradients.size()[0],-1)
         gradients_norm = gradients_fl.norm(2, dim=1) / ((gradients_fl.size()[1])**0.5)
@@ -201,6 +212,7 @@ class PPO(object):
                         gradients_norm = self.get_grad_norm(
                             inputs = input_actions_batch,
                             outputs = [values, action_log_probs, dist_entropy_before_mean],
+                            update_type = 'actor_critic',
                         )
                         gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
                         epoch_loss['gradients_reward'] += gradients_reward.item()
@@ -307,6 +319,7 @@ class PPO(object):
                             gradients_norm = self.get_grad_norm(
                                 inputs = action_onehot_batch,
                                 outputs = predicted_next_observations_batch,
+                                update_type = 'transition_model',
                             )
                             gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
                             epoch_loss['gradients_reward'] += gradients_reward.item()
