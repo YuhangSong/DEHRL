@@ -86,7 +86,7 @@ def get_args():
     parser.add_argument('--encourage-ac-connection', type=str,
                         help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
     parser.add_argument('--encourage-ac-connection-type', type=str,
-                        help='type of encourage_ac_connection: gradients_reward, preserve_prediction' )
+                        help='type of encourage_ac_connection: gradients_reward, preserve_prediction, both' )
     parser.add_argument('--encourage-ac-connection-coefficient', type=float,
                         help='coefficient of encourage-ac-connection')
 

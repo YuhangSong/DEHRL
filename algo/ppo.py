@@ -25,18 +25,18 @@ class PPO(object):
 
             if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
 
-                if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
+                if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward','both']:
                     self.actor_critic_gradients_reward = True
 
-                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
+                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction','both']:
                     self.actor_critic_preserve_prediction = True
 
             if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
 
-                if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
+                if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward','both']:
                     self.transition_model_gradients_reward = True
 
-                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
+                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction','both']:
                     self.transition_model_preserve_prediction = True
 
         if self.actor_critic_preserve_prediction:
@@ -66,7 +66,7 @@ class PPO(object):
         gradients = torch.autograd.grad(
             outputs=outputs,
             inputs=inputs,
-            grad_outputs=torch.ones(outputs.size()).cuda(),
+            grad_outputs=[torch.ones(outputs[0].size()).cuda(),torch.ones(outputs[1].size()).cuda(),torch.ones(outputs[2].size()).cuda()],
             create_graph=True,
             retain_graph=True,
             only_inputs=True
@@ -185,6 +185,9 @@ class PPO(object):
 
                     value_loss = F.mse_loss(return_batch, values) * self.this_layer.args.value_loss_coef
 
+                    if self.actor_critic_gradients_reward:
+                        dist_entropy_before_mean = dist_entropy.unsqueeze(1)
+
                     dist_entropy = dist_entropy.mean() * self.this_layer.args.entropy_coef
 
                     final_loss = value_loss + action_loss - dist_entropy
@@ -197,7 +200,7 @@ class PPO(object):
 
                         gradients_norm = self.get_grad_norm(
                             inputs = input_actions_batch,
-                            outputs = values,
+                            outputs = [values, action_log_probs, dist_entropy_before_mean],
                         )
                         gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
                         epoch_loss['gradients_reward'] += gradients_reward.item()
