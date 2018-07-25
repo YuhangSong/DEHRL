@@ -78,7 +78,7 @@ class Policy(nn.Module):
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
         value = self.critic_linear(final_features_critic)
-        dist = self.dist(final_features_dist)
+        dist, _ = self.dist(final_features_dist)
 
         if deterministic:
             action = dist.mode()
@@ -98,12 +98,12 @@ class Policy(nn.Module):
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
         value = self.critic_linear(final_features_critic)
-        dist = self.dist(final_features_dist)
+        dist, dist_features = self.dist(final_features_dist)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy()
 
-        return value, action_log_probs, dist_entropy, states
+        return value, action_log_probs, dist_entropy, states, dist_features
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)

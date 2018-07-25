@@ -99,6 +99,9 @@ class PPO(object):
         if self.this_layer.args.encourage_ac_connection in ['transition_model','actor_critic','both']:
             if update_type in [self.this_layer.args.encourage_ac_connection]:
                 epoch_loss[self.this_layer.args.encourage_ac_connection_type] = 0
+                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
+                    epoch_loss['preserve_prediction_values'] = 0
+                    epoch_loss['preserve_prediction_dist_features'] = 0
 
         for e in range(epoch):
 
@@ -143,7 +146,7 @@ class PPO(object):
                         input_actions_batch = self.action_onehot_travel_batch
 
                     # Reshape to do in a single forward pass for all steps
-                    values, action_log_probs, dist_entropy, _ = self.this_layer.actor_critic.evaluate_actions(
+                    values, action_log_probs, dist_entropy, _, dist_features = self.this_layer.actor_critic.evaluate_actions(
                         inputs       = observations_batch,
                         states       = states_batch,
                         masks        = masks_batch,
@@ -167,8 +170,7 @@ class PPO(object):
                             return torch.index_select(x, 0, self.input_actions_index_for_preserved_actions).detach()
 
                         self.preserve_values           = select_preserved(values)
-                        self.preserve_action_log_probs = select_preserved(action_log_probs)
-                        self.preserve_dist_entropy     = select_preserved(dist_entropy)
+                        self.preserve_dist_features = select_preserved(dist_features)
 
                         def select_acted(x):
                             return torch.index_select(x, 0, input_actions_index_for_acted_actions)
@@ -226,7 +228,7 @@ class PPO(object):
                         actions_batch = select_preserved(actions_batch)
                         input_actions_batch = select_preserved(input_actions_batch)
 
-                        values, action_log_probs, dist_entropy, _ = self.this_layer.actor_critic.evaluate_actions(
+                        values, action_log_probs, dist_entropy, _, dist_features = self.this_layer.actor_critic.evaluate_actions(
                             inputs       = observations_batch,
                             states       = states_batch,
                             masks        = masks_batch,
@@ -234,24 +236,25 @@ class PPO(object):
                             input_action = input_actions_batch,
                         )
 
-                        preserve_prediction_loss = (
-                            F.mse_loss(
-                                input = values,
-                                target = self.preserve_values,
-                            )*self.this_layer.args.value_loss_coef + F.mse_loss(
-                                input = action_log_probs,
-                                target = self.preserve_action_log_probs,
-                            ) + F.mse_loss(
-                                input = dist_entropy,
-                                target = self.preserve_dist_entropy,
-                            )*self.this_layer.args.entropy_coef
-                        )*self.this_layer.args.encourage_ac_connection_coefficient
+                        preserve_prediction_values = F.mse_loss(
+                            input = values,
+                            target = self.preserve_values,
+                        )
+                        epoch_loss['preserve_prediction_values'] += preserve_prediction_values.item()
+
+                        preserve_prediction_dist_features = F.mse_loss(
+                            input = dist_features,
+                            target = self.preserve_dist_features,
+                        )
+                        epoch_loss['preserve_prediction_dist_features'] += preserve_prediction_dist_features.item()
+
+                        preserve_prediction_loss = (preserve_prediction_values+preserve_prediction_dist_features)*self.this_layer.args.encourage_ac_connection_coefficient
+                        epoch_loss['preserve_prediction'] += preserve_prediction_loss.item()
 
                         preserve_prediction_loss.backward()
 
                         self.optimizer_actor_critic.step()
 
-                        epoch_loss['preserve_prediction'] += preserve_prediction_loss.item()
 
                 elif update_type in ['transition_model']:
 
