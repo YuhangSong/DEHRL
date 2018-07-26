@@ -355,6 +355,9 @@ class HierarchyLayer(object):
             '''convert to numpy'''
             self.reward_bounty = self.reward_bounty.cpu().numpy()
 
+            '''mask it and stop reward function'''
+            self.masks = self.masks * 0.0
+
         else:
             self.reward_bounty = np.copy(self.reward)
             self.reward_bounty.fill(0.0)
