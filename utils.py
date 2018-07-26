@@ -7,6 +7,76 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
+class Visdomer(object):
+    """docstring for Visdomer."""
+    def __init__(self):
+        super(Visdomer, self).__init__()
+
+        from visdom import Visdom
+        self.viz = Visdom(port=6006)
+        self.win_dic = {}
+        self.recorder = {
+            'plot':{},
+            'image':{},
+            'text':{},
+        }
+
+    def clear_visdom_recorder(self):
+        self.recorder = {
+            'plot':{},
+            'image':{},
+            'text':{},
+        }
+
+    def record(self,name,value,data_type='plot'):
+        if data_type=='plot':
+            try:
+                # try expend
+                self.recorder[data_type][name] += [value]
+            except Exception as e:
+                # else, initialize
+                self.recorder[data_type][name] = [value]
+        else:
+            self.recorder[data_type][name] = value
+
+    def log_visdom(self):
+        '''push everything to the visdom server'''
+
+        # plot lines
+        for plot_name in self.recorder['plot'].keys():
+            if plot_name in self.win_dic.keys():
+                if len(self.recorder['plot'][plot_name]) > 0:
+                    self.win_dic[plot_name] = self.viz.line(
+                        torch.from_numpy(np.asarray(self.recorder['plot'][plot_name])),
+                        win=self.win_dic[plot_name],
+                        opts=dict(title=TMUX+'\n'+plot_name)
+                    )
+            else:
+                self.win_dic[plot_name] = None
+
+        # log images
+        for images_name in self.recorder['image'].keys():
+            if images_name in self.win_dic.keys():
+                self.win_dic[images_name] = self.viz.images(
+                    self.recorder['image'][images_name],
+                    win=self.win_dic[images_name],
+                    opts=dict(title=images_name)
+                )
+            else:
+                self.win_dic[images_name] = None
+
+        # log text
+        for text_name in self.recorder['text'].keys():
+            if text_name in self.win_dic.keys():
+                self.win_dic[text_name] = self.viz.text(
+                    self.recorder['text'][text_name],
+                    win=self.win_dic[text_name],
+                    opts=dict(title=TMUX+'\n'+text_name)
+                )
+            else:
+                self.win_dic[text_name] = None
+
+
 def onehot_to_index(x):
     return np.where(x==1.0)[0][0]
 

@@ -99,6 +99,9 @@ def get_args():
     parser.add_argument('--aux', type=str, default='',
                         help='some aux information you may want to record along with this run')
 
+    parser.add_argument('--test-env', action='store_true',
+                        help='if test env with keyboard input')
+
     args = parser.parse_args()
     args.transition_model_mini_batch_size = int(args.actor_critic_mini_batch_size/4)
     args.transition_model_epoch = int(args.actor_critic_epoch*4)

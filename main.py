@@ -216,6 +216,9 @@ class HierarchyLayer(object):
 
         self.agent.set_this_layer(self)
 
+        if args.test_env and self.hierarchy_id in [0]:
+            self.visdomer = utils.Visdomer()
+
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
         self.agent.set_upper_layer(self.upper_layer)
@@ -283,6 +286,15 @@ class HierarchyLayer(object):
             )
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
+        if args.test_env and self.hierarchy_id in [0]:
+            self.cpu_actions[0] = int(
+                input(
+                    '[Macro Action {}], Act: '.format(
+                        utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy())
+                    )
+                )
+            )
+
         self.actions_to_step = self.cpu_actions
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
@@ -319,6 +331,15 @@ class HierarchyLayer(object):
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).cuda()
+
+        if args.test_env and self.hierarchy_id in [0]:
+            self.visdomer.record('obs',self.obs[0],'image')
+            print('[reward {}][done {}]'.format(
+                self.reward_raw_OR_reward[0],
+                self.done[0],
+            ))
+            self.visdomer.log_visdom()
+            self.visdomer.log_visdom()
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
             '''top hierarchy layer is responsible for reseting env if all env has done'''
