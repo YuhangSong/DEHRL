@@ -300,7 +300,7 @@ class HierarchyLayer(object):
                         )]
 
             elif self.hierarchy_id in [1]:
-                self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+                self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n-1, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
 
         else:
 
