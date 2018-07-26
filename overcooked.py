@@ -27,8 +27,8 @@ class OverCooked(gym.Env):
 
         self.args = args
 
-        # self.action_space = spaces.Discrete(17)
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(17)
+        # self.action_space = spaces.Discrete(4)
         self.screen_width = 84
         self.screen_height = 84
         self.leg_num = 4
@@ -156,23 +156,24 @@ class OverCooked(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
+    # def step(self, action_list):
+    #
+    #     macro_action_list = [
+    #         [1,9,5,13],
+    #         [2,10,6,14],
+    #         [7,3,11,15],
+    #         [16,12,8,4]
+    #     ]
+    #
+    #     for basic_step_i in range(4):
+    #         action_list_temp = copy.deepcopy(action_list)
+    #         action_list_temp[0] = macro_action_list[action_list[0]][basic_step_i]
+    #         returned = self.step_basic(action_list_temp)
+    #
+    #     return returned
+
+    # def step_basic(self, action_list):
     def step(self, action_list):
-
-        macro_action_list = [
-            [1,9,5,13],
-            [2,10,6,14],
-            [7,3,11,15],
-            [16,12,8,4]
-        ]
-
-        for basic_step_i in range(4):
-            action_list_temp = copy.deepcopy(action_list)
-            action_list_temp[0] = macro_action_list[action_list[0]][basic_step_i]
-            returned = self.step_basic(action_list_temp)
-
-        return returned
-
-    def step_basic(self, action_list):
 
         if self.args.use_fake_reward_bounty:
             # for use_fake_reward_bounty

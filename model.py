@@ -20,53 +20,42 @@ class Policy(nn.Module):
     def __init__(self, obs_shape, input_action_space,output_action_space, recurrent_policy):
         super(Policy, self).__init__()
 
-        '''build base model'''
-        if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], recurrent_policy)
-        elif len(obs_shape) == 1:
-            assert not recurrent_policy, \
-                "Recurrent policy is not implemented for the MLP controller"
-            self.base = MLPBase(obs_shape[0])
-        else:
-            raise NotImplementedError
-        self.state_size = self.base.state_size
-
-        '''build actor model'''
         self.output_action_space = output_action_space
-        if self.output_action_space.__class__.__name__ == "Discrete":
-            num_outputs = self.output_action_space.n
-            self.dist = Categorical(self.base.output_size, num_outputs)
-        elif self.output_action_space.__class__.__name__ == "Box":
-            num_outputs = self.output_action_space.shape[0]
-            self.dist = DiagGaussian(self.base.output_size, num_outputs)
-        else:
-            raise NotImplementedError
-
-        '''build critic model'''
-        self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
-
         self.input_action_space = input_action_space
-        self.input_action_linear = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
 
-        self.final_feature_linear_critic = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
-        self.final_feature_linear_dist = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
+        self.base = []
+        self.dist = []
+        self.critic_linear = []
+
+        for subpolicy_i in range(self.input_action_space.n):
+
+            if len(obs_shape) == 3:
+                self.base += [CNNBase(obs_shape[0], recurrent_policy)]
+            elif len(obs_shape) == 1:
+                assert not recurrent_policy, \
+                    "Recurrent policy is not implemented for the MLP controller"
+                self.base += [MLPBase(obs_shape[0])]
+            else:
+                raise NotImplementedError
+
+            self.state_size = self.base[-1].state_size
+
+            if self.output_action_space.__class__.__name__ == "Discrete":
+                num_outputs = self.output_action_space.n
+                self.dist += [Categorical(self.base.output_size, num_outputs)]
+            elif self.output_action_space.__class__.__name__ == "Box":
+                num_outputs = self.output_action_space.shape[0]
+                self.dist += [DiagGaussian(self.base.output_size, num_outputs)]
+            else:
+                raise NotImplementedError
+
+            self.critic_linear += [self.base.linear_init_(nn.Linear(self.base.linear_size, 1))]
 
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
 
     def get_final_features(self, inputs, states, masks, input_action=None):
+        raise Exception('I found it is hard to parallize')
         # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
         input_action_features = self.input_action_linear(input_action)
