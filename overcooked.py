@@ -209,28 +209,28 @@ class OverCooked(gym.Env):
                     self.position[0] = self.position[0]+self.screen_width/self.move_discount
 
                     if self.args.use_fake_reward_bounty:
-                        if action_list[1] == 0:
+                        if action_list[1] in [0,1]:
                             reward = 1
 
                 elif body_action == 2:
                     self.position[0] = self.position[0]-self.screen_width/self.move_discount
 
                     if self.args.use_fake_reward_bounty:
-                        if action_list[1] == 1:
+                        if action_list[1] in [2,3]:
                             reward = 1
 
                 elif body_action == 3:
                     self.position[1] = self.position[1]+self.screen_height/self.move_discount
 
                     if self.args.use_fake_reward_bounty:
-                        if action_list[1] == 2:
+                        if action_list[1] in [4,5]:
                             reward = 1
 
                 elif body_action == 4:
                     self.position[1] = self.position[1]-self.screen_height/self.move_discount
 
                     if self.args.use_fake_reward_bounty:
-                        if action_list[1] == 3:
+                        if action_list[1] in [6,7]:
                             reward = 1
 
                 if self.args.reward_level == 0:
