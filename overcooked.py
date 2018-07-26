@@ -208,10 +208,6 @@ class OverCooked(gym.Env):
             if action_box.shape[0]==1:
                 body_action = action_box[0]
 
-                print('body_action: {}'.format(
-                    body_action,
-                ))
-
                 if body_action == 1:
                     self.position[0] = self.position[0]+self.screen_width/self.move_discount
 
