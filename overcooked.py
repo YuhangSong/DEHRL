@@ -13,6 +13,7 @@ from gym.utils import seeding
 import numpy as np
 import cv2
 import random
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,8 @@ class OverCooked(gym.Env):
 
         self.args = args
 
-        self.action_space = spaces.Discrete(17)
+        # self.action_space = spaces.Discrete(17)
+        self.action_space = spaces.Discrete(4)
         self.screen_width = 84
         self.screen_height = 84
         self.leg_num = 4
@@ -156,6 +158,22 @@ class OverCooked(gym.Env):
 
     def step(self, action_list):
 
+        macro_action_list = [
+            [1,9,5,13],
+            [2,10,6,14],
+            [7,3,11,15],
+            [16,12,8,4]
+        ]
+
+        for basic_step_i in range(4):
+            action_list_temp = copy.deepcopy(action_list)
+            action_list_temp[0] = macro_action_list[action_list[0]][basic_step_i]
+            returned = self.step_basic(action_list_temp)
+
+        return returned
+
+    def step_basic(self, action_list):
+
         if self.args.use_fake_reward_bounty:
             # for use_fake_reward_bounty
             # action_list is a list, the first element is the bottom action
@@ -166,8 +184,8 @@ class OverCooked(gym.Env):
         else:
             action_id = action_list
 
-        if action_id >= self.action_space.n:
-            raise Exception('Action out of range')
+        # if action_id >= self.action_space.n:
+        #     raise Exception('Action out of range')
 
         done = False
         self.eposide_length += 1
@@ -208,9 +226,9 @@ class OverCooked(gym.Env):
             if action_box.shape[0]==1:
                 body_action = action_box[0]
 
-                print('body_action: {}'.format(
-                    body_action,
-                ))
+                # print('body_action: {}'.format(
+                #     body_action,
+                # ))
 
                 if body_action == 1:
                     self.position[0] = self.position[0]+self.screen_width/self.move_discount
