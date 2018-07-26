@@ -13,8 +13,10 @@ from gym.utils import seeding
 import numpy as np
 import cv2
 import random
+import visdom
 
 logger = logging.getLogger(__name__)
+vis = visdom.Visdom()
 
 class OverCooked(gym.Env):
     metadata = {
@@ -539,51 +541,57 @@ class OverCooked(gym.Env):
             if self.cur_goal[3]>0:
                 position = np.array([3*self.screen_width/10, self.screen_height+self.screen_height/10])
                 self.draw_goals(self.cur_goal[3], position, canvas)
-        # cv2.imwrite('C:\\Users\\IceClear\\Desktop' + '\\' + 'frame' + '.jpg', canvas)  # 存储为图像
+        # cv2.imwrite('C:\\Users\\IceClear\\Desktop' + '\\' + 'frame' + '.jpg', canvas)
         if self.args.render:
-            cv2.imshow('overcooked',canvas)
+            # cv2.imshow('overcooked',canvas)
+            img_show = vis.images(
+                canvas.transpose(2,0,1),
+                opts=dict(title='img' + '\n' + str(self.eposide_length))
+            )
             cv2.waitKey(2)
 
         return canvas
 
 if __name__ == '__main__':
-    env = OverCooked(reward_level=1, obs_type='image', isrender=True)
+    from arguments import get_args
+    args = get_args()
+    env = OverCooked(args = args)
     for i_episode in range(20):
         observation = env.reset()
         for t in range(100):
             # env.render(True)
             key = env.get_keys_to_action()
             if key<20:
-                action = key
+                action = [key,0]
                 observation, reward, done, info = env.step(action)
             else:
                 if key==20:
-                    observation, reward, done, info = env.step(1)
-                    observation, reward, done, info = env.step(5)
-                    observation, reward, done, info = env.step(9)
-                    observation, reward, done, info = env.step(13)
+                    observation, reward, done, info = env.step([1,1])
+                    observation, reward, done, info = env.step([5,1])
+                    observation, reward, done, info = env.step([9,1])
+                    observation, reward, done, info = env.step([13,1])
                 elif key==21:
-                    observation, reward, done, info = env.step(2)
-                    observation, reward, done, info = env.step(6)
-                    observation, reward, done, info = env.step(10)
-                    observation, reward, done, info = env.step(14)
+                    observation, reward, done, info = env.step([2,1])
+                    observation, reward, done, info = env.step([6,1])
+                    observation, reward, done, info = env.step([10,1])
+                    observation, reward, done, info = env.step([14,1])
                 elif key == 22:
-                    observation, reward, done, info = env.step(3)
-                    observation, reward, done, info = env.step(7)
-                    observation, reward, done, info = env.step(11)
-                    observation, reward, done, info = env.step(15)
+                    observation, reward, done, info = env.step([3,1])
+                    observation, reward, done, info = env.step([7,1])
+                    observation, reward, done, info = env.step([11,1])
+                    observation, reward, done, info = env.step([15,1])
                 elif key == 23:
-                    observation, reward, done, info = env.step(4)
-                    observation, reward, done, info = env.step(8)
-                    observation, reward, done, info = env.step(12)
-                    observation, reward, done, info = env.step(16)
+                    observation, reward, done, info = env.step([4,1])
+                    observation, reward, done, info = env.step([8,1])
+                    observation, reward, done, info = env.step([12,1])
+                    observation, reward, done, info = env.step([16,1])
 
             gray_img = observation
             # cv2.imshow('overcooked_gray',gray_img)
             gray_img_rezised = cv2.resize(gray_img, (84,84))
             # cv2.imshow('gray_img_rezised', gray_img_rezised)
             cv2.waitKey(2)
-            print(observation)
+            # print(observation)
             print(reward)
             if done:
                 print("Episode finished after {} timesteps".format(t + 1))
