@@ -349,8 +349,8 @@ class HierarchyLayer(object):
                 for action_i in range(prediction_rb.size()[0]):
                     if action_i==action_rb[process_i]:
                         continue
-                    # self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()*10.0).log()
-                    self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean())
+                    self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()*10.0).log()
+                    # self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean())
             self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)
 
             '''mask reward bounty, since the final state is start state,
