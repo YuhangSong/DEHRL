@@ -314,6 +314,9 @@ class HierarchyLayer(object):
                     )
                 self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
 
+                if self.hierarchy_id in [1]:
+                    self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+
                 self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
 
         # Obser reward and next obs
@@ -346,7 +349,8 @@ class HierarchyLayer(object):
                 for action_i in range(prediction_rb.size()[0]):
                     if action_i==action_rb[process_i]:
                         continue
-                    self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()*10.0).log()
+                    # self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()*10.0).log()
+                    self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean())
             self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)
 
             '''mask reward bounty, since the final state is start state,
