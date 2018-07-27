@@ -283,6 +283,16 @@ class HierarchyLayer(object):
             )
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
+        if args.test and self.hierarchy_id in [0]:
+            self.cpu_actions[0] = int(
+                input(
+                    '[Macro Action {}, actual action {}], Act: '.format(
+                        utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
+                        self.cpu_actions[0],
+                    )
+                )
+            )
+
         self.actions_to_step = self.cpu_actions
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
@@ -316,6 +326,12 @@ class HierarchyLayer(object):
 
                 if self.hierarchy_id in [1]:
                     self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+                    if args.test:
+                        self.actions_to_step[0] = int(
+                            input(
+                                'Macro Action: '
+                            )
+                        )
 
                 self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
 
@@ -350,7 +366,6 @@ class HierarchyLayer(object):
                     if action_i==action_rb[process_i]:
                         continue
                     self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()*10.0).log()
-                    # self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean())
             self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)
 
             '''mask reward bounty, since the final state is start state,
@@ -366,6 +381,14 @@ class HierarchyLayer(object):
         if is_final_step_by_upper_layer:
             '''mask it and stop reward function'''
             self.masks = self.masks * 0.0
+
+        if args.test and self.hierarchy_id in [0]:
+            print('[reward {} ][reward_bounty {}][done {}][masks {}]'.format(
+                self.reward_raw_OR_reward[0],
+                self.reward_bounty[0],
+                self.done[0],
+                self.masks[0].item(),
+            ))
 
         self.reward_final = self.reward + (args.reward_bounty*self.reward_bounty)
 
