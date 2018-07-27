@@ -201,8 +201,7 @@ class OverCooked(gym.Env):
             self.leg_position[self.leg_id][1] = self.leg_position[self.leg_id][1]+self.state[self.leg_id][1]
 
         if self.leg_move_count%4 == 0:
-            if self.eposide_length < self.episode_length_limit:
-                reward = -6.5
+            reward = -6.5
 
         if 0 not in self.action_mem:
             action_box = np.unique(self.action_mem)
@@ -358,6 +357,7 @@ class OverCooked(gym.Env):
 
         if self.episode_length_limit > 0:
             if self.eposide_length >= self.episode_length_limit:
+                reward = 0.0
                 done = True
 
         return obs, reward, done, {}
