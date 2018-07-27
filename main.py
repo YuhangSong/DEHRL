@@ -347,7 +347,10 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
             self.reward_raw = self.reward_raw_OR_reward.astype(float)
-            self.reward = np.sign(self.reward_raw)
+
+            # DEBUG:
+            # self.reward = np.sign(self.reward_raw)
+            self.reward = self.reward_raw
         else:
             '''otherwise, this is reward'''
             self.reward = self.reward_raw_OR_reward

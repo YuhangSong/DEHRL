@@ -92,8 +92,10 @@ class PPO(object):
         elif update_type in ['transition_model']:
             epoch_loss['mse'] = 0
             epoch = self.this_layer.args.transition_model_epoch
-            if args.this_layer.update_i in [0]:
-                print('[H-{}]First time train transition_model')
+            if self.this_layer.update_i in [0]:
+                print('[H-{}]First time train transition_model'.format(
+                    self.this_layer.hierarchy_id,
+                ))
                 epoch *= 10
 
         else:
@@ -120,8 +122,9 @@ class PPO(object):
                     recent_steps = int(self.this_layer.rollouts.num_steps/self.this_layer.hierarchy_interval)-1,
                     recent_at = self.upper_layer.step_i,
                 )
-                if args.this_layer.update_i in [0]:
+                if self.this_layer.update_i in [0]:
                     print('[H-{}]First time train transition_model, epoch {}'.format(
+                        self.this_layer.hierarchy_id,
                         e,
                     ))
 
