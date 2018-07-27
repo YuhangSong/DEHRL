@@ -96,7 +96,7 @@ class PPO(object):
                 print('[H-{}]First time train transition_model'.format(
                     self.this_layer.hierarchy_id,
                 ))
-                epoch *= 10
+                epoch *= 200
 
         else:
             raise Exception('Not Supported')
@@ -110,6 +110,9 @@ class PPO(object):
 
         for e in range(epoch):
 
+            for epoch_loss_name in epoch_loss.keys():
+                epoch_loss[epoch_loss_name] = 0.0
+
             if update_type in ['actor_critic']:
                 data_generator = self.this_layer.rollouts.feed_forward_generator(
                     advantages = advantages,
@@ -122,11 +125,6 @@ class PPO(object):
                     recent_steps = int(self.this_layer.rollouts.num_steps/self.this_layer.hierarchy_interval)-1,
                     recent_at = self.upper_layer.step_i,
                 )
-                if self.this_layer.update_i in [0]:
-                    print('[H-{}]First time train transition_model, epoch {}'.format(
-                        self.this_layer.hierarchy_id,
-                        e,
-                    ))
 
             for sample in data_generator:
 
@@ -265,7 +263,6 @@ class PPO(object):
 
                         self.optimizer_actor_critic.step()
 
-
                 elif update_type in ['transition_model']:
 
                     self.optimizer_transition_model.zero_grad()
@@ -325,5 +322,13 @@ class PPO(object):
                     self.optimizer_transition_model.step()
 
                     epoch_loss['mse'] += mse_loss.item()
+
+            if update_type in ['transition_model']:
+                if self.this_layer.update_i in [0]:
+                    print('[H-{}] First time train transition_model, epoch {}, mse_loss {}.'.format(
+                        self.this_layer.hierarchy_id,
+                        e,
+                        epoch_loss['mse'],
+                    ))
 
         return epoch_loss

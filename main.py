@@ -348,8 +348,7 @@ class HierarchyLayer(object):
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
             self.reward_raw = self.reward_raw_OR_reward.astype(float)
 
-            # DEBUG:
-            # self.reward = np.sign(self.reward_raw)
+            self.reward = np.sign(self.reward_raw)
             self.reward = self.reward_raw
         else:
             '''otherwise, this is reward'''
@@ -368,8 +367,8 @@ class HierarchyLayer(object):
                 for action_i in range(prediction_rb.size()[0]):
                     if action_i==action_rb[process_i]:
                         continue
-                    self.reward_bounty[process_i] += ((obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()*10.0).log()
-            self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)
+                    self.reward_bounty[process_i] += (obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()
+            self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
             and the estimation from transition model is not accurate'''
@@ -401,7 +400,7 @@ class HierarchyLayer(object):
                 ))
 
 
-        self.reward_final = self.reward + (args.reward_bounty*self.reward_bounty)
+        self.reward_final = self.reward + self.reward_bounty
 
         if not env_0_sleeping:
             self.step_summary_from_env_0()
