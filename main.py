@@ -386,12 +386,20 @@ class HierarchyLayer(object):
             self.masks = self.masks * 0.0
 
         if args.test and self.hierarchy_id in [0]:
-            print('[reward {} ][reward_bounty {}][done {}][masks {}]'.format(
-                self.reward_raw_OR_reward[0],
-                self.reward_bounty[0],
-                self.done[0],
-                self.masks[0].item(),
-            ))
+            if args.reward_bounty > 0.0:
+                print('[reward {} ][reward_bounty {}][done {}][masks {}]'.format(
+                    self.reward_raw_OR_reward[0],
+                    self.reward_bounty[0],
+                    self.done[0],
+                    self.masks[0].item(),
+                ))
+            if args.use_fake_reward_bounty:
+                print('[reward {} ][done {}][masks {}]'.format(
+                    self.reward_raw_OR_reward[0],
+                    self.done[0],
+                    self.masks[0].item(),
+                ))
+
 
         self.reward_final = self.reward + (args.reward_bounty*self.reward_bounty)
 
