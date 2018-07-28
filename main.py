@@ -454,10 +454,10 @@ class HierarchyLayer(object):
                     self.update_type = 'transition_model'
                     self.deterministic = True
 
-                '''top layer do not have a transition_model'''
-                if self.hierarchy_id in [args.num_hierarchy-1]:
-                    self.update_type = 'actor_critic'
-                    self.deterministic = False
+            '''top layer do not have a transition_model'''
+            if self.hierarchy_id in [args.num_hierarchy-1]:
+                self.update_type = 'actor_critic'
+                self.deterministic = False
 
         else:
             '''there is no transition_model'''
