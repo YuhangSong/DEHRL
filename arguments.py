@@ -89,6 +89,9 @@ def get_args():
                         help='type of encourage_ac_connection: gradients_reward, preserve_prediction' )
     parser.add_argument('--encourage-ac-connection-coefficient', type=float,
                         help='coefficient of encourage-ac-connection')
+    parser.add_argument('--train-mode', type=str,
+                        help='train mode for transition_model and actor_critic: switch, together' )
+
 
     '''for log behavior'''
     parser.add_argument('--log-behavior-interval', type=int, default=10,
@@ -103,8 +106,7 @@ def get_args():
                         help='')
 
     args = parser.parse_args()
-    args.transition_model_mini_batch_size = int(args.actor_critic_mini_batch_size/4)
-    args.transition_model_epoch = int(args.actor_critic_epoch*8)
+    args.transition_model_epoch = int(args.actor_critic_epoch)
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
@@ -130,8 +132,9 @@ def get_args():
     args.save_dir = os.path.join(args.save_dir, 'a_c_e-{}'.format(args.actor_critic_epoch))
     if args.reward_bounty > 0.0:
         '''transition_model training details'''
-        args.save_dir = os.path.join(args.save_dir, 't_m_m_b_s-{}'.format(args.transition_model_mini_batch_size))
         args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
+        '''train mode'''
+        args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
 
     if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
         '''for encourage_ac_connection'''

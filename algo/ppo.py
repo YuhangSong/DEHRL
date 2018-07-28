@@ -79,56 +79,40 @@ class PPO(object):
 
     def update(self, update_type):
 
-        epoch_loss = {}
+        epoch_loss_final = {}
 
-        if update_type in ['actor_critic']:
+        '''train actor_critic'''
+        if update_type in ['actor_critic','both']:
+
+            '''compute advantages'''
             advantages = self.this_layer.rollouts.returns[:-1] - self.this_layer.rollouts.value_preds[:-1]
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
+
+            '''prepare epoch_loss'''
+            epoch_loss = {}
             epoch_loss['value'] = 0
             epoch_loss['action'] = 0
             epoch_loss['dist_entropy'] = 0
+            if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
+                epoch_loss['actor_critic_{}'.format(self.this_layer.args.encourage_ac_connection_type)] = 0.0
+                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
+                    epoch_loss['actor_critic_preserve_prediction_values'] = 0
+                    epoch_loss['actor_critic_preserve_prediction_dist_features'] = 0
+
+            '''prepare epoch'''
             epoch = self.this_layer.args.actor_critic_epoch
 
-        elif update_type in ['transition_model']:
-            epoch_loss['mse'] = 0
-            epoch = self.this_layer.args.transition_model_epoch
-            if self.this_layer.update_i in [0]:
-                print('[H-{}]First time train transition_model'.format(
-                    self.this_layer.hierarchy_id,
-                ))
-                epoch *= 200
+            for e in range(epoch):
 
-        else:
-            raise Exception('Not Supported')
+                for epoch_loss_name in epoch_loss.keys():
+                    epoch_loss[epoch_loss_name] = 0.0
 
-        if self.this_layer.args.encourage_ac_connection in ['transition_model','actor_critic','both']:
-            if update_type in [self.this_layer.args.encourage_ac_connection]:
-                epoch_loss[self.this_layer.args.encourage_ac_connection_type] = 0
-                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
-                    epoch_loss['preserve_prediction_values'] = 0
-                    epoch_loss['preserve_prediction_dist_features'] = 0
-
-        for e in range(epoch):
-
-            for epoch_loss_name in epoch_loss.keys():
-                epoch_loss[epoch_loss_name] = 0.0
-
-            if update_type in ['actor_critic']:
                 data_generator = self.this_layer.rollouts.feed_forward_generator(
                     advantages = advantages,
                     mini_batch_size = self.this_layer.args.actor_critic_mini_batch_size,
                 )
 
-            elif update_type in ['transition_model']:
-                data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
-                    mini_batch_size = self.this_layer.args.transition_model_mini_batch_size,
-                    recent_steps = int(self.this_layer.rollouts.num_steps/self.this_layer.hierarchy_interval)-1,
-                    recent_at = self.upper_layer.step_i,
-                )
-
-            for sample in data_generator:
-
-                if update_type in ['actor_critic']:
+                for sample in data_generator:
 
                     self.optimizer_actor_critic.zero_grad()
 
@@ -263,7 +247,39 @@ class PPO(object):
 
                         self.optimizer_actor_critic.step()
 
-                elif update_type in ['transition_model']:
+            epoch_loss_final.update(epoch_loss)
+
+        '''train transition_model'''
+        if update_type in ['transition_model','both']:
+
+            '''prepare epoch_loss'''
+            epoch_loss = {}
+            epoch_loss['mse'] = 0
+            if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
+                epoch_loss['actor_critic_{}'.format(self.this_layer.args.encourage_ac_connection_type)] = 0.0
+                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
+                    raise NotImplementedError
+
+            '''prepare epoch'''
+            epoch = self.this_layer.args.transition_model_epoch
+            if self.this_layer.update_i in [0]:
+                print('[H-{}]First time train transition_model'.format(
+                    self.this_layer.hierarchy_id,
+                ))
+                epoch *= 200
+
+            for e in range(epoch):
+
+                for epoch_loss_name in epoch_loss.keys():
+                    epoch_loss[epoch_loss_name] = 0.0
+
+                data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
+                    mini_batch_size = int(self.this_layer.args.actor_critic_mini_batch_size/self.this_layer.hierarchy_interval),
+                    recent_steps = int(self.this_layer.rollouts.num_steps/self.this_layer.hierarchy_interval)-1,
+                    recent_at = self.upper_layer.step_i,
+                )
+
+                for sample in data_generator:
 
                     self.optimizer_transition_model.zero_grad()
 
@@ -323,7 +339,6 @@ class PPO(object):
 
                     epoch_loss['mse'] += mse_loss.item()
 
-            if update_type in ['transition_model']:
                 if self.this_layer.update_i in [0]:
                     print('[H-{}] First time train transition_model, epoch {}, mse_loss {}.'.format(
                         self.this_layer.hierarchy_id,
@@ -331,4 +346,6 @@ class PPO(object):
                         epoch_loss['mse'],
                     ))
 
-        return epoch_loss
+                epoch_loss_final.update(epoch_loss)
+
+        return epoch_loss_final

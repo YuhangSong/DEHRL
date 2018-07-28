@@ -436,16 +436,36 @@ class HierarchyLayer(object):
 
     def refresh_update_type(self):
         if args.reward_bounty > 0.0:
-            if (self.update_i%2 == 1) or (self.hierarchy_id in [args.num_hierarchy-1]):
-                self.update_type = 'actor_critic'
+
+            if args.train_mode in ['together']:
+                '''train_mode is together'''
+
+                self.update_type = 'both'
                 self.deterministic = False
-            else:
-                self.update_type = 'transition_model'
-                self.deterministic = True
+
+            elif args.train_mode in ['switch']:
+                '''train_mode is switch'''
+
+                '''switch training between actor_critic and transition_model'''
+                if self.update_i%2 == 1:
+                    self.update_type = 'actor_critic'
+                    self.deterministic = False
+                else:
+                    self.update_type = 'transition_model'
+                    self.deterministic = True
+
+                '''top layer do not have a transition_model'''
+                if self.hierarchy_id in [args.num_hierarchy-1]:
+                    self.update_type = 'actor_critic'
+                    self.deterministic = False
+
         else:
+            '''there is no transition_model'''
+
             self.update_type = 'actor_critic'
             self.deterministic = False
 
+        '''overwrite if args.act_deterministically'''
         if args.act_deterministically:
             self.deterministic = True
 
@@ -454,7 +474,7 @@ class HierarchyLayer(object):
         according to the experiences stored in self.rollouts'''
 
         '''prepare rollouts for updating actor_critic'''
-        if self.update_type in ['actor_critic']:
+        if self.update_type in ['actor_critic','both']:
             with torch.no_grad():
                 self.next_value = self.actor_critic.get_value(
                     inputs=self.rollouts.observations[-1],
@@ -501,11 +521,6 @@ class HierarchyLayer(object):
                     episode_reward_type,
                     self.final_reward[episode_reward_type]
                 )
-
-            # print_string += ', update {}, deterministic act {}'.format(
-            #     self.update_type,
-            #     self.deterministic,
-            # )
 
             if self.hierarchy_id in [0]:
                 print_string += ', remaining {:4.1f} hours'.format(
