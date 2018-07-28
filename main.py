@@ -187,7 +187,7 @@ class HierarchyLayer(object):
         try:
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
-                self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
+                # self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
                 print('[H-{:1}] Load actor_critic previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
                 print('[H-{:1}] Load actor_critic previous point: Failed, due to {}'.format(self.hierarchy_id,e))
@@ -468,6 +468,9 @@ class HierarchyLayer(object):
         '''overwrite if args.act_deterministically'''
         if args.act_deterministically:
             self.deterministic = True
+            
+        self.update_type = 'actor_critic'
+        self.deterministic = False
 
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
