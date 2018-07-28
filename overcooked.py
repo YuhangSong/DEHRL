@@ -33,6 +33,7 @@ class OverCooked(gym.Env):
         self.goal_num = 4
         self.eposide_length = 0
         self.action_count = np.zeros(4)
+        self.leg_count = np.zeros(self.leg_num*4+1)
         self.info = {}
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
@@ -172,6 +173,8 @@ class OverCooked(gym.Env):
         self.eposide_length += 1
         reward = 0
         if action_id<17:
+
+            self.leg_count[action_id] += 1
             self.leg_move_count += 1
             self.leg_id = int((action_id - 1) / 4)
             action = action_id-self.leg_id*4
@@ -362,6 +365,7 @@ class OverCooked(gym.Env):
                 reward = 0.0
                 done = True
         self.info['action_count'] = self.action_count
+        self.info['leg_count'] = self.leg_count
 
         return obs, reward, done, self.info
 
@@ -434,6 +438,8 @@ class OverCooked(gym.Env):
         self.cur_goal = np.zeros(self.goal_num)
         self.goal_ram = np.zeros(self.goal_num)
         self.leg_move_count = 0
+        # self.action_count = np.zeros(4)
+        self.leg_count = np.zeros(self.leg_num*4+1)
 
         if self.args.reward_level == 1:
             self.single_goal = np.random.randint(0,self.goal_num)

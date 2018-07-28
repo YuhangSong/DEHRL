@@ -187,7 +187,7 @@ class HierarchyLayer(object):
         try:
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
-                # self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
+                self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
                 print('[H-{:1}] Load actor_critic previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
                 print('[H-{:1}] Load actor_critic previous point: Failed, due to {}'.format(self.hierarchy_id,e))
@@ -468,9 +468,9 @@ class HierarchyLayer(object):
         '''overwrite if args.act_deterministically'''
         if args.act_deterministically:
             self.deterministic = True
-            
-        self.update_type = 'actor_critic'
-        self.deterministic = False
+
+        # self.update_type = 'actor_critic'
+        # self.deterministic = False
 
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
@@ -512,15 +512,11 @@ class HierarchyLayer(object):
         '''print info'''
         if self.update_i % args.log_interval == 0:
             self.end = time.time()
-            action_count = np.zeros(4)
-            for info_index in range(len(self.info)):
-                action_count += self.info[info_index]['action_count']
 
-            print_string = "[H-{:1}][{:9}/{}], FPS {:4}, action_np:{}".format(
+            print_string = "[H-{:1}][{:9}/{}], FPS {:4}".format(
                 self.hierarchy_id,
                 self.num_trained_frames, args.num_frames,
                 int((self.num_trained_frames-self.num_trained_frames_at_start) / (self.end - self.start)),
-                action_count,
             )
             print_string += ', final_reward '
             for episode_reward_type in self.episode_reward.keys():
@@ -539,6 +535,31 @@ class HierarchyLayer(object):
         if self.update_i % args.vis_interval == 0:
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
+            action_count = np.zeros(4)
+            for info_index in range(len(self.info)):
+                action_count += self.info[info_index]['action_count']
+            leg_count = np.zeros(17)
+            for leg_index in range(len(self.info)):
+                leg_count += self.info[leg_index]['leg_count']
+
+            if self.hierarchy_id in [0]:
+                for index_action in range(4):
+                    self.summary.value.add(
+                        tag = 'hierarchy_{}/action_{}'.format(
+                            0,
+                            index_action,
+                        ),
+                        simple_value = action_count[index_action],
+                    )
+
+                for index_leg in range(17):
+                    self.summary.value.add(
+                        tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
+                            0,
+                            index_leg,
+                        ),
+                        simple_value = leg_count[index_leg],
+                    )
 
             for episode_reward_type in self.episode_reward.keys():
                 self.summary.value.add(
