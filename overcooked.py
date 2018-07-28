@@ -32,6 +32,8 @@ class OverCooked(gym.Env):
         self.leg_num = 4
         self.goal_num = 4
         self.eposide_length = 0
+        self.action_count = np.zeros(4)
+        self.info = {}
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
         self.move_discount = 10
@@ -210,28 +212,28 @@ class OverCooked(gym.Env):
 
                 if body_action == 1:
                     self.position[0] = self.position[0]+self.screen_width/self.move_discount
-
+                    self.action_count[0] += 1
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 0:
                             reward = 1.0
 
                 elif body_action == 2:
                     self.position[0] = self.position[0]-self.screen_width/self.move_discount
-
+                    self.action_count[1] += 1
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 1:
                             reward = 1.0
 
                 elif body_action == 3:
                     self.position[1] = self.position[1]+self.screen_height/self.move_discount
-
+                    self.action_count[2] += 1
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 2:
                             reward = 1.0
 
                 elif body_action == 4:
                     self.position[1] = self.position[1]-self.screen_height/self.move_discount
-
+                    self.action_count[3] += 1
                     if self.args.use_fake_reward_bounty:
                         if action_list[1] == 3:
                             reward = 1.0
@@ -359,8 +361,9 @@ class OverCooked(gym.Env):
             if self.eposide_length >= self.episode_length_limit:
                 reward = 0.0
                 done = True
+        self.info['action_count'] = self.action_count
 
-        return obs, reward, done, {}
+        return obs, reward, done, self.info
 
     def obs(self):
         if self.args.obs_type == 'ram':

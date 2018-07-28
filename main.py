@@ -509,12 +509,16 @@ class HierarchyLayer(object):
         '''print info'''
         if self.update_i % args.log_interval == 0:
             self.end = time.time()
-            print_string = "[H-{:1}][{:9}/{}], FPS {:4}".format(
+            action_count = np.zeros(4)
+            for info_index in range(len(self.info)):
+                action_count += self.info[info_index]['action_count']
+
+            print_string = "[H-{:1}][{:9}/{}], FPS {:4}, action_np:{}".format(
                 self.hierarchy_id,
                 self.num_trained_frames, args.num_frames,
                 int((self.num_trained_frames-self.num_trained_frames_at_start) / (self.end - self.start)),
+                action_count,
             )
-
             print_string += ', final_reward '
             for episode_reward_type in self.episode_reward.keys():
                 print_string += '[{}:{:8.2f}]'.format(
