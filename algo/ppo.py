@@ -228,20 +228,21 @@ class PPO(object):
                             input_action = input_actions_batch,
                         )
 
-                        preserve_prediction_values = F.mse_loss(
-                            input = values,
-                            target = self.preserve_values,
-                        )
-                        epoch_loss['preserve_prediction_values'] += preserve_prediction_values.item()
+                        # preserve_prediction_values = F.mse_loss(
+                        #     input = values,
+                        #     target = self.preserve_values,
+                        # )
+                        # epoch_loss['actor_critic_preserve_prediction_values'] += preserve_prediction_values.item()
 
                         preserve_prediction_dist_features = F.mse_loss(
                             input = dist_features,
                             target = self.preserve_dist_features,
                         )
-                        epoch_loss['preserve_prediction_dist_features'] += preserve_prediction_dist_features.item()
+                        epoch_loss['actor_critic_preserve_prediction_dist_features'] += preserve_prediction_dist_features.item()
 
-                        preserve_prediction_loss = (preserve_prediction_values+preserve_prediction_dist_features)*self.this_layer.args.encourage_ac_connection_coefficient
-                        epoch_loss['preserve_prediction'] += preserve_prediction_loss.item()
+                        # preserve_prediction_loss = (preserve_prediction_values+preserve_prediction_dist_features)*self.this_layer.args.encourage_ac_connection_coefficient
+                        preserve_prediction_loss = (preserve_prediction_dist_features)*self.this_layer.args.encourage_ac_connection_coefficient
+                        epoch_loss['actor_critic_preserve_prediction'] += preserve_prediction_loss.item()
 
                         preserve_prediction_loss.backward()
 
@@ -255,7 +256,7 @@ class PPO(object):
             '''prepare epoch_loss'''
             epoch_loss = {}
             epoch_loss['mse'] = 0
-            if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
+            if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
                 epoch_loss['actor_critic_{}'.format(self.this_layer.args.encourage_ac_connection_type)] = 0.0
                 if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
                     raise NotImplementedError
