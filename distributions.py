@@ -39,25 +39,26 @@ class Categorical(nn.Module):
               lambda x: nn.init.constant_(x, 0),
               gain=0.01)
 
-        # if self.interval is None:
-        #     self.linear = init_(nn.Linear(num_inputs, num_outputs))
-        # else:
-        #     self.linear = []
-        #     for linear_i in range(self.interval):
-        #         self.linear += [init_(nn.Linear(num_inputs, num_outputs))]
-        #     self.linear = nn.ModuleList(self.linear)
+        if self.interval is None:
+            self.linear = init_(nn.Linear(num_inputs, num_outputs))
+        else:
+            self.linear = []
+            for linear_i in range(self.interval):
+                self.linear += [init_(nn.Linear(num_inputs, num_outputs))]
+            self.linear = nn.ModuleList(self.linear)
 
-        self.linear = init_(nn.Linear(num_inputs, num_outputs))
 
     def forward(self, x, index = None):
-        # if self.interval is None:
-        #     x = self.linear(x)
-        # else:
-        #     x = self.linear[index](x)
-
-        x = self.linear(x)
-
-        return FixedCategorical(logits=x), x
+        if self.interval is None:
+            y = self.linear(x)
+        else:
+            for x_i in range(x.size()[0]):
+                try:
+                    y = torch.cat((y,self.linear[index[x_i]](x[x_i]).unsqueeze(0)),0)
+                except Exception as e:
+                    y = self.linear[index[x_i]](x[x_i]).unsqueeze(0)
+            
+        return FixedCategorical(logits=y), y
 
 
 class DiagGaussian(nn.Module):
@@ -68,24 +69,23 @@ class DiagGaussian(nn.Module):
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
 
-        # if self.interval is None:
-        #     self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
-        # else:
-        #     self.fc_mean = []
-        #     for linear_i in range(self.interval):
-        #         self.fc_mean += [init_(nn.Linear(num_inputs, num_outputs))]
-        #     self.fc_mean = nn.ModuleList(self.fc_mean)
-        self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
+        if self.interval is None:
+            self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
+        else:
+            self.fc_mean = []
+            for linear_i in range(self.interval):
+                self.fc_mean += [init_(nn.Linear(num_inputs, num_outputs))]
+            self.fc_mean = nn.ModuleList(self.fc_mean)
 
         self.logstd = AddBias(torch.zeros(num_outputs))
 
     def forward(self, x, index = None):
 
-        # if self.interval is None:
-        #     action_mean = self.fc_mean(x)
-        # else:
-        #     action_mean = self.fc_mean[index](x)
-        action_mean = self.fc_mean(x)
+        if self.interval is None:
+            action_mean = self.fc_mean(x)
+        else:
+            action_mean = self.fc_mean[index](x)
+
         #  An ugly hack for my KFAC implementation.
         zeros = torch.zeros(action_mean.size())
         if x.is_cuda:

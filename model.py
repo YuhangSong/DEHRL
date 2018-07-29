@@ -45,15 +45,14 @@ class Policy(nn.Module):
             raise NotImplementedError
 
         '''build critic model'''
-        # if self.interval is not None:
-        #     self.critic_linear = []
-        #     for linear_i in range(self.interval):
-        #         self.critic_linear += [self.base.linear_init_(nn.Linear(self.base.linear_size, 1))]
-        #     self.critic_linear = nn.ModuleList(self.critic_linear)
-        # else:
-        #     self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
+        if self.interval is not None:
+            self.critic_linear = []
+            for linear_i in range(self.interval):
+                self.critic_linear += [self.base.linear_init_(nn.Linear(self.base.linear_size, 1))]
+            self.critic_linear = nn.ModuleList(self.critic_linear)
+        else:
+            self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
-        self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
         self.input_action_space = input_action_space
 
@@ -63,37 +62,17 @@ class Policy(nn.Module):
             nn.LeakyReLU(),
         )
 
-        if self.interval is not None:
-            self.final_feature_linear_critic = []
-            for linear_i in range(self.interval):
-                self.final_feature_linear_critic += [nn.Sequential(
-                    self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-                    nn.LayerNorm(self.base.linear_size),
-                    nn.LeakyReLU(),
-                )]
-            self.final_feature_linear_critic = nn.ModuleList(self.final_feature_linear_critic)
-        else:
-            self.final_feature_linear_critic = nn.Sequential(
-                self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-                nn.LayerNorm(self.base.linear_size),
-                nn.LeakyReLU(),
-            )
+        self.final_feature_linear_critic = nn.Sequential(
+            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
+            nn.LeakyReLU(),
+        )
 
-        if self.interval is not None:
-            self.final_feature_linear_dist = []
-            for linear_i in range(self.interval):
-                self.final_feature_linear_dist += [nn.Sequential(
-                    self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-                    nn.LayerNorm(self.base.linear_size),
-                    nn.LeakyReLU(),
-                )]
-            self.final_feature_linear_dist = nn.ModuleList(self.final_feature_linear_dist)
-        else:
-            self.final_feature_linear_dist = nn.Sequential(
-                self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-                nn.LayerNorm(self.base.linear_size),
-                nn.LeakyReLU(),
-            )
+        self.final_feature_linear_dist = nn.Sequential(
+            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
+            nn.LayerNorm(self.base.linear_size),
+            nn.LeakyReLU(),
+        )
 
 
     def forward(self, inputs, states, input_action, masks):
@@ -102,48 +81,29 @@ class Policy(nn.Module):
     def get_final_features(self, inputs, states, masks, input_action=None):
         # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
-        final_features = base_features
         # input_action_features = self.input_action_linear(input_action)
-        if self.interval is not None:
-            if torch.sum(input_action)>0:
-                action_index = np.where(input_action==1)[1]
-                for feature_i in range(input_action.size()[0]):
-                    try:
-                        final_features_critic = torch.cat(
-                            (final_features_critic,self.final_feature_linear_critic[action_index[feature_i]](
-                                final_features[feature_i]).unsqueeze(0)
-                            ),0
-                        )
-                    except Exception as e:
-                        final_features_critic = self.final_feature_linear_critic[action_index[feature_i]](final_features[feature_i]).unsqueeze(0)
-
-                    try:
-                        final_features_dist = torch.cat(
-                            (final_features_dist,self.final_feature_linear_dist[action_index[feature_i]](
-                                final_features[feature_i]).unsqueeze(0)
-                            ),0
-                        )
-                    except Exception as e:
-                        final_features_dist = self.final_feature_linear_dist[action_index[feature_i]](final_features[feature_i]).unsqueeze(0)
-            else:
-                '''onehot is all zeros'''
-                final_features_critic = self.final_feature_linear_critic[0](final_features)
-                final_features_dist = self.final_feature_linear_dist[0](final_features)
-        else:
-            final_features_critic = self.final_feature_linear_critic(final_features)
-            final_features_dist = self.final_feature_linear_dist(final_features)
+        final_features = base_features
+        final_features_critic = self.final_feature_linear_critic(final_features)
+        final_features_dist = self.final_feature_linear_dist(final_features)
         return final_features_critic, final_features_dist, states
 
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        value = self.critic_linear(final_features_critic)
-        dist, _ = self.dist(final_features_dist)
-        # if self.interval is None:
-        #     value = self.critic_linear(final_features_critic)
-        #     dist, _ = self.dist(final_features_dist)
-        # else:
-        #     value = self.critic_linear(final_features_critic)
-        #     dist, _ = self.dist(final_features_dist)
+        if self.interval is not None:
+            action_index = np.where(input_action==1)[1]
+            for feature_i in range(input_action.size()[0]):
+                try:
+                    value = torch.cat(
+                        (value,self.critic_linear[action_index[feature_i]](
+                            final_features_critic[feature_i]).unsqueeze(0)
+                        ),0
+                    )
+                except Exception as e:
+                    value = self.critic_linear[action_index[feature_i]](final_features_critic[feature_i]).unsqueeze(0)
+            dist, _ = self.dist(final_features_dist,action_index)
+        else:
+            value = self.critic_linear(final_features_critic)
+            dist, _ = self.dist(final_features_dist)
 
         if deterministic:
             action = dist.mode()
@@ -157,13 +117,41 @@ class Policy(nn.Module):
 
     def get_value(self, inputs, states, masks, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        value = self.critic_linear(final_features_critic)
+        if self.interval is not None:
+            if torch.sum(input_action)>0:
+                action_index = np.where(input_action==1)[1]
+                for feature_i in range(input_action.size()[0]):
+                    try:
+                        value = torch.cat(
+                            (value,self.critic_linear[action_index[feature_i]](
+                                final_features_critic[feature_i]).unsqueeze(0)
+                            ),0
+                        )
+                    except Exception as e:
+                        value = self.critic_linear[action_index[feature_i]](final_features_critic[feature_i]).unsqueeze(0)
+            else:
+                value = self.critic_linear[0](final_features_critic)
+        else:
+            value = self.critic_linear(final_features_critic)
         return value
 
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        value = self.critic_linear(final_features_critic)
-        dist, dist_features = self.dist(final_features_dist)
+        if self.interval is not None:
+            action_index = np.where(input_action==1)[1]
+            for feature_i in range(input_action.size()[0]):
+                try:
+                    value = torch.cat(
+                        (value,self.critic_linear[action_index[feature_i]](
+                            final_features_critic[feature_i]).unsqueeze(0)
+                        ),0
+                    )
+                except Exception as e:
+                    value = self.critic_linear[action_index[feature_i]](final_features_critic[feature_i]).unsqueeze(0)
+            dist, dist_features = self.dist(final_features_dist,action_index)
+        else:
+            value = self.critic_linear(final_features_critic)
+            dist, dist_features = self.dist(final_features_dist)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy()
