@@ -66,7 +66,7 @@ if len(args.num_subpolicy) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
     args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
 '''for top hierarchy layer'''
-args.num_subpolicy += [1]
+args.num_subpolicy += [2]
 
 if len(args.hierarchy_interval) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity hierarchy_interval is not matching args.num_hierarchy, use the first hierarchy_interval for all layers')
@@ -84,6 +84,8 @@ else:
 input_actions_onehot_global = []
 for hierarchy_i in range(args.num_hierarchy):
     input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i]).cuda()]
+
+input_actions_onehot_global[args.num_hierarchy-1][:,0] = 1.0
 
 sess = tf.Session()
 
