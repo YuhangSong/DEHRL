@@ -57,7 +57,7 @@ class Categorical(nn.Module):
                     y = torch.cat((y,self.linear[index[x_i]](x[x_i]).unsqueeze(0)),0)
                 except Exception as e:
                     y = self.linear[index[x_i]](x[x_i]).unsqueeze(0)
-            
+
         return FixedCategorical(logits=y), y
 
 
@@ -84,7 +84,11 @@ class DiagGaussian(nn.Module):
         if self.interval is None:
             action_mean = self.fc_mean(x)
         else:
-            action_mean = self.fc_mean[index](x)
+            for x_i in range(x.size()[0]):
+                try:
+                    action_mean = torch.cat((action_mean,self.linear[index[x_i]](x[x_i]).unsqueeze(0)),0)
+                except Exception as e:
+                    action_mean = self.linear[index[x_i]](x[x_i]).unsqueeze(0)
 
         #  An ugly hack for my KFAC implementation.
         zeros = torch.zeros(action_mean.size())
