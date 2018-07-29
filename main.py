@@ -125,6 +125,7 @@ class HierarchyLayer(object):
             input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
+            interval = self.hierarchy_interval,
         ).cuda()
 
         if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
@@ -375,6 +376,12 @@ class HierarchyLayer(object):
             self.reward_bounty *= self.masks.squeeze()
             '''convert to numpy'''
             self.reward_bounty = self.reward_bounty.cpu().numpy()
+
+            # for reward_i in range(args.num_processes):
+            #     if self.reward_bounty[reward_i]>10:
+            #         self.reward_bounty[reward_i] = 1
+            #     else:
+            #         self.reward_bounty[reward_i] = 0
 
         else:
             self.reward_bounty = np.copy(self.reward)

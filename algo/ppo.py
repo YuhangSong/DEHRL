@@ -93,6 +93,7 @@ class PPO(object):
             epoch_loss['value'] = 0
             epoch_loss['action'] = 0
             epoch_loss['dist_entropy'] = 0
+            epoch_loss['gradients_reward'] = 0
             if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
                 epoch_loss['actor_critic_{}'.format(self.this_layer.args.encourage_ac_connection_type)] = 0.0
                 if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
@@ -179,6 +180,9 @@ class PPO(object):
 
                     value_loss = F.mse_loss(return_batch, values) * self.this_layer.args.value_loss_coef
 
+                    if self.actor_critic_gradients_reward:
+                        dist_entropy_before_mean = dist_entropy
+
                     dist_entropy = dist_entropy.mean() * self.this_layer.args.entropy_coef
 
                     final_loss = value_loss + action_loss - dist_entropy
@@ -191,7 +195,7 @@ class PPO(object):
 
                         gradients_norm = self.get_grad_norm(
                             inputs = input_actions_batch,
-                            outputs = values,
+                            outputs = dist_entropy_before_mean,
                         )
                         gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
                         epoch_loss['gradients_reward'] += gradients_reward.item()
@@ -255,6 +259,7 @@ class PPO(object):
             '''prepare epoch_loss'''
             epoch_loss = {}
             epoch_loss['mse'] = 0
+            epoch_loss['gradients_reward'] = 0
             if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
                 epoch_loss['actor_critic_{}'.format(self.this_layer.args.encourage_ac_connection_type)] = 0.0
                 if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
