@@ -234,13 +234,13 @@ class TransitionModel(nn.Module):
 
         self.conv = nn.Sequential(
             self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
-            nn.BatchNorm2d(32),
+            # nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.BatchNorm2d(64),
+            # nn.BatchNorm2d(64),
             nn.LeakyReLU(),
             self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.BatchNorm2d(32),
+            # nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             Flatten(),
             self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
@@ -251,20 +251,20 @@ class TransitionModel(nn.Module):
         self.input_action_space = input_action_space
         self.input_action_linear = nn.Sequential(
             self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
-            nn.BatchNorm1d(self.linear_size),
+            # nn.BatchNorm1d(self.linear_size),
             nn.LeakyReLU(),
         )
 
         self.deconv = nn.Sequential(
             self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
-            nn.BatchNorm1d(32 * 7 * 7),
+            # nn.BatchNorm1d(32 * 7 * 7),
             nn.LeakyReLU(),
             DeFlatten((32,7,7)),
             self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
-            nn.BatchNorm2d(64),
+            # nn.BatchNorm2d(64),
             nn.LeakyReLU(),
             self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
-            nn.BatchNorm2d(32),
+            # nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_space.shape[0], 8, stride=4)),
             # output do not normalize
@@ -273,7 +273,8 @@ class TransitionModel(nn.Module):
 
     def forward(self, inputs, input_action):
         before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
-        return self.deconv(before_deconv)*255.0, before_deconv
+        deconved = self.deconv(before_deconv)
+        return deconved*255.0, before_deconv
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)
