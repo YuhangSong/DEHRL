@@ -47,8 +47,6 @@ def get_args():
                         help='number of frames to stack (default: 4)')
     parser.add_argument('--log-interval', type=int, default=1,
                         help='log interval, one log per n updates')
-    parser.add_argument('--save-interval', type=int, default=100,
-                        help='save interval, one save per n updates')
     parser.add_argument('--vis-interval', type=int, default=1,
                         help='vis interval, one log per n updates')
     parser.add_argument('--num-frames', type=int, default=10e7,
@@ -96,6 +94,8 @@ def get_args():
     '''for log behavior'''
     parser.add_argument('--log-behavior-interval', type=int, default=10,
                         help='log behavior every x minutes')
+    parser.add_argument('--save-interval', type=int, default=10,
+                        help='save interval every x minutes')
     parser.add_argument('--act-deterministically', action='store_true',
                         help='if act deterministically when interactiong')
 

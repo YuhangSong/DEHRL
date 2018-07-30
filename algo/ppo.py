@@ -341,11 +341,10 @@ class PPO(object):
                     epoch_loss['mse'] += mse_loss.item()
 
                 if self.this_layer.update_i in [0]:
-                    print('[H-{}] First time train transition_model: [epoch {}][mse_loss {}][gradients_reward {}]'.format(
+                    print('[H-{}] First time train transition_model: [epoch {}][mse_loss {}]'.format(
                         self.this_layer.hierarchy_id,
                         e,
                         epoch_loss['mse'],
-                        epoch_loss['transition_model_gradients_reward'],
                     ))
 
                 epoch_loss_final.update(epoch_loss)

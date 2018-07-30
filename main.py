@@ -199,7 +199,7 @@ class HierarchyLayer(object):
                     print('[H-{:1}] Load transition_model previous point: Failed, due to {}'.format(self.hierarchy_id,e))
         except Exception as e:
             self.num_trained_frames = 0
-        print('[H-{:1}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
+        print('[H-{:1}] Models have been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
         self.num_trained_frames_at_start = self.num_trained_frames
 
         self.start = time.time()
@@ -209,6 +209,7 @@ class HierarchyLayer(object):
         self.refresh_update_type()
 
         self.last_time_log_behavior = time.time()
+        self.last_time_save_models = time.time()
         self.log_behavior = True
         self.episode_visilize_stack = {}
 
@@ -392,7 +393,7 @@ class HierarchyLayer(object):
                         upper = prob
                     downer += prob
                 self.reward_bounty[process_i] = upper/downer
-            self.reward_bounty = (self.reward_bounty-1.0/prediction_rb.size()[0])*args.reward_bounty
+            self.reward_bounty = self.reward_bounty*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
             and the estimation from transition model is not accurate'''
@@ -535,7 +536,8 @@ class HierarchyLayer(object):
         self.rollouts.after_update()
 
         '''save checkpoint'''
-        if self.update_i % args.save_interval == 0 and args.save_dir != "":
+        if (time.time()-self.last_time_save_models)/60.0 > args.save_interval:
+            self.last_time_save_models = time.time()
             try:
                 np.save(
                     args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
