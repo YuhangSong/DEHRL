@@ -257,7 +257,7 @@ class PPO(object):
             epoch_loss = {}
             epoch_loss['mse'] = 0
             if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
-                epoch_loss['actor_critic_{}'.format(self.this_layer.args.encourage_ac_connection_type)] = 0.0
+                epoch_loss['transition_model_{}'.format(self.this_layer.args.encourage_ac_connection_type)] = 0.0
                 if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
                     raise NotImplementedError
 
@@ -267,7 +267,7 @@ class PPO(object):
                 print('[H-{}]First time train transition_model'.format(
                     self.this_layer.hierarchy_id,
                 ))
-                # epoch *= 200
+                epoch *= 200
 
             for e in range(epoch):
 
@@ -333,7 +333,7 @@ class PPO(object):
                                 outputs = predicted_next_observations_batch,
                             )
                             gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
-                            epoch_loss['gradients_reward'] += gradients_reward.item()
+                            epoch_loss['transition_model_gradients_reward'] += gradients_reward.item()
                             gradients_reward.backward(self.mone)
 
                     self.optimizer_transition_model.step()
@@ -341,10 +341,11 @@ class PPO(object):
                     epoch_loss['mse'] += mse_loss.item()
 
                 if self.this_layer.update_i in [0]:
-                    print('[H-{}] First time train transition_model, epoch {}, mse_loss {}.'.format(
+                    print('[H-{}] First time train transition_model: [epoch {}][mse_loss {}][gradients_reward {}]'.format(
                         self.this_layer.hierarchy_id,
                         e,
                         epoch_loss['mse'],
+                        epoch_loss['transition_model_gradients_reward'],
                     ))
 
                 epoch_loss_final.update(epoch_loss)
