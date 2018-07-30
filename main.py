@@ -35,8 +35,8 @@ torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
 
 try:
-    print('Dir empty, making new log dir...')
     os.makedirs(args.save_dir)
+    print('Dir empty, making new log dir...')
 except Exception as e:
     if e.__class__.__name__ in ['FileExistsError']:
         print('Dir exsit, checking checkpoint...')
