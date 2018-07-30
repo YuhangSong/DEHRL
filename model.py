@@ -90,16 +90,21 @@ class Policy(nn.Module):
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
         if self.interval is not None:
+            index_dic = {}
+            tensor_dic = {}
+            y_dic = {}
             action_index = np.where(input_action==1)[1]
-            for feature_i in range(input_action.size()[0]):
-                try:
-                    value = torch.cat(
-                        (value,self.critic_linear[action_index[feature_i]](
-                            final_features_critic[feature_i]).unsqueeze(0)
-                        ),0
-                    )
-                except Exception as e:
-                    value = self.critic_linear[action_index[feature_i]](final_features_critic[feature_i]).unsqueeze(0)
+            for dic_i in range(self.interval):
+                index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
+                if index_dic[str(dic_i)].size()[0] != 0:
+                    tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
+                    y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
+
+            value = torch.zeros((input_action.size()[0],1)).cuda()
+            for y_i in range(self.interval):
+                if str(y_i) in y_dic:
+                    value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
+
             dist, _ = self.dist(final_features_dist,action_index)
         else:
             value = self.critic_linear(final_features_critic)
@@ -119,16 +124,20 @@ class Policy(nn.Module):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
         if self.interval is not None:
             if torch.sum(input_action)>0:
+                index_dic = {}
+                tensor_dic = {}
+                y_dic = {}
                 action_index = np.where(input_action==1)[1]
-                for feature_i in range(input_action.size()[0]):
-                    try:
-                        value = torch.cat(
-                            (value,self.critic_linear[action_index[feature_i]](
-                                final_features_critic[feature_i]).unsqueeze(0)
-                            ),0
-                        )
-                    except Exception as e:
-                        value = self.critic_linear[action_index[feature_i]](final_features_critic[feature_i]).unsqueeze(0)
+                for dic_i in range(self.interval):
+                    index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
+                    if index_dic[str(dic_i)].size()[0] != 0:
+                        tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
+                        y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
+
+                value = torch.zeros((input_action.size()[0],1)).cuda()
+                for y_i in range(self.interval):
+                    if str(y_i) in y_dic:
+                        value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
             else:
                 value = self.critic_linear[0](final_features_critic)
         else:
@@ -138,16 +147,20 @@ class Policy(nn.Module):
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
         if self.interval is not None:
+            index_dic = {}
+            tensor_dic = {}
+            y_dic = {}
             action_index = np.where(input_action==1)[1]
-            for feature_i in range(input_action.size()[0]):
-                try:
-                    value = torch.cat(
-                        (value,self.critic_linear[action_index[feature_i]](
-                            final_features_critic[feature_i]).unsqueeze(0)
-                        ),0
-                    )
-                except Exception as e:
-                    value = self.critic_linear[action_index[feature_i]](final_features_critic[feature_i]).unsqueeze(0)
+            for dic_i in range(self.interval):
+                index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
+                if index_dic[str(dic_i)].size()[0] != 0:
+                    tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
+                    y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
+
+            value = torch.zeros((input_action.size()[0],1)).cuda()
+            for y_i in range(self.interval):
+                if str(y_i) in y_dic:
+                    value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
             dist, dist_features = self.dist(final_features_dist,action_index)
         else:
             value = self.critic_linear(final_features_critic)

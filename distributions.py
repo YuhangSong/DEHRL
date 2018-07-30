@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utils import init, init_normc_, AddBias
+import numpy as np
 
 """
 Modify standard PyTorch distributions so they are compatible with this code.
@@ -46,19 +47,29 @@ class Categorical(nn.Module):
             for linear_i in range(self.interval):
                 self.linear += [init_(nn.Linear(num_inputs, num_outputs))]
             self.linear = nn.ModuleList(self.linear)
+            self.index_dic = {}
+            self.tensor_dic = {}
+            self.y_dic = {}
+            self.num_outputs = num_outputs
 
 
     def forward(self, x, index = None):
         if self.interval is None:
-            y = self.linear(x)
+            y_ = self.linear(x)
         else:
-            for x_i in range(x.size()[0]):
-                try:
-                    y = torch.cat((y,self.linear[index[x_i]](x[x_i]).unsqueeze(0)),0)
-                except Exception as e:
-                    y = self.linear[index[x_i]](x[x_i]).unsqueeze(0)
+            self.tensor_dic = {}
+            self.y_dic = {}
+            for dic_i in range(self.interval):
+                self.index_dic[str(dic_i)] = torch.from_numpy(np.where(index==dic_i)[0]).long().cuda()
+                if self.index_dic[str(dic_i)].size()[0] != 0:
+                    self.tensor_dic[str(dic_i)] = torch.index_select(x,0,self.index_dic[str(dic_i)])
+                    self.y_dic[str(dic_i)] = self.linear[dic_i](self.tensor_dic[str(dic_i)])
+            y_ = torch.zeros((x.size()[0],self.num_outputs)).cuda()
+            for y_i in range(self.interval):
+                if str(y_i) in self.y_dic:
+                    y_.index_add_(0,self.index_dic[str(y_i)],self.y_dic[str(y_i)])
 
-        return FixedCategorical(logits=y), y
+        return FixedCategorical(logits=y_), y_
 
 
 class DiagGaussian(nn.Module):
@@ -76,6 +87,10 @@ class DiagGaussian(nn.Module):
             for linear_i in range(self.interval):
                 self.fc_mean += [init_(nn.Linear(num_inputs, num_outputs))]
             self.fc_mean = nn.ModuleList(self.fc_mean)
+            self.index_dic = {}
+            self.tensor_dic = {}
+            self.y_dic = {}
+            self.num_outputs = num_outputs
 
         self.logstd = AddBias(torch.zeros(num_outputs))
 
@@ -84,11 +99,18 @@ class DiagGaussian(nn.Module):
         if self.interval is None:
             action_mean = self.fc_mean(x)
         else:
-            for x_i in range(x.size()[0]):
-                try:
-                    action_mean = torch.cat((action_mean,self.linear[index[x_i]](x[x_i]).unsqueeze(0)),0)
-                except Exception as e:
-                    action_mean = self.linear[index[x_i]](x[x_i]).unsqueeze(0)
+            self.tensor_dic = {}
+            self.y_dic = {}
+
+            for dic_i in range(self.interval):
+                self.index_dic[str(dic_i)] = torch.from_numpy(np.where(index==dic_i)[0]).long().cuda()
+                if self.index_dic[str(dic_i)].size()[0] != 0:
+                    self.tensor_dic[str(dic_i)] = torch.index_select(x,0,self.index_dic[str(dic_i)])
+                    self.y_dic[str(dic_i)] = self.linear[dic_i](self.tensor_dic[str(dic_i)])
+            action_mean = torch.zeros((x.size()[0],self.num_outputs)).cuda()
+            for y_i in range(self.interval):
+                if str(y_i) in self.y_dic:
+                    action_mean.index_add_(0,self.index_dic[str(y_i)],self.y_dic[str(y_i)])
 
         #  An ugly hack for my KFAC implementation.
         zeros = torch.zeros(action_mean.size())
