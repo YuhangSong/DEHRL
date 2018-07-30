@@ -267,7 +267,7 @@ class PPO(object):
                 print('[H-{}]First time train transition_model'.format(
                     self.this_layer.hierarchy_id,
                 ))
-                epoch *= 200
+                # epoch *= 200
 
             for e in range(epoch):
 

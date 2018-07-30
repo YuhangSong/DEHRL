@@ -366,12 +366,12 @@ class HierarchyLayer(object):
             for process_i in range(args.num_processes):
                 downer = 0.0
                 for action_i in range(prediction_rb.size()[0]):
-                    prob = 1.0/(obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()
+                    prob = 1.0/(obs_rb[process_i]-prediction_rb[action_i,process_i]).norm(2)
                     if action_i==action_rb[process_i]:
                         upper = prob
                     downer += prob
                 self.reward_bounty[process_i] = upper/downer
-            self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)*args.reward_bounty
+            self.reward_bounty = self.reward_bounty*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
             and the estimation from transition model is not accurate'''
