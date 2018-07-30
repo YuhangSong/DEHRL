@@ -388,12 +388,17 @@ class HierarchyLayer(object):
             for process_i in range(args.num_processes):
                 downer = 0.0
                 for action_i in range(prediction_rb.size()[0]):
-                    prob = (obs_rb[process_i]-prediction_rb[action_i,process_i]).norm(2)
-                    if action_i==action_rb[process_i]:
-                        upper = prob
-                    downer += prob
-                self.reward_bounty[process_i] = upper/downer
-            self.reward_bounty = -self.reward_bounty.log()
+                    distance = (obs_rb[process_i]-prediction_rb[action_i,process_i]).norm(2).unsqueeze(0)
+                    try:
+                        distance_list = torch.cat([distance_list,distance],dim=0)
+                    except Exception as e:
+                        distance_list = distance
+
+                if (action_rb[process_i]==distance_list.argmin()):
+                    self.reward_bounty[process_i] = 1.0
+                else:
+                    self.reward_bounty[process_i] = 0.0
+
             self.reward_bounty = self.reward_bounty*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
