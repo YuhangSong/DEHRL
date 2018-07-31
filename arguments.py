@@ -125,6 +125,7 @@ def get_args():
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
     args.save_dir = os.path.join(args.save_dir, 'h_i-{}'.format(utils.list_to_str(args.hierarchy_interval)))
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_steps)))
+    args.save_dir = os.path.join(args.save_dir, 's_sub-{}'.format(utils.list_to_str(args.separate_subpolicy)))
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'r_b-{}'.format(args.reward_bounty))
