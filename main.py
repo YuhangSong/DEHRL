@@ -125,7 +125,7 @@ class HierarchyLayer(object):
             input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
-            interval = self.hierarchy_interval,
+            interval = args.num_subpolicy[self.hierarchy_id],
         ).cuda()
 
         if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
@@ -134,6 +134,7 @@ class HierarchyLayer(object):
                 input_observation_shape = obs_shape,
                 input_action_space = self.envs.action_space,
                 output_observation_space = self.envs.observation_space,
+                interval = args.num_subpolicy[self.hierarchy_id-1]
             ).cuda()
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0
@@ -318,6 +319,7 @@ class HierarchyLayer(object):
             if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
                 '''predict states'''
                 self.transition_model.eval()
+
                 with torch.no_grad():
                     self.predicted_next_observations_to_downer_layer, _ = self.transition_model(
                         inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),

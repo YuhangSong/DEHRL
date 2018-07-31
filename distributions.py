@@ -40,7 +40,7 @@ class Categorical(nn.Module):
               lambda x: nn.init.constant_(x, 0),
               gain=0.01)
 
-        if self.interval is None:
+        if self.interval <= 1:
             self.linear = init_(nn.Linear(num_inputs, num_outputs))
         else:
             self.linear = []
@@ -54,7 +54,7 @@ class Categorical(nn.Module):
 
 
     def forward(self, x, index = None):
-        if self.interval is None:
+        if self.interval <= 1:
             y_ = self.linear(x)
         else:
             self.tensor_dic = {}
@@ -80,7 +80,7 @@ class DiagGaussian(nn.Module):
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
 
-        if self.interval is None:
+        if self.interval <= 1:
             self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
         else:
             self.fc_mean = []
@@ -96,7 +96,7 @@ class DiagGaussian(nn.Module):
 
     def forward(self, x, index = None):
 
-        if self.interval is None:
+        if self.interval <= 1:
             action_mean = self.fc_mean(x)
         else:
             self.tensor_dic = {}
