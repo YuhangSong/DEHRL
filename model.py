@@ -331,10 +331,10 @@ class TransitionModel(nn.Module):
                 nn.LeakyReLU(),
                 DeFlatten((32,7,7)),
                 self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
-                nn.BatchNorm2d(64),
+                # nn.BatchNorm2d(64),
                 nn.LeakyReLU(),
                 self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
-                nn.BatchNorm2d(32),
+                # nn.BatchNorm2d(32),
                 nn.LeakyReLU(),
                 self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_space.shape[0], 8, stride=4)),
                 # output do not normalize
