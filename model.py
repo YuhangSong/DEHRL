@@ -327,14 +327,14 @@ class TransitionModel(nn.Module):
         for decon_i in range(self.interval):
             self.deconv += [nn.Sequential(
                 self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
-                nn.BatchNorm1d(32 * 7 * 7),
+                # nn.BatchNorm1d(32 * 7 * 7),
                 nn.LeakyReLU(),
                 DeFlatten((32,7,7)),
                 self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
                 nn.BatchNorm2d(64),
                 nn.LeakyReLU(),
                 self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
-                nn.BatchNorm2d(32),
+                # nn.BatchNorm2d(32),
                 nn.LeakyReLU(),
                 self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_space.shape[0], 8, stride=4)),
                 # output do not normalize
