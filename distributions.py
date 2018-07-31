@@ -31,18 +31,17 @@ FixedNormal.mode = lambda self: self.mean
 
 
 class Categorical(nn.Module):
-    def __init__(self, num_inputs, num_outputs, interval):
+    def __init__(self, num_inputs, num_outputs, interval, args):
         super(Categorical, self).__init__()
         self.interval = interval
+        self.args = args
 
         init_ = lambda m: init(m,
               nn.init.orthogonal_,
               lambda x: nn.init.constant_(x, 0),
               gain=0.01)
 
-        if self.interval is None:
-            self.linear = init_(nn.Linear(num_inputs, num_outputs))
-        else:
+        if self.interval is not None and self.args.separate_subpolicy:
             self.linear = []
             for linear_i in range(self.interval):
                 self.linear += [init_(nn.Linear(num_inputs, num_outputs))]
@@ -51,12 +50,13 @@ class Categorical(nn.Module):
             self.tensor_dic = {}
             self.y_dic = {}
             self.num_outputs = num_outputs
+        else:
+            self.linear = init_(nn.Linear(num_inputs, num_outputs))
+
 
 
     def forward(self, x, index = None):
-        if self.interval is None:
-            y_ = self.linear(x)
-        else:
+        if self.interval is not None and self.args.separate_subpolicy:
             self.tensor_dic = {}
             self.y_dic = {}
             for dic_i in range(self.interval):
@@ -68,21 +68,22 @@ class Categorical(nn.Module):
             for y_i in range(self.interval):
                 if str(y_i) in self.y_dic:
                     y_.index_add_(0,self.index_dic[str(y_i)],self.y_dic[str(y_i)])
+        else:
+            y_ = self.linear(x)
 
         return FixedCategorical(logits=y_), y_
 
 
 class DiagGaussian(nn.Module):
-    def __init__(self, num_inputs, num_outputs):
+    def __init__(self, num_inputs, num_outputs, args):
         super(DiagGaussian, self).__init__()
+        self.args = args
 
         init_ = lambda m: init(m,
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
 
-        if self.interval is None:
-            self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
-        else:
+        if self.interval is not None and self.args.separate_subpolicy:
             self.fc_mean = []
             for linear_i in range(self.interval):
                 self.fc_mean += [init_(nn.Linear(num_inputs, num_outputs))]
@@ -91,14 +92,15 @@ class DiagGaussian(nn.Module):
             self.tensor_dic = {}
             self.y_dic = {}
             self.num_outputs = num_outputs
+        else:
+            self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
+
 
         self.logstd = AddBias(torch.zeros(num_outputs))
 
     def forward(self, x, index = None):
 
-        if self.interval is None:
-            action_mean = self.fc_mean(x)
-        else:
+        if self.interval is not None and self.args.separate_subpolicy:
             self.tensor_dic = {}
             self.y_dic = {}
 
@@ -111,6 +113,8 @@ class DiagGaussian(nn.Module):
             for y_i in range(self.interval):
                 if str(y_i) in self.y_dic:
                     action_mean.index_add_(0,self.index_dic[str(y_i)],self.y_dic[str(y_i)])
+        else:
+            action_mean = self.fc_mean(x)
 
         #  An ugly hack for my KFAC implementation.
         zeros = torch.zeros(action_mean.size())

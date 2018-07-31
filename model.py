@@ -18,9 +18,10 @@ class DeFlatten(nn.Module):
         return x.view(x.size(0), *self.shape)
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, input_action_space,output_action_space, interval, recurrent_policy):
+    def __init__(self, obs_shape, input_action_space,output_action_space, interval, recurrent_policy, args = None):
         super(Policy, self).__init__()
         self.interval = interval
+        self.args = args
 
         '''build base model'''
         if len(obs_shape) == 3:
@@ -37,21 +38,22 @@ class Policy(nn.Module):
         self.output_action_space = output_action_space
         if self.output_action_space.__class__.__name__ == "Discrete":
             num_outputs = self.output_action_space.n
-            self.dist = Categorical(self.base.output_size, num_outputs,self.interval)
+            self.dist = Categorical(self.base.output_size, num_outputs,self.interval, self.args)
         elif self.output_action_space.__class__.__name__ == "Box":
             num_outputs = self.output_action_space.shape[0]
-            self.dist = DiagGaussian(self.base.output_size, num_outputs)
+            self.dist = DiagGaussian(self.base.output_size, num_outputs, self.args)
         else:
             raise NotImplementedError
 
         '''build critic model'''
-        if self.interval is not None:
+        if self.interval is not None and self.args.separate_subpolicy:
             self.critic_linear = []
             for linear_i in range(self.interval):
                 self.critic_linear += [self.base.linear_init_(nn.Linear(self.base.linear_size, 1))]
             self.critic_linear = nn.ModuleList(self.critic_linear)
         else:
             self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
+
 
 
         self.input_action_space = input_action_space
@@ -81,15 +83,19 @@ class Policy(nn.Module):
     def get_final_features(self, inputs, states, masks, input_action=None):
         # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
-        # input_action_features = self.input_action_linear(input_action)
-        final_features = base_features
+        if self.args.separate_subpolicy:
+            final_features = base_features
+        else:
+            input_action_features = self.input_action_linear(input_action)
+            final_features = base_features*input_action_features
+
         final_features_critic = self.final_feature_linear_critic(final_features)
         final_features_dist = self.final_feature_linear_dist(final_features)
         return final_features_critic, final_features_dist, states
 
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.interval is not None:
+        if self.interval is not None and self.args.separate_subpolicy:
             index_dic = {}
             tensor_dic = {}
             y_dic = {}
@@ -122,7 +128,7 @@ class Policy(nn.Module):
 
     def get_value(self, inputs, states, masks, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.interval is not None:
+        if self.interval is not None and self.args.separate_subpolicy:
             if torch.sum(input_action)>0:
                 index_dic = {}
                 tensor_dic = {}
@@ -146,7 +152,7 @@ class Policy(nn.Module):
 
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.interval is not None:
+        if self.interval is not None and self.args.separate_subpolicy:
             index_dic = {}
             tensor_dic = {}
             y_dic = {}
@@ -277,12 +283,13 @@ class MLPBase(nn.Module):
         return x, states
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_space, linear_size=512):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_space, args=None, linear_size=512):
         super(TransitionModel, self).__init__()
 
         self.input_observation_shape = input_observation_shape
         self.output_observation_space = output_observation_space
         self.linear_size = linear_size
+        self.args = args
 
         self.linear_init_ = lambda m: init(m,
             nn.init.orthogonal_,

@@ -126,6 +126,7 @@ class HierarchyLayer(object):
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
             interval = self.hierarchy_interval,
+            args = self.args,
         ).cuda()
 
         if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
@@ -134,6 +135,7 @@ class HierarchyLayer(object):
                 input_observation_shape = obs_shape,
                 input_action_space = self.envs.action_space,
                 output_observation_space = self.envs.observation_space,
+                args = self.args,
             ).cuda()
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0

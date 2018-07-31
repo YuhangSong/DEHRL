@@ -79,6 +79,8 @@ def get_args():
                         help='the interval between the subpolicies')
     parser.add_argument('--num-steps',          type=int, nargs='*',
                         help='number of forward steps before update agent')
+    parser.add_argument('--separate-subpolicy', action='store_true',
+                        help='if separate subpolicies in the last layer')
 
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
