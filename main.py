@@ -425,20 +425,21 @@ class HierarchyLayer(object):
                     self.done[0],
                     self.masks[0].item(),
                 ))
-                if self.episode_reward['len'] == 3.0:
-                    self.bounty_results += [self.reward_bounty[0]]
-                    if self.actions_count == (len(self.actions)):
-                        for x in range(5):
-                            print_str = ''
-                            max_value = 0.0
-                            for y in range(5):
-                                temp = self.bounty_results[x*5+y]
-                                print_str += '{}\t'.format(temp)
-                                if temp>max_value:
-                                    max_value = temp
-                                    max_index = y
-                            print('{} max_index: {}'.format(print_str, max_index))
-                        print(s)
+                if args.test:
+                    if self.episode_reward['len'] == 3.0:
+                        self.bounty_results += [self.reward_bounty[0]]
+                        if self.actions_count == (len(self.actions)):
+                            for x in range(5):
+                                print_str = ''
+                                max_value = 0.0
+                                for y in range(5):
+                                    temp = self.bounty_results[x*5+y]
+                                    print_str += '{}\t'.format(temp)
+                                    if temp>max_value:
+                                        max_value = temp
+                                        max_index = y
+                                print('{} max_index: {}'.format(print_str, max_index))
+                            print(s)
             if args.use_fake_reward_bounty:
                 print('[reward {} ][done {}][masks {}]'.format(
                     self.reward_raw_OR_reward[0],
