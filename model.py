@@ -18,9 +18,9 @@ class DeFlatten(nn.Module):
         return x.view(x.size(0), *self.shape)
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, input_action_space,output_action_space, interval, recurrent_policy):
+    def __init__(self, obs_shape, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
         super(Policy, self).__init__()
-        self.interval = interval
+        self.num_subpolicy = num_subpolicy
 
         '''build base model'''
         if len(obs_shape) == 3:
@@ -37,7 +37,7 @@ class Policy(nn.Module):
         self.output_action_space = output_action_space
         if self.output_action_space.__class__.__name__ == "Discrete":
             num_outputs = self.output_action_space.n
-            self.dist = Categorical(self.base.output_size, num_outputs,self.interval)
+            self.dist = Categorical(self.base.output_size, num_outputs,self.num_subpolicy)
         elif self.output_action_space.__class__.__name__ == "Box":
             num_outputs = self.output_action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
@@ -45,9 +45,9 @@ class Policy(nn.Module):
             raise NotImplementedError
 
         '''build critic model'''
-        if self.interval > 1:
+        if self.num_subpolicy > 1:
             self.critic_linear = []
-            for linear_i in range(self.interval):
+            for linear_i in range(self.num_subpolicy):
                 self.critic_linear += [self.base.linear_init_(nn.Linear(self.base.linear_size, 1))]
             self.critic_linear = nn.ModuleList(self.critic_linear)
         else:
@@ -89,19 +89,19 @@ class Policy(nn.Module):
 
     def act(self, inputs, states, masks, deterministic=False, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.interval > 1:
+        if self.num_subpolicy > 1:
             index_dic = {}
             tensor_dic = {}
             y_dic = {}
             action_index = np.where(input_action==1)[1]
-            for dic_i in range(self.interval):
+            for dic_i in range(self.num_subpolicy):
                 index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                 if index_dic[str(dic_i)].size()[0] != 0:
                     tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
                     y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
 
             value = torch.zeros((input_action.size()[0],1)).cuda()
-            for y_i in range(self.interval):
+            for y_i in range(self.num_subpolicy):
                 if str(y_i) in y_dic:
                     value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
 
@@ -122,20 +122,20 @@ class Policy(nn.Module):
 
     def get_value(self, inputs, states, masks, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.interval > 1:
+        if self.num_subpolicy > 1:
             if torch.sum(input_action)>0:
                 index_dic = {}
                 tensor_dic = {}
                 y_dic = {}
                 action_index = np.where(input_action==1)[1]
-                for dic_i in range(self.interval):
+                for dic_i in range(self.num_subpolicy):
                     index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                     if index_dic[str(dic_i)].size()[0] != 0:
                         tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
                         y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
 
                 value = torch.zeros((input_action.size()[0],1)).cuda()
-                for y_i in range(self.interval):
+                for y_i in range(self.num_subpolicy):
                     if str(y_i) in y_dic:
                         value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
             else:
@@ -146,19 +146,19 @@ class Policy(nn.Module):
 
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
         final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.interval > 1:
+        if self.num_subpolicy > 1:
             index_dic = {}
             tensor_dic = {}
             y_dic = {}
             action_index = np.where(input_action==1)[1]
-            for dic_i in range(self.interval):
+            for dic_i in range(self.num_subpolicy):
                 index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                 if index_dic[str(dic_i)].size()[0] != 0:
                     tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
                     y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
 
             value = torch.zeros((input_action.size()[0],1)).cuda()
-            for y_i in range(self.interval):
+            for y_i in range(self.num_subpolicy):
                 if str(y_i) in y_dic:
                     value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
             dist, dist_features = self.dist(final_features_dist,action_index)
@@ -277,14 +277,14 @@ class MLPBase(nn.Module):
         return x, states
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_space, interval, linear_size=512):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_space, num_subpolicy, linear_size=512):
         super(TransitionModel, self).__init__()
 
         self.input_observation_shape = input_observation_shape
         self.output_observation_space = output_observation_space
 
         self.linear_size = linear_size
-        self.interval = interval
+        self.num_subpolicy = num_subpolicy
 
         self.linear_init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -316,15 +316,15 @@ class TransitionModel(nn.Module):
             nn.LeakyReLU()
         )
 
-        self.input_action_space = input_action_space
-        self.input_action_linear = nn.Sequential(
-            self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
-            nn.BatchNorm1d(self.linear_size),
-            nn.LeakyReLU(),
-        )
+        # self.input_action_space = input_action_space
+        # self.input_action_linear = nn.Sequential(
+        #     self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
+        #     nn.BatchNorm1d(self.linear_size),
+        #     nn.LeakyReLU(),
+        # )
 
         self.deconv = []
-        for decon_i in range(self.interval):
+        for decon_i in range(self.num_subpolicy):
             self.deconv += [nn.Sequential(
                 self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
                 # nn.BatchNorm1d(32 * 7 * 7),
@@ -343,18 +343,18 @@ class TransitionModel(nn.Module):
         self.deconv = nn.ModuleList(self.deconv)
 
     def forward(self, inputs, input_action):
-        before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
+        before_deconv = self.conv(inputs/255.0)#*self.input_action_linear(input_action)
         index_dic = {}
         tensor_dic = {}
         y_dic = {}
         action_index = np.where(input_action==1)[1]
-        for dic_i in range(self.interval):
+        for dic_i in range(self.num_subpolicy):
             index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
             if index_dic[str(dic_i)].size()[0] != 0:
                 tensor_dic[str(dic_i)] = torch.index_select(before_deconv,0,index_dic[str(dic_i)])
                 y_dic[str(dic_i)] = self.deconv[dic_i](tensor_dic[str(dic_i)])
         after_deconv = torch.zeros((inputs.size()[0],*self.output_observation_space.shape)).cuda()
-        for y_i in range(self.interval):
+        for y_i in range(self.num_subpolicy):
             if str(y_i) in y_dic:
                 after_deconv.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
 
