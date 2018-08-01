@@ -417,7 +417,7 @@ class HierarchyLayer(object):
             '''mask it and stop reward function'''
             self.masks = self.masks * 0.0
 
-        if args.test and self.hierarchy_id in [0]:
+        if (args.test or args.test_action) and self.hierarchy_id in [0]:
             if args.reward_bounty > 0.0:
                 print('[reward {} ][reward_bounty {}][done {}][masks {}]'.format(
                     self.reward_raw_OR_reward[0],
