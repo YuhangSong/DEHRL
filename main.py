@@ -218,6 +218,19 @@ class HierarchyLayer(object):
 
         self.agent.set_this_layer(self)
 
+        if args.test:
+            if self.hierarchy_id == 1.0:
+                self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
+                self.macros_count = 0
+                print(self.macros)
+
+            if self.hierarchy_id == 0.0:
+                self.actions = ([0,0,0,0]+[4,12,8,16]+[1,9,5,13]+[3,11,7,15]+[2,10,6,14])*5
+                self.actions_count = 0
+                print(self.actions)
+
+                self.bounty_results = []
+
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
         self.agent.set_upper_layer(self.upper_layer)
@@ -286,14 +299,19 @@ class HierarchyLayer(object):
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
         if args.test and self.hierarchy_id in [0]:
-            self.cpu_actions[0] = int(
-                input(
-                    '[Macro Action {}, actual action {}], Act: '.format(
-                        utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
-                        self.cpu_actions[0],
-                    )
-                )
-            )
+            # self.cpu_actions[0] = int(
+            #     input(
+            #         '[Macro Action {}, actual action {}], Act: '.format(
+            #             utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
+            #             self.cpu_actions[0],
+            #         )
+            #     )
+            # )
+
+            if self.episode_reward['len'] < 4.0:
+                self.cpu_actions[0] = self.actions[self.actions_count]
+                self.actions_count += 1
+                print('set action to {}'.format(self.cpu_actions[0]))
 
         self.actions_to_step = self.cpu_actions
 
@@ -330,11 +348,15 @@ class HierarchyLayer(object):
                 if self.hierarchy_id in [1]:
                     self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
                     if args.test:
-                        self.actions_to_step[0] = int(
-                            input(
-                                'Macro Action: '
-                            )
-                        )
+                        # self.actions_to_step[0] = int(
+                        #     input(
+                        #         'Macro Action: '
+                        #     )
+                        # )
+                        if self.episode_reward['len']==0.0:
+                            self.actions_to_step[0] = self.macros[self.macros_count]
+                            self.macros_count += 1
+                            print('set macro action: {}'.format(self.actions_to_step[0]))
 
                 self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
 
@@ -401,6 +423,20 @@ class HierarchyLayer(object):
                     self.done[0],
                     self.masks[0].item(),
                 ))
+                if self.episode_reward['len'] == 3.0:
+                    self.bounty_results += [self.reward_bounty[0]]
+                    if self.actions_count == (len(self.actions)):
+                        for x in range(5):
+                            print_str = ''
+                            max_value = 0.0
+                            for y in range(5):
+                                temp = self.bounty_results[x*5+y]
+                                print_str += '{}\t'.format(temp)
+                                if temp>max_value:
+                                    max_value = temp
+                                    max_index = y
+                            print('{} max_index: {}'.format(print_str, max_index))
+                        print(s)
             if args.use_fake_reward_bounty:
                 print('[reward {} ][done {}][masks {}]'.format(
                     self.reward_raw_OR_reward[0],
@@ -477,6 +513,10 @@ class HierarchyLayer(object):
         '''overwrite if args.act_deterministically'''
         if args.act_deterministically:
             self.deterministic = True
+
+        if args.test:
+            self.update_type = 'actor_critic'
+            self.deterministic = False
 
         # self.update_type = 'actor_critic'
         # self.deterministic = False
