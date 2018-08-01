@@ -104,6 +104,9 @@ def get_args():
 
     parser.add_argument('--test', action='store_true',
                         help='')
+                        
+    parser.add_argument('--test-action', action='store_true',
+                        help='')
 
     args = parser.parse_args()
     args.transition_model_epoch = int(args.actor_critic_epoch)

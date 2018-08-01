@@ -298,16 +298,17 @@ class HierarchyLayer(object):
             )
         self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
-        if args.test and self.hierarchy_id in [0]:
-            # self.cpu_actions[0] = int(
-            #     input(
-            #         '[Macro Action {}, actual action {}], Act: '.format(
-            #             utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
-            #             self.cpu_actions[0],
-            #         )
-            #     )
-            # )
+        if args.test_action and self.hierarchy_id in [0]:
+            self.cpu_actions[0] = int(
+                input(
+                    '[Macro Action {}, actual action {}], Act: '.format(
+                        utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
+                        self.cpu_actions[0],
+                    )
+                )
+            )
 
+        if args.test and self.hierarchy_id in [0]:
             if self.episode_reward['len'] < 4.0:
                 self.cpu_actions[0] = self.actions[self.actions_count]
                 self.actions_count += 1
@@ -348,15 +349,16 @@ class HierarchyLayer(object):
                 if self.hierarchy_id in [1]:
                     self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
                     if args.test:
-                        # self.actions_to_step[0] = int(
-                        #     input(
-                        #         'Macro Action: '
-                        #     )
-                        # )
                         if self.episode_reward['len']==0.0:
                             self.actions_to_step[0] = self.macros[self.macros_count]
                             self.macros_count += 1
                             print('set macro action: {}'.format(self.actions_to_step[0]))
+                    elif args.test_action:
+                        self.actions_to_step[0] = int(
+                            input(
+                                'Macro Action: '
+                            )
+                        )
 
                 self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
 
