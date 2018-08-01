@@ -84,6 +84,14 @@ against
 CUDA_VISIBLE_DEVICES=3 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp temp_180 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1000 --train-mode switch --encourage-ac-connection none --log-behavior-interval 5 --aux r_3
 ```
 
+No BN
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp temp_180 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1000 --train-mode together --encourage-ac-connection none --log-behavior-interval 5 --aux no_bn_r_0
+```
+```bash
+CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp temp_180 --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1000 --train-mode switch --encourage-ac-connection none --log-behavior-interval 5 --aux no_bn_r_0
+```
+
 ## TODO list
 * check the logic of the game under reward_level=1(finished)
 * add observation_type = 'image' or 'ram' [float(0.0-1.0), float(0.0-1.0)] option in the game overcooked, and add support to run the game(finished)

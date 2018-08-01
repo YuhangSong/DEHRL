@@ -302,17 +302,17 @@ class TransitionModel(nn.Module):
 
         self.conv = nn.Sequential(
             self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
-            nn.BatchNorm2d(32),
+            # nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.BatchNorm2d(64),
+            # nn.BatchNorm2d(64),
             nn.LeakyReLU(),
             self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.BatchNorm2d(32),
+            # nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             Flatten(),
             self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
-            nn.BatchNorm1d(self.linear_size),
+            # nn.BatchNorm1d(self.linear_size),
             nn.LeakyReLU()
         )
 
