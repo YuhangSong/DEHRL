@@ -521,6 +521,10 @@ class HierarchyLayer(object):
             self.update_type = 'actor_critic'
             self.deterministic = False
 
+        if args.test_action:
+            self.update_type = 'actor_critic'
+            self.deterministic = True
+
         # self.update_type = 'actor_critic'
         # self.deterministic = False
 
