@@ -4,8 +4,30 @@ import torch.nn.functional as F
 import torch.optim as optim
 import utils
 import numpy as np
+import cv2
+import os
+from visdom import Visdom
+viz = Visdom()
+win = None
+win_dic = {}
+
+def record(name, value, data_type='plot'):
+    if data_type in ['plot', 'scatter']:
+        try:
+            # try expend
+            recorder[data_type][name] += [value]
+        except Exception as e:
+            # else, initialize
+            recorder[data_type][name] = [value]
+    else:
+        recorder[data_type][name] = value
 
 class PPO(object):
+    def __init__(self):
+        super(PPO, self).__init__()
+        self.action_num = 5
+        self.batch_buffer = {}
+        self.batch_count = 0
 
     def set_this_layer(self, this_layer):
         self.this_layer = this_layer
@@ -103,7 +125,7 @@ class PPO(object):
             '''prepare epoch'''
             epoch = self.this_layer.args.actor_critic_epoch
 
-            for e in range(epoch):
+            for e_i in range(epoch):
 
                 for epoch_loss_name in epoch_loss.keys():
                     epoch_loss[epoch_loss_name] = 0.0
@@ -273,7 +295,7 @@ class PPO(object):
                 ))
                 epoch *= 200
 
-            for e in range(epoch):
+            for e_i in range(epoch):
 
                 for epoch_loss_name in epoch_loss.keys():
                     epoch_loss[epoch_loss_name] = 0.0
@@ -315,6 +337,32 @@ class PPO(object):
                         input_action = action_onehot_batch,
                     )
 
+                    if self.batch_count <50:
+                        index_dic = {}
+                        tensor_dic = {}
+                        action_onehot_to_index = np.where(action_onehot_batch==1)[1]
+                        for index in range(self.action_num):
+                            index_dic[str(index)] = torch.from_numpy(np.where(action_onehot_to_index==index)[0]).long().cuda()
+                            if index_dic[str(index)].size()[0] != 0:
+                                tensor_dic[str(index)] = torch.index_select(next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch),0,index_dic[str(index)])
+                                try:
+                                    self.batch_buffer[str(index)] = torch.cat((self.batch_buffer[str(index)],tensor_dic[str(index)]),0)
+                                except Exception as e:
+                                    self.batch_buffer[str(index)] = tensor_dic[str(index)]
+                    else:
+                        for images_name in self.batch_buffer.keys():
+                            win_dic[images_name] = None
+                            # self.batch_buffer[images_name] = self.batch_buffer[images_name].squeeze(1)
+                            win_dic[images_name] = viz.images(
+                                self.batch_buffer[images_name],
+                                win=win_dic[images_name],
+                                opts=dict(title='TMUX' + '\n' + images_name)
+                            )
+                        else:
+                            win_dic[images_name] = None
+                        print(s)
+                    self.batch_count +=1
+
                     '''compute mse loss'''
                     mse_loss = self.mse_loss_model(
                         input = predicted_next_observations_batch,
@@ -347,7 +395,7 @@ class PPO(object):
                 if self.this_layer.update_i in [0]:
                     print('[H-{}] First time train transition_model, epoch {}, mse_loss {}.'.format(
                         self.this_layer.hierarchy_id,
-                        e,
+                        e_i,
                         epoch_loss['mse'],
                     ))
 
