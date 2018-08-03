@@ -296,71 +296,81 @@ class HierarchyLayer(object):
                 deterministic = self.deterministic,
                 input_action = self.rollouts.input_actions[self.step_i],
             )
-        self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
         if args.test_action and self.hierarchy_id in [0]:
-            self.cpu_actions[0] = int(
+            self.action[0,0] = int(
                 input(
                     '[Macro Action {}, actual action {}], Act: '.format(
                         utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
-                        self.cpu_actions[0],
+                        self.action[0,0].item(),
                     )
                 )
             )
 
         if args.test and self.hierarchy_id in [0]:
             if self.episode_reward['len'] < 4.0:
-                self.cpu_actions[0] = self.actions[self.actions_count]
+                self.action[0,0] = self.actions[self.actions_count]
                 self.actions_count += 1
-                print('set action to {}'.format(self.cpu_actions[0]))
-
-        self.actions_to_step = self.cpu_actions
+                print('set action to {}'.format(self.action[0,0].item()))
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
         if args.use_fake_reward_bounty:
 
             if self.hierarchy_id in [0]:
+                '''for fake reward bounty, actions_to_step in hierarchy 0 need to have macro-actions from all levels'''
                 self.actions_to_step = [None]*args.num_processes
                 for process_i in range(args.num_processes):
                     self.actions_to_step[process_i] = []
-                    self.actions_to_step[process_i] += [self.cpu_actions[process_i]]
+                    self.actions_to_step[process_i] += [self.action[process_i,0].item()]
                     for hierarchy_i in range(args.num_hierarchy-1):
                         self.actions_to_step[process_i] += [utils.onehot_to_index(
                             input_actions_onehot_global[hierarchy_i][process_i].cpu().numpy()
                         )]
 
             elif self.hierarchy_id in [1]:
-                self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+                '''for fake reward bounty, actions_to_step in hierarchy 1 need to behavior randomly'''
+                self.action.random_(0,to=self.envs.action_space.n)
+                self.actions_to_step = self.action.squeeze(1).cpu().numpy()
 
         else:
 
-            if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
-                '''predict states'''
-                self.transition_model.eval()
+            if args.reward_bounty > 0.0:
 
-                with torch.no_grad():
-                    self.predicted_next_observations_to_downer_layer, _ = self.transition_model(
-                        inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
-                        input_action = self.action_onehot_batch,
-                    )
-                self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
+                if self.hierarchy_id > 0:
 
-                if self.hierarchy_id in [1]:
-                    # self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+                    '''predict states'''
+                    self.transition_model.eval()
+                    with torch.no_grad():
+                        self.predicted_next_observations_to_downer_layer, _ = self.transition_model(
+                            inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
+                            input_action = self.action_onehot_batch,
+                        )
+                    self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
+
+                    # DEBUG: force upper level to random play
+                    self.action.random_(0,to=self.envs.action_space.n)
+
                     if args.test:
                         if self.episode_reward['len']==0.0:
-                            self.actions_to_step[0] = self.macros[self.macros_count]
+                            self.action[0,0] = self.macros[self.macros_count]
                             self.macros_count += 1
-                            print('set macro action: {}'.format(self.actions_to_step[0]))
+                            print('set macro action: {}'.format(self.action[0,0].item()))
                     elif args.test_action:
-                        self.actions_to_step[0] = int(
+                        self.action[0,0] = int(
                             input(
                                 'Macro Action: '
                             )
                         )
 
-                self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
+                    self.actions_to_step = [self.action.squeeze(1).cpu().numpy(), self.predicted_next_observations_to_downer_layer]
+
+                if self.hierarchy_id == 0:
+                    self.actions_to_step = self.action.squeeze(1).cpu().numpy()
+
+            else:
+                '''no reward bounty'''
+                self.actions_to_step = self.action.squeeze(1).cpu().numpy()
 
         # Obser reward and next obs
         self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
