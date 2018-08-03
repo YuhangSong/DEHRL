@@ -89,6 +89,11 @@ class PPO(object):
 
             '''prepare epoch'''
             epoch = self.this_layer.args.actor_critic_epoch
+            if self.this_layer.update_i in [0]:
+                print('[H-{}] First time train actor_critic, skip, since transition_model need to be trained first.'.format(
+                    self.this_layer.hierarchy_id,
+                ))
+                epoch *= 0
 
             for e in range(epoch):
 
@@ -105,7 +110,7 @@ class PPO(object):
                        return_batch, masks_batch, old_action_log_probs_batch, \
                             adv_targ = sample
 
-                    input_actions_index = input_actions_batch.nonzero()[:,1:].squeeze()
+                    input_actions_index = input_actions_batch.nonzero()[:,1]
 
                     if self.actor_critic_gradients_reward:
 
@@ -247,7 +252,7 @@ class PPO(object):
             '''prepare epoch'''
             epoch = self.this_layer.args.transition_model_epoch
             if self.this_layer.update_i in [0]:
-                print('[H-{}]First time train transition_model'.format(
+                print('[H-{}] First time train transition_model, train more epoch'.format(
                     self.this_layer.hierarchy_id,
                 ))
                 epoch *= 200

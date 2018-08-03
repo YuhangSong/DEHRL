@@ -35,8 +35,8 @@ torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
 
 try:
-    print('Dir empty, making new log dir...')
     os.makedirs(args.save_dir)
+    print('Dir empty, making new log dir...')
 except Exception as e:
     if e.__class__.__name__ in ['FileExistsError']:
         print('Dir exsit, checking checkpoint...')
@@ -66,7 +66,7 @@ if len(args.num_subpolicy) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
     args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
 '''for top hierarchy layer'''
-args.num_subpolicy += [1]
+args.num_subpolicy += [2]
 
 if len(args.hierarchy_interval) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity hierarchy_interval is not matching args.num_hierarchy, use the first hierarchy_interval for all layers')
@@ -84,6 +84,8 @@ else:
 input_actions_onehot_global = []
 for hierarchy_i in range(args.num_hierarchy):
     input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i]).cuda()]
+'''init top layer input_actions'''
+input_actions_onehot_global[-1][:,0]=1.0
 
 sess = tf.Session()
 
@@ -401,10 +403,14 @@ class HierarchyLayer(object):
 
             self.reward_bounty = torch.zeros(args.num_processes).cuda()
             for process_i in range(args.num_processes):
+                difference_list = []
                 for action_i in range(prediction_rb.size()[0]):
+                    difference = (obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()
                     if action_i==action_rb[process_i]:
                         continue
-                    self.reward_bounty[process_i] += (obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()
+                    difference_list += [difference]
+
+                self.reward_bounty[process_i] = float(np.amin(difference_list))
             self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
