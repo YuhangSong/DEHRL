@@ -347,7 +347,7 @@ class HierarchyLayer(object):
                 self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
 
                 if self.hierarchy_id in [1]:
-                    self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
+                    # self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
                     if args.test:
                         if self.episode_reward['len']==0.0:
                             self.actions_to_step[0] = self.macros[self.macros_count]
