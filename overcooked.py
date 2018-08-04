@@ -55,7 +55,7 @@ class OverCooked(gym.Env):
         if self.args.reward_level in [0]:
             self.episode_length_limit = 5
         elif self.args.reward_level in [1]:
-            self.episode_length_limit = 8
+            self.episode_length_limit = 8*6
         elif self.args.reward_level in [2]:
             self.episode_length_limit = 50*4
 
@@ -270,7 +270,7 @@ class OverCooked(gym.Env):
                 np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
             self.reset_legposi.append(
                 np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
-                
+
         if self.args.reset_leg:
             if self.leg_move_count%4 == 0:
                 self.leg_position = []
@@ -558,7 +558,15 @@ class OverCooked(gym.Env):
         return canvas
 
 if __name__ == '__main__':
-    env = OverCooked(reward_level=1, obs_type='image', isrender=True)
+    from visdom import Visdom
+    from arguments import get_args
+    viz = Visdom()
+    win = None
+    win_dic = {}
+    win_dic['Obs'] = None
+    args = get_args()
+
+    env = OverCooked(args)
     for i_episode in range(20):
         observation = env.reset()
         for t in range(100):
@@ -592,9 +600,13 @@ if __name__ == '__main__':
             gray_img = observation
             # cv2.imshow('overcooked_gray',gray_img)
             gray_img_rezised = cv2.resize(gray_img, (84,84))
+            win_dic['Obs'] = viz.images(
+                gray_img_rezised,
+                win=win_dic['Obs'],
+                opts=dict(title=' ')
+            )
             # cv2.imshow('gray_img_rezised', gray_img_rezised)
             cv2.waitKey(2)
-            print(observation)
             print(reward)
             if done:
                 print("Episode finished after {} timesteps".format(t + 1))
