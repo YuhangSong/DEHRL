@@ -273,6 +273,7 @@ class OverCooked(gym.Env):
 
         if self.args.reset_leg:
             if self.leg_move_count%4 == 0:
+                self.action_mem = np.zeros(self.leg_num)
                 self.leg_position = []
                 self.leg_position.append(
                     np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
