@@ -212,8 +212,8 @@ class HierarchyLayer(object):
 
         self.refresh_update_type()
 
-        self.last_time_log_behavior = time.time()
-        self.log_behavior = True
+        self.last_time_log_behavior = 0.0
+        self.log_behavior = False
         self.episode_visilize_stack = {}
 
         self.predicted_next_observations_to_downer_layer = None
@@ -604,7 +604,7 @@ class HierarchyLayer(object):
             print(print_string)
 
         '''visualize results'''
-        if self.update_i % args.vis_interval == 0:
+        if (self.update_i % args.vis_interval == 0) and (not (args.test or args.test_action)):
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
             action_count = np.zeros(4)
@@ -682,7 +682,7 @@ class HierarchyLayer(object):
     def step_summary_from_env_0(self):
 
         '''for log behavior'''
-        if (time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval:
+        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test or args.test_action)):
             '''log behavior every x minutes'''
             if self.episode_reward['len']==0:
                 self.last_time_log_behavior = time.time()
