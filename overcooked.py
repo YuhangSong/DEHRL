@@ -171,7 +171,7 @@ class OverCooked(gym.Env):
 
         done = False
         self.eposide_length += 1
-        reward = 0
+        reward = 0.0
         if action_id<17:
 
             self.leg_count[action_id] += 1
@@ -204,9 +204,6 @@ class OverCooked(gym.Env):
             self.action_mem[self.leg_id] = action
             self.leg_position[self.leg_id][0] = self.leg_position[self.leg_id][0]+self.state[self.leg_id][0]
             self.leg_position[self.leg_id][1] = self.leg_position[self.leg_id][1]+self.state[self.leg_id][1]
-
-        if self.leg_move_count%4 == 0:
-            reward = 0.0
 
         if 0 not in self.action_mem:
             action_box = np.unique(self.action_mem)
@@ -273,27 +270,28 @@ class OverCooked(gym.Env):
                 np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
             self.reset_legposi.append(
                 np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                
+        if self.args.reset_leg:
+            if self.leg_move_count%4 == 0:
+                self.leg_position = []
+                self.leg_position.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                self.leg_position.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                self.leg_position.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                self.leg_position.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
-        if self.leg_move_count%4 == 0:
-            self.leg_position = []
-            self.leg_position.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-            self.leg_position.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-            self.leg_position.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-            self.leg_position.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
-
-            self.reset_legposi = []
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                self.reset_legposi = []
+                self.reset_legposi.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
         # if action_id==17:
         distance_1 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
         distance_2 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
