@@ -410,20 +410,17 @@ class HierarchyLayer(object):
                         continue
                     difference_list += [difference]
 
-                self.reward_bounty[process_i] = float(np.amin(difference_list))
-            self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)*args.reward_bounty
+                self.reward_bounty[process_i] = float(np.amin(difference_list))*args.reward_bounty/4.0
+                if self.reward_bounty[process_i]<1.5:
+                    self.reward_bounty[process_i] = 0.0
+                else:
+                    self.reward_bounty[process_i] = 3.0
 
             '''mask reward bounty, since the final state is start state,
             and the estimation from transition model is not accurate'''
             self.reward_bounty *= self.masks.squeeze()
             '''convert to numpy'''
             self.reward_bounty = self.reward_bounty.cpu().numpy()
-
-            # for reward_i in range(args.num_processes):
-            #     if self.reward_bounty[reward_i]>10:
-            #         self.reward_bounty[reward_i] = 1
-            #     else:
-            #         self.reward_bounty[reward_i] = 0
 
         else:
             self.reward_bounty = np.copy(self.reward)
@@ -448,6 +445,7 @@ class HierarchyLayer(object):
                             for x in range(5):
                                 print_str = ''
                                 max_value = 0.0
+                                max_index = -1
                                 for y in range(5):
                                     temp = self.bounty_results[x*5+y]
                                     print_str += '{}\t'.format(temp)
