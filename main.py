@@ -133,10 +133,11 @@ class HierarchyLayer(object):
         if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
             from model import TransitionModel
             self.transition_model = TransitionModel(
-                input_observation_shape = obs_shape,
+                input_observation_shape = obs_shape if not args.mutual_information else self.envs.observation_space.shape,
                 input_action_space = self.envs.action_space,
-                output_observation_space = self.envs.observation_space,
-                num_subpolicy = args.num_subpolicy[self.hierarchy_id-1]
+                output_observation_shape = self.envs.observation_space.shape,
+                num_subpolicy = args.num_subpolicy[self.hierarchy_id-1],
+                mutual_information = args.mutual_information,
             ).cuda()
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0
@@ -239,7 +240,7 @@ class HierarchyLayer(object):
 
     def step(self, inputs):
         '''as a environment, it has step method'''
-        if args.reward_bounty > 0.0:
+        if args.reward_bounty > 0.0 and (not args.mutual_information):
             input_cpu_actions = inputs[0]
             predicted_next_observations_by_upper_layer = inputs[1]
             predicted_reward_bounty_by_upper_layer = inputs[2]
@@ -340,9 +341,7 @@ class HierarchyLayer(object):
 
         else:
 
-            if args.reward_bounty > 0.0:
-
-                if self.hierarchy_id > 0:
+            if (args.reward_bounty > 0.0) and (self.hierarchy_id > 0) and (not args.mutual_information):
 
                     '''predict states'''
                     self.transition_model.eval()
@@ -371,11 +370,7 @@ class HierarchyLayer(object):
 
                     self.actions_to_step = [self.action.squeeze(1).cpu().numpy(), self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer]
 
-                if self.hierarchy_id == 0:
-                    self.actions_to_step = self.action.squeeze(1).cpu().numpy()
-
             else:
-                '''no reward bounty'''
                 self.actions_to_step = self.action.squeeze(1).cpu().numpy()
 
         # Obser reward and next obs
@@ -404,32 +399,51 @@ class HierarchyLayer(object):
             self.reward = self.reward_raw_OR_reward
 
         self.reward_bounty_raw_to_return = None
-        if (predicted_next_observations_by_upper_layer is not None) and is_final_step_by_upper_layer:
+        if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (is_final_step_by_upper_layer):
 
-            obs_rb = torch.from_numpy(self.obs).float().cuda()/255.0
-            predicted_next_observations_by_upper_layer = predicted_next_observations_by_upper_layer/255.0
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
+
+            if not args.mutual_information:
+                obs_rb = torch.from_numpy(self.obs).float().cuda()/255.0
+                predicted_next_observations_by_upper_layer = predicted_next_observations_by_upper_layer/255.0
+
+            else:
+                self.upper_layer.transition_model.eval()
+                with torch.no_grad():
+                    predicted_action_resulted_from, predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
+                        inputs = torch.from_numpy(self.obs).float().cuda(),
+                    )
+                    predicted_action_resulted_from = predicted_action_resulted_from.exp()
 
             self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
             self.reward_bounty = torch.zeros(args.num_processes).cuda()
             for process_i in range(args.num_processes):
-                difference_list = []
-                for action_i in range(predicted_next_observations_by_upper_layer.size()[0]):
-                    difference = (obs_rb[process_i]-predicted_next_observations_by_upper_layer[action_i,process_i]).abs().mean()
-                    if action_i==action_rb[process_i]:
-                        continue
-                    difference_list += [difference]
 
-                self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
+                if not args.mutual_information:
+                    difference_list = []
+                    for action_i in range(predicted_next_observations_by_upper_layer.size()[0]):
+                        difference = (obs_rb[process_i]-predicted_next_observations_by_upper_layer[action_i,process_i]).abs().mean()
+                        if action_i==action_rb[process_i]:
+                            continue
+                        difference_list += [difference]
+
+                    self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
+
+                else:
+                    self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]]
 
                 self.reward_bounty[process_i] = self.reward_bounty_raw_to_return[process_i]
-                self.reward_bounty[process_i] = np.clip(
-                    np.sign(
-                        (self.reward_bounty[process_i]-predicted_reward_bounty_by_upper_layer[action_rb[process_i],process_i]),
-                    ),
-                    a_min = 0.0,
-                    a_max = 1.0,
-                )*args.reward_bounty
+
+                if args.clip_reward_bounty:
+                    self.reward_bounty[process_i] = np.clip(
+                        np.sign(
+                            (self.reward_bounty[process_i]-predicted_reward_bounty_by_upper_layer[action_rb[process_i],process_i]),
+                        ),
+                        a_min = 0.0,
+                        a_max = 1.0,
+                    )
+
+                self.reward_bounty[process_i] = self.reward_bounty[process_i]*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
             and the estimation from transition model is not accurate'''

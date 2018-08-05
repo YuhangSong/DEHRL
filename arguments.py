@@ -93,6 +93,10 @@ def get_args():
                         help='coefficient of encourage-ac-connection')
     parser.add_argument('--train-mode', type=str,
                         help='train mode for transition_model and actor_critic: switch, together' )
+    parser.add_argument('--mutual-information', action='store_true',
+                        help='whether use mutual information as bounty reward' )
+    parser.add_argument('--clip-reward-bounty', action='store_true',
+                        help='whether clip the reward bounty' )
 
 
     '''for log behavior'''
@@ -140,6 +144,10 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
         args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
+        '''mutual information'''
+        args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
+        '''clip reward bounty'''
+        args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
 
     if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
         '''for encourage_ac_connection'''

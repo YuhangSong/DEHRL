@@ -277,11 +277,13 @@ class MLPBase(nn.Module):
         return x, states
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_space, num_subpolicy, linear_size=512):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=512):
         super(TransitionModel, self).__init__()
+        '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
         self.input_observation_shape = input_observation_shape
-        self.output_observation_space = output_observation_space
+        self.output_observation_shape = output_observation_shape
+        self.mutual_information = mutual_information
 
         self.linear_size = linear_size
         self.num_subpolicy = num_subpolicy
@@ -320,49 +322,59 @@ class TransitionModel(nn.Module):
             self.linear_init_(nn.Linear(self.linear_size, 1)),
         )
 
-        # self.input_action_space = input_action_space
-        # self.input_action_linear = nn.Sequential(
-        #     self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
-        #     nn.BatchNorm1d(self.linear_size),
-        #     nn.LeakyReLU(),
-        # )
+        if not self.mutual_information:
 
-        self.deconv = []
-        for decon_i in range(self.num_subpolicy):
-            self.deconv += [nn.Sequential(
-                self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
-                # nn.BatchNorm1d(32 * 7 * 7),
-                nn.LeakyReLU(),
-                DeFlatten((32,7,7)),
-                self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
-                # nn.BatchNorm2d(64),
-                nn.LeakyReLU(),
-                self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
-                # nn.BatchNorm2d(32),
-                nn.LeakyReLU(),
-                self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_space.shape[0], 8, stride=4)),
-                # output do not normalize
-                nn.Sigmoid(),
-            )]
-        self.deconv = nn.ModuleList(self.deconv)
+            self.deconv = []
+            for decon_i in range(self.num_subpolicy):
+                self.deconv += [nn.Sequential(
+                    self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
+                    # nn.BatchNorm1d(32 * 7 * 7),
+                    nn.LeakyReLU(),
+                    DeFlatten((32,7,7)),
+                    self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
+                    # nn.BatchNorm2d(64),
+                    nn.LeakyReLU(),
+                    self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
+                    # nn.BatchNorm2d(32),
+                    nn.LeakyReLU(),
+                    self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_shape[0], 8, stride=4)),
+                    # output do not normalize
+                    nn.Sigmoid(),
+                )]
+            self.deconv = nn.ModuleList(self.deconv)
 
-    def forward(self, inputs, input_action):
-        before_deconv = self.conv(inputs/255.0)#*self.input_action_linear(input_action)
-        index_dic = {}
-        tensor_dic = {}
-        y_dic = {}
-        action_index = np.where(input_action==1)[1]
-        for dic_i in range(self.num_subpolicy):
-            index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
-            if index_dic[str(dic_i)].size()[0] != 0:
-                tensor_dic[str(dic_i)] = torch.index_select(before_deconv,0,index_dic[str(dic_i)])
-                y_dic[str(dic_i)] = self.deconv[dic_i](tensor_dic[str(dic_i)])
-        after_deconv = torch.zeros((inputs.size()[0],*self.output_observation_space.shape)).cuda()
-        for y_i in range(self.num_subpolicy):
-            if str(y_i) in y_dic:
-                after_deconv.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
+        else:
 
-        return after_deconv*255.0, before_deconv, self.reward_bounty_linear(before_deconv)
+            self.label_linear = nn.Sequential(
+                self.linear_init_(nn.Linear(self.linear_size, num_subpolicy)),
+            )
+
+
+    def forward(self, inputs, input_action=None):
+
+        before_deconv = self.conv(inputs/255.0)
+
+        if not self.mutual_information:
+
+            index_dic = {}
+            tensor_dic = {}
+            y_dic = {}
+            action_index = np.where(input_action==1)[1]
+            for dic_i in range(self.num_subpolicy):
+                index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
+                if index_dic[str(dic_i)].size()[0] != 0:
+                    tensor_dic[str(dic_i)] = torch.index_select(before_deconv,0,index_dic[str(dic_i)])
+                    y_dic[str(dic_i)] = self.deconv[dic_i](tensor_dic[str(dic_i)])
+            after_deconv = torch.zeros((inputs.size()[0],*self.output_observation_shape)).cuda()
+            for y_i in range(self.num_subpolicy):
+                if str(y_i) in y_dic:
+                    after_deconv.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
+
+            return after_deconv*255.0, before_deconv, self.reward_bounty_linear(before_deconv)
+
+        else:
+
+            return F.log_softmax(self.label_linear(before_deconv), dim=1), self.reward_bounty_linear(before_deconv)
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)

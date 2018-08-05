@@ -59,6 +59,8 @@ class PPO(object):
     def init_transition_model(self):
         '''build essential things for training transition_model'''
         self.optimizer_transition_model = optim.Adam(self.upper_layer.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
+        if self.this_layer.args.mutual_information:
+            self.NLLLoss = nn.NLLLoss()
 
     def get_grad_norm(self, inputs, outputs):
 
@@ -286,31 +288,44 @@ class PPO(object):
 
                     observations_batch = observations_batch.gather(0,next_masks_batch_index_observations_batch)
                     action_onehot_batch = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch)
+                    next_observations_batch = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch)
+                    reward_bounty_raw_batch = reward_bounty_raw_batch.gather(0,next_masks_batch_index_reward_bounty_raw_batch)
 
                     if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
                         action_onehot_batch = torch.autograd.Variable(action_onehot_batch, requires_grad=True)
 
                     '''forward'''
                     self.upper_layer.transition_model.train()
-                    predicted_next_observations_batch, before_deconv, reward_bounty = self.upper_layer.transition_model(
-                        inputs = observations_batch,
-                        input_action = action_onehot_batch,
-                    )
 
-                    '''compute mse loss'''
-                    mse_loss_transition = F.mse_loss(
-                        input = predicted_next_observations_batch,
-                        target = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch),
-                        reduction='elementwise_mean',
-                    )/255.0
+                    if not self.this_layer.args.mutual_information:
+                        predicted_next_observations_batch, before_deconv, reward_bounty = self.upper_layer.transition_model(
+                            inputs = observations_batch,
+                            input_action = action_onehot_batch,
+                        )
+                        '''compute mse loss'''
+                        mse_loss_transition = F.mse_loss(
+                            input = predicted_next_observations_batch,
+                            target = next_observations_batch,
+                            reduction='elementwise_mean',
+                        )/255.0
+
+                    else:
+                        predicted_action_log_probs, reward_bounty = self.upper_layer.transition_model(
+                            inputs = next_observations_batch,
+                        )
+                        '''compute mse loss'''
+                        nll_loss = self.NLLLoss(predicted_action_log_probs, action_onehot_batch.nonzero()[:,1])
 
                     mse_loss_reward_bounty = F.mse_loss(
                         input = reward_bounty,
-                        target = reward_bounty_raw_batch.gather(0,next_masks_batch_index_reward_bounty_raw_batch),
+                        target = reward_bounty_raw_batch,
                         reduction='elementwise_mean',
                     )
 
-                    mse_loss = mse_loss_transition + mse_loss_reward_bounty
+                    if not self.this_layer.args.mutual_information:
+                        mse_loss = mse_loss_transition + mse_loss_reward_bounty
+                    else:
+                        mse_loss = nll_loss + mse_loss_reward_bounty
 
                     '''backward'''
                     mse_loss.backward(
@@ -334,15 +349,27 @@ class PPO(object):
 
 
                 if self.this_layer.update_i in [0]:
-                    print('[H-{}] First time train transition_model, epoch {}, ml {}, mlt {}, mlrb {}'.format(
+                    print_str = ''
+                    print_str += '[H-{}] First time train transition_model, epoch {}, ml {}, mlrb {}'.format(
                         self.this_layer.hierarchy_id,
                         e,
                         mse_loss.item(),
-                        mse_loss_transition.item(),
                         mse_loss_reward_bounty.item(),
-                    ))
+                    )
+                    if not self.this_layer.args.mutual_information:
+                        print_str += ', mlt {}'.format(
+                            mse_loss_transition.item(),
+                        )
+                    else:
+                        print_str += ', nl {}'.format(
+                            nll_loss.item(),
+                        )
+                    print(print_str)
 
-            epoch_loss['mse_loss_transition'] = mse_loss.item()
+            if not self.this_layer.args.mutual_information:
+                epoch_loss['mse_loss_transition'] = mse_loss.item()
+            else:
+                epoch_loss['nll_loss'] = nll_loss.item()
             epoch_loss['mse_loss_reward_bounty'] = mse_loss.item()
 
             if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
