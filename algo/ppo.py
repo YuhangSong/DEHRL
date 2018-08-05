@@ -269,7 +269,7 @@ class PPO(object):
 
                     self.optimizer_transition_model.zero_grad()
 
-                    observations_batch, next_observations_batch, actions_batch, next_masks_batch = sample
+                    observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch = sample
 
                     action_onehot_batch = torch.zeros(observations_batch.size()[0],self.upper_layer.actor_critic.output_action_space.n).cuda()
 
@@ -279,9 +279,10 @@ class PPO(object):
 
                     '''generate indexs'''
                     next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
-                    next_masks_batch_index_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch.size()[1:])
+                    next_masks_batch_index_observations_batch      = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
                     next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
-                    next_masks_batch_index_action_onehot_batch = next_masks_batch_index.unsqueeze(1).expand(next_masks_batch_index.size()[0],*action_onehot_batch.size()[1:])
+                    next_masks_batch_index_action_onehot_batch     = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*action_onehot_batch    .size()[1:])
+                    next_masks_batch_index_reward_bounty_raw_batch = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*reward_bounty_raw_batch.size()[1:])
 
                     observations_batch = observations_batch.gather(0,next_masks_batch_index_observations_batch)
                     action_onehot_batch = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch)
@@ -291,17 +292,25 @@ class PPO(object):
 
                     '''forward'''
                     self.upper_layer.transition_model.train()
-                    predicted_next_observations_batch, before_deconv = self.upper_layer.transition_model(
+                    predicted_next_observations_batch, before_deconv, reward_bounty = self.upper_layer.transition_model(
                         inputs = observations_batch,
                         input_action = action_onehot_batch,
                     )
 
                     '''compute mse loss'''
-                    mse_loss = F.mse_loss(
+                    mse_loss_transition = F.mse_loss(
                         input = predicted_next_observations_batch,
                         target = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch),
                         reduction='elementwise_mean',
+                    )/255.0
+
+                    mse_loss_reward_bounty = F.mse_loss(
+                        input = reward_bounty,
+                        target = reward_bounty_raw_batch.gather(0,next_masks_batch_index_reward_bounty_raw_batch),
+                        reduction='elementwise_mean',
                     )
+
+                    mse_loss = mse_loss_transition + mse_loss_reward_bounty
 
                     '''backward'''
                     mse_loss.backward(
@@ -325,13 +334,17 @@ class PPO(object):
 
 
                 if self.this_layer.update_i in [0]:
-                    print('[H-{}] First time train transition_model, epoch {}, mse_loss {}.'.format(
+                    print('[H-{}] First time train transition_model, epoch {}, ml {}, mlt {}, mlrb {}'.format(
                         self.this_layer.hierarchy_id,
                         e,
                         mse_loss.item(),
+                        mse_loss_transition.item(),
+                        mse_loss_reward_bounty.item(),
                     ))
 
-            epoch_loss['mse'] = mse_loss.item()
+            epoch_loss['mse_loss_transition'] = mse_loss.item()
+            epoch_loss['mse_loss_reward_bounty'] = mse_loss.item()
+
             if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
                 epoch_loss['gradients_reward'] = gradients_reward.item()
 

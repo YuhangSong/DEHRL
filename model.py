@@ -316,6 +316,10 @@ class TransitionModel(nn.Module):
             nn.LeakyReLU()
         )
 
+        self.reward_bounty_linear = nn.Sequential(
+            self.linear_init_(nn.Linear(self.linear_size, 1)),
+        )
+
         # self.input_action_space = input_action_space
         # self.input_action_linear = nn.Sequential(
         #     self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
@@ -358,7 +362,7 @@ class TransitionModel(nn.Module):
             if str(y_i) in y_dic:
                 after_deconv.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
 
-        return after_deconv*255.0, before_deconv
+        return after_deconv*255.0, before_deconv, self.reward_bounty_linear(before_deconv)
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)
