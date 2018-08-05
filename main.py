@@ -413,7 +413,7 @@ class HierarchyLayer(object):
                     predicted_action_resulted_from, predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
                         inputs = torch.from_numpy(self.obs).float().cuda(),
                     )
-                    predicted_action_resulted_from = predicted_action_resulted_from.exp()
+                    predicted_action_resulted_from = predicted_action_resulted_from
 
             self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
             self.reward_bounty = torch.zeros(args.num_processes).cuda()
@@ -435,9 +435,13 @@ class HierarchyLayer(object):
                 self.reward_bounty[process_i] = self.reward_bounty_raw_to_return[process_i]
 
                 if args.clip_reward_bounty:
+                    if not args.mutual_information:
+                        threshold = predicted_reward_bounty_by_upper_layer[action_rb[process_i],process_i]
+                    else:
+                        threshold = predicted_reward_bounty_by_upper_layer[process_i]
                     self.reward_bounty[process_i] = np.clip(
                         np.sign(
-                            (self.reward_bounty[process_i]-predicted_reward_bounty_by_upper_layer[action_rb[process_i],process_i]),
+                            (self.reward_bounty[process_i]-threshold),
                         ),
                         a_min = 0.0,
                         a_max = 1.0,
