@@ -413,7 +413,7 @@ class HierarchyLayer(object):
                     predicted_action_resulted_from, predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
                         inputs = torch.from_numpy(self.obs).float().cuda(),
                     )
-                    predicted_action_resulted_from = predicted_action_resulted_from
+                    predicted_action_resulted_from = predicted_action_resulted_from.exp()
 
             self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
             self.reward_bounty = torch.zeros(args.num_processes).cuda()
@@ -430,7 +430,7 @@ class HierarchyLayer(object):
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
 
                 else:
-                    self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]]
+                    self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
 
                 self.reward_bounty[process_i] = self.reward_bounty_raw_to_return[process_i]
 
