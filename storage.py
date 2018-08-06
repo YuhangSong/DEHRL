@@ -10,6 +10,7 @@ class RolloutStorage(object):
         self.input_actions = torch.zeros(num_steps + 1, num_processes, input_actions.n)
         self.states = torch.zeros(num_steps + 1, num_processes, state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
+        self.reward_bounty_raw = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
@@ -30,6 +31,7 @@ class RolloutStorage(object):
         self.input_actions = self.input_actions.cuda()
         self.states = self.states.cuda()
         self.rewards = self.rewards.cuda()
+        self.reward_bounty_raw = self.reward_bounty_raw.cuda()
         self.value_preds = self.value_preds.cuda()
         self.returns = self.returns.cuda()
         self.action_log_probs = self.action_log_probs.cuda()
@@ -86,20 +88,22 @@ class RolloutStorage(object):
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
     def transition_model_feed_forward_generator(self, mini_batch_size, recent_steps, recent_at):
-        rc_rewards      = self.rewards     [recent_at-recent_steps:recent_at  ]
-        rc_observations = self.observations[recent_at-recent_steps:recent_at+1]
-        rc_actions      = self.actions     [recent_at-recent_steps:recent_at  ]
-        rc_masks        = self.masks       [recent_at-recent_steps:recent_at+1]
+        rc_rewards                = self.rewards               [recent_at-recent_steps:recent_at  ]
+        rc_reward_bounty_raw      = self.reward_bounty_raw     [recent_at-recent_steps:recent_at  ]
+        rc_observations           = self.observations          [recent_at-recent_steps:recent_at+1]
+        rc_actions                = self.actions               [recent_at-recent_steps:recent_at  ]
+        rc_masks                  = self.masks                 [recent_at-recent_steps:recent_at+1]
         num_steps, num_processes = rc_rewards.size()[0:2]
         batch_size = num_processes * num_steps
         sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False)
         for indices in sampler:
-            observations_batch      = rc_observations[ :-1].view(-1,*rc_observations.size()[2:])[indices]
-            next_observations_batch = rc_observations[1:  ].view(-1,*rc_observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
-            actions_batch           = rc_actions           .view(-1, rc_actions.size(-1))[indices]
-            next_masks_batch        = rc_masks       [1:  ].view(-1, 1)[indices]
+            observations_batch           = rc_observations     [ :-1].view(-1,*rc_observations.size()[2:])[indices]
+            reward_bounty_raw_batch      = rc_reward_bounty_raw      .view(-1, 1                         )[indices]
+            next_observations_batch      = rc_observations     [1:  ].view(-1,*rc_observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
+            actions_batch                = rc_actions                .view(-1, rc_actions.size(-1)       )[indices]
+            next_masks_batch             = rc_masks            [1:  ].view(-1, 1                         )[indices]
 
-            yield observations_batch, next_observations_batch, actions_batch, next_masks_batch
+            yield observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch
 
     def recurrent_generator(self, advantages, num_mini_batch):
         raise Exception('Not supported')

@@ -171,7 +171,7 @@ class OverCooked(gym.Env):
 
         done = False
         self.eposide_length += 1
-        reward = 0
+        reward = 0.0
         if action_id<17:
 
             self.leg_count[action_id] += 1
@@ -204,9 +204,6 @@ class OverCooked(gym.Env):
             self.action_mem[self.leg_id] = action
             self.leg_position[self.leg_id][0] = self.leg_position[self.leg_id][0]+self.state[self.leg_id][0]
             self.leg_position[self.leg_id][1] = self.leg_position[self.leg_id][1]+self.state[self.leg_id][1]
-
-        if self.leg_move_count%4 == 0:
-            reward = 0.0
 
         if 0 not in self.action_mem:
             action_box = np.unique(self.action_mem)
@@ -251,49 +248,51 @@ class OverCooked(gym.Env):
                         done = False
 
 
-            self.position = self.position_constrain(self.position,[self.max_x,self.max_y],[self.min_x,self.min_y])
-            self.action_mem = np.zeros(self.leg_num)
+                self.position = self.position_constrain(self.position,[self.max_x,self.max_y],[self.min_x,self.min_y])
+                self.action_mem = np.zeros(self.leg_num)
 
-            self.leg_position = []
-            self.leg_position.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-            self.leg_position.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-            self.leg_position.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-            self.leg_position.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                self.leg_position = []
+                self.leg_position.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                self.leg_position.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                self.leg_position.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                self.leg_position.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
-            self.reset_legposi = []
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                self.reset_legposi = []
+                self.reset_legposi.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
-        if self.leg_move_count%4 == 0:
-            self.leg_position = []
-            self.leg_position.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-            self.leg_position.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-            self.leg_position.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-            self.leg_position.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+        if self.args.reset_leg:
+            if self.leg_move_count%4 == 0:
+                self.action_mem = np.zeros(self.leg_num)
+                self.leg_position = []
+                self.leg_position.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                self.leg_position.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                self.leg_position.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                self.leg_position.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
-            self.reset_legposi = []
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-            self.reset_legposi.append(
-                np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-            self.reset_legposi.append(
-                np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                self.reset_legposi = []
+                self.reset_legposi.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                self.reset_legposi.append(
+                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
         # if action_id==17:
         distance_1 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
         distance_2 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
@@ -560,7 +559,15 @@ class OverCooked(gym.Env):
         return canvas
 
 if __name__ == '__main__':
-    env = OverCooked(reward_level=1, obs_type='image', isrender=True)
+    from visdom import Visdom
+    from arguments import get_args
+    viz = Visdom()
+    win = None
+    win_dic = {}
+    win_dic['Obs'] = None
+    args = get_args()
+
+    env = OverCooked(args)
     for i_episode in range(20):
         observation = env.reset()
         for t in range(100):
@@ -594,9 +601,13 @@ if __name__ == '__main__':
             gray_img = observation
             # cv2.imshow('overcooked_gray',gray_img)
             gray_img_rezised = cv2.resize(gray_img, (84,84))
+            win_dic['Obs'] = viz.images(
+                gray_img_rezised,
+                win=win_dic['Obs'],
+                opts=dict(title=' ')
+            )
             # cv2.imshow('gray_img_rezised', gray_img_rezised)
             cv2.waitKey(2)
-            print(observation)
             print(reward)
             if done:
                 print("Episode finished after {} timesteps".format(t + 1))

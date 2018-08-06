@@ -35,8 +35,8 @@ torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
 
 try:
-    print('Dir empty, making new log dir...')
     os.makedirs(args.save_dir)
+    print('Dir empty, making new log dir...')
 except Exception as e:
     if e.__class__.__name__ in ['FileExistsError']:
         print('Dir exsit, checking checkpoint...')
@@ -66,7 +66,7 @@ if len(args.num_subpolicy) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
     args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
 '''for top hierarchy layer'''
-args.num_subpolicy += [1]
+args.num_subpolicy += [2]
 
 if len(args.hierarchy_interval) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity hierarchy_interval is not matching args.num_hierarchy, use the first hierarchy_interval for all layers')
@@ -84,6 +84,8 @@ else:
 input_actions_onehot_global = []
 for hierarchy_i in range(args.num_hierarchy):
     input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i]).cuda()]
+'''init top layer input_actions'''
+input_actions_onehot_global[-1][:,0]=1.0
 
 sess = tf.Session()
 
@@ -131,10 +133,11 @@ class HierarchyLayer(object):
         if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
             from model import TransitionModel
             self.transition_model = TransitionModel(
-                input_observation_shape = obs_shape,
+                input_observation_shape = obs_shape if not args.mutual_information else self.envs.observation_space.shape,
                 input_action_space = self.envs.action_space,
-                output_observation_space = self.envs.observation_space,
-                num_subpolicy = args.num_subpolicy[self.hierarchy_id-1]
+                output_observation_shape = self.envs.observation_space.shape,
+                num_subpolicy = args.num_subpolicy[self.hierarchy_id-1],
+                mutual_information = args.mutual_information,
             ).cuda()
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0
@@ -210,13 +213,38 @@ class HierarchyLayer(object):
 
         self.refresh_update_type()
 
-        self.last_time_log_behavior = time.time()
-        self.log_behavior = True
+        self.last_time_log_behavior = 0.0
+        self.log_behavior = False
         self.episode_visilize_stack = {}
 
         self.predicted_next_observations_to_downer_layer = None
 
         self.agent.set_this_layer(self)
+
+        if args.test_reward_bounty:
+            if self.hierarchy_id == 1.0:
+                self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
+                self.macros_count = 0
+                print(self.macros)
+
+            if self.hierarchy_id == 0.0:
+                self.actions = ([0,0,0,0]+[4,12,8,16]+[1,9,5,13]+[3,11,7,15]+[2,10,6,14])*5
+                self.actions_count = 0
+                print(self.actions)
+
+                self.bounty_results = []
+
+        if args.test_action_vis:
+            if self.hierarchy_id == 1.0:
+                self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
+                self.macros_count = 0
+                print(self.macros)
+
+            if self.hierarchy_id == 0.0:
+                self.action_sum = 5*5*4
+                self.actions_count = 0
+                self.action_dic = {}
+
 
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
@@ -224,12 +252,14 @@ class HierarchyLayer(object):
 
     def step(self, inputs):
         '''as a environment, it has step method'''
-        if args.reward_bounty > 0.0:
+        if args.reward_bounty > 0.0 and (not args.mutual_information):
             input_cpu_actions = inputs[0]
-            predicted_next_observations_by_upper_layer = inputs[1]
+            self.predicted_next_observations_by_upper_layer = inputs[1]
+            self.predicted_reward_bounty_by_upper_layer = inputs[2]
         else:
             input_cpu_actions = inputs
-            predicted_next_observations_by_upper_layer = None
+            self.predicted_next_observations_by_upper_layer = None
+            self.predicted_reward_bounty_by_upper_layer = None
 
         '''convert: input_cpu_actions >> input_actions_onehot_global[self.hierarchy_id]'''
         input_actions_onehot_global[self.hierarchy_id].fill_(0.0)
@@ -239,10 +269,9 @@ class HierarchyLayer(object):
         reward_macro = None
         for macro_step_i in range(self.hierarchy_interval):
 
-            obs, reward, done, info = self.one_step(
-                predicted_next_observations_by_upper_layer = predicted_next_observations_by_upper_layer,
-                is_final_step_by_upper_layer = (macro_step_i==(self.hierarchy_interval-1)),
-            )
+            self.is_final_step_by_upper_layer = (macro_step_i in [self.hierarchy_interval-1])
+
+            obs, reward, reward_bounty_raw_to_return, done, info = self.one_step()
 
             if reward_macro is None:
                 reward_macro = reward
@@ -251,15 +280,15 @@ class HierarchyLayer(object):
 
         reward = reward_macro
 
-        return obs, reward, done, info
+        return obs, reward, reward_bounty_raw_to_return, done, info
 
-    def one_step(self, predicted_next_observations_by_upper_layer, is_final_step_by_upper_layer):
+    def one_step(self):
         '''as a environment, it has step method.
         But the step method step forward for args.hierarchy_interval times,
         as a macro action, this method is to step forward for a singel step'''
 
         '''for each one_step, interact with env for one step'''
-        obs, reward, done, info = self.interact_one_step(predicted_next_observations_by_upper_layer, is_final_step_by_upper_layer)
+        obs, reward, reward_bounty_raw_to_return, done, info = self.interact_one_step()
 
         self.step_i += 1
         if self.step_i==args.num_steps[self.hierarchy_id]:
@@ -267,14 +296,207 @@ class HierarchyLayer(object):
             self.update_agent_one_step()
             self.step_i = 0
 
-        return obs, reward, done, info
+        return obs, reward, reward_bounty_raw_to_return, done, info
 
-    def interact_one_step(self, predicted_next_observations_by_upper_layer, is_final_step_by_upper_layer):
+    def specify_action(self):
+        '''this method is used to speicfy actions to the agent,
+        so that we can get insight on with is happening'''
+
+        if args.test_action:
+            if self.hierarchy_id in [0]:
+                self.action[0,0] = int(
+                    input(
+                        '[Macro Action {}, actual action {}], Act: '.format(
+                            utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
+                            self.action[0,0].item(),
+                        )
+                    )
+                )
+            if self.hierarchy_id in [1]:
+                self.action[0,0] = int(
+                    input(
+                        'Macro Act: '
+                    )
+                )
+
+        if args.test_reward_bounty:
+            if self.hierarchy_id in [0]:
+                if self.episode_reward['len'] < 4.0:
+                    self.action[0,0] = self.actions[self.actions_count]
+                    self.actions_count += 1
+                    print('set action to {}'.format(self.action[0,0].item()))
+            if self.hierarchy_id in [1]:
+                if self.episode_reward['len']==0.0:
+                    self.action[0,0] = self.macros[self.macros_count]
+                    self.macros_count += 1
+                    print('set macro action: {}'.format(self.action[0,0].item()))
+
+        if args.test_action_vis:
+            if self.hierarchy_id in [0]:
+                if self.episode_reward['len'] < 4.0:
+                    new_key = False
+                    try:
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().item())
+                    except Exception as e:
+                        new_key = True
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().item()]
+                    self.actions_count += 1
+                    if self.actions_count%4 == 0 and not new_key:
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] += [' ']
+
+            if self.hierarchy_id in [1]:
+                if self.episode_reward['len']==0.0:
+                    self.action[0,0] = self.macros[self.macros_count]
+                    self.macros_count += 1
+                    print('set macro action: {}'.format(self.action[0,0].item()))
+
+    def log_for_specify_action(self):
+
+        if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
+            if args.test_action_vis:
+                if self.episode_reward['len'] == 3.0:
+                    if self.actions_count == self.action_sum:
+                        for action_keys in self.action_dic.keys():
+                            print('macro action: {}, action list: {}'.format(action_keys, self.action_dic[action_keys]))
+                        print(s)
+
+            print_str = ''
+            print_str += '[reward {} ][done {}][masks {}]'.format(
+                self.reward_raw_OR_reward[0],
+                self.done[0],
+                self.masks[0].item(),
+            )
+            if args.reward_bounty > 0.0:
+                print_str += '[reward_bounty {}]'.format(
+                    self.reward_bounty[0],
+                )
+                if args.test_reward_bounty:
+                    if self.episode_reward['len'] == 3.0:
+                        self.bounty_results += [self.reward_bounty[0]]
+                        if self.actions_count == (len(self.actions)):
+                            for x in range(5):
+                                print_str = ''
+                                max_value = 0.0
+                                max_index = -1
+                                for y in range(5):
+                                    temp = self.bounty_results[x*5+y]
+                                    print_str += '{}\t'.format(temp)
+                                    if temp>max_value:
+                                        max_value = temp
+                                        max_index = y
+                                print('{} max_index: {}'.format(print_str, max_index))
+                            print(s)
+
+            print(print_str)
+
+    def generate_actions_to_step(self):
+        '''this method generate actions_to_step controlled by many logic'''
+
+        if args.use_fake_reward_bounty:
+
+            if self.hierarchy_id in [0]:
+                '''for fake reward bounty, actions_to_step in hierarchy 0 need to have macro-actions from all levels'''
+                self.actions_to_step = [None]*args.num_processes
+                for process_i in range(args.num_processes):
+                    self.actions_to_step[process_i] = []
+                    self.actions_to_step[process_i] += [self.action[process_i,0].item()]
+                    for hierarchy_i in range(args.num_hierarchy-1):
+                        self.actions_to_step[process_i] += [utils.onehot_to_index(
+                            input_actions_onehot_global[hierarchy_i][process_i].cpu().numpy()
+                        )]
+
+            if self.hierarchy_id not in [0]:
+                self.actions_to_step = self.action.squeeze(1).cpu().numpy()
+
+        else:
+
+            if (self.hierarchy_id not in [0]) and (args.reward_bounty > 0.0) and (not args.mutual_information):
+
+                '''predict states'''
+                self.transition_model.eval()
+                with torch.no_grad():
+                    self.predicted_next_observations_to_downer_layer, _, self.predicted_reward_bounty_to_downer_layer = self.transition_model(
+                        inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
+                        input_action = self.action_onehot_batch,
+                    )
+                self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
+                self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:])
+
+                self.actions_to_step = [self.action.squeeze(1).cpu().numpy(), self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer]
+
+            else:
+                self.actions_to_step = self.action.squeeze(1).cpu().numpy()
+
+    def generate_reward_bounty(self):
+        '''this method generate reward bounty'''
+
+        self.reward_bounty_raw_to_return = None
+        if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer):
+
+            action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
+
+            if not args.mutual_information:
+                obs_rb = torch.from_numpy(self.obs).float().cuda()/255.0
+                self.predicted_next_observations_by_upper_layer = self.predicted_next_observations_by_upper_layer/255.0
+
+            else:
+                self.upper_layer.transition_model.eval()
+                with torch.no_grad():
+                    predicted_action_resulted_from, self.predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
+                        inputs = torch.from_numpy(self.obs).float().cuda(),
+                    )
+                    predicted_action_resulted_from = predicted_action_resulted_from.exp()
+
+            self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
+            self.reward_bounty = torch.zeros(args.num_processes).cuda()
+            for process_i in range(args.num_processes):
+
+                if not args.mutual_information:
+                    difference_list = []
+                    for action_i in range(self.predicted_next_observations_by_upper_layer.size()[0]):
+                        difference = (obs_rb[process_i]-self.predicted_next_observations_by_upper_layer[action_i,process_i]).abs().mean()
+                        if action_i==action_rb[process_i]:
+                            continue
+                        difference_list += [difference]
+
+                    self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
+
+                else:
+                    self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
+
+                self.reward_bounty[process_i] = self.reward_bounty_raw_to_return[process_i]
+
+                if args.clip_reward_bounty:
+                    if not args.mutual_information:
+                        threshold = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i],process_i]
+                    else:
+                        threshold = self.predicted_reward_bounty_by_upper_layer[process_i]
+                    self.reward_bounty[process_i] = np.clip(
+                        np.sign(
+                            (self.reward_bounty[process_i]-threshold),
+                        ),
+                        a_min = 0.0,
+                        a_max = 1.0,
+                    )
+
+                self.reward_bounty[process_i] = self.reward_bounty[process_i]*args.reward_bounty
+
+            '''mask reward bounty, since the final state is start state,
+            and the estimation from transition model is not accurate'''
+            self.reward_bounty *= self.masks.squeeze()
+            '''convert to numpy'''
+            self.reward_bounty = self.reward_bounty.cpu().numpy()
+
+        else:
+            self.reward_bounty = np.copy(self.reward)
+            self.reward_bounty.fill(0.0)
+
+    def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
 
         self.rollouts.input_actions[self.step_i].copy_(input_actions_onehot_global[self.hierarchy_id])
 
-        # Sample actions
+        '''Sample actions'''
         with torch.no_grad():
             self.value, self.action, self.action_log_prob, self.states = self.actor_critic.act(
                 inputs = self.rollouts.observations[self.step_i],
@@ -283,63 +505,26 @@ class HierarchyLayer(object):
                 deterministic = self.deterministic,
                 input_action = self.rollouts.input_actions[self.step_i],
             )
-        self.cpu_actions = self.action.squeeze(1).cpu().numpy()
 
-        if args.test and self.hierarchy_id in [0]:
-            self.cpu_actions[0] = int(
-                input(
-                    '[Macro Action {}, actual action {}], Act: '.format(
-                        utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
-                        self.cpu_actions[0],
-                    )
-                )
-            )
+        # DEBUG:
+        if self.hierarchy_id in [1]:
+            '''hierarchy 1 behavior randomly, this is a debug behavior'''
+            self.action.random_(0,to=self.envs.action_space.n)
 
-        self.actions_to_step = self.cpu_actions
+        self.specify_action()
+
+        self.generate_actions_to_step()
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
-        if args.use_fake_reward_bounty:
-
-            if self.hierarchy_id in [0]:
-                self.actions_to_step = [None]*args.num_processes
-                for process_i in range(args.num_processes):
-                    self.actions_to_step[process_i] = []
-                    self.actions_to_step[process_i] += [self.cpu_actions[process_i]]
-                    for hierarchy_i in range(args.num_hierarchy-1):
-                        self.actions_to_step[process_i] += [utils.onehot_to_index(
-                            input_actions_onehot_global[hierarchy_i][process_i].cpu().numpy()
-                        )]
-
-            elif self.hierarchy_id in [1]:
-                self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
-
+        '''Obser reward and next obs'''
+        self.reward_bounty_raw_returned = None
+        fetched = self.envs.step(self.actions_to_step)
+        if self.hierarchy_id in [0]:
+            self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
         else:
+            self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
-            if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
-                '''predict states'''
-                self.transition_model.eval()
-
-                with torch.no_grad():
-                    self.predicted_next_observations_to_downer_layer, _ = self.transition_model(
-                        inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
-                        input_action = self.action_onehot_batch,
-                    )
-                self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
-
-                if self.hierarchy_id in [1]:
-                    self.actions_to_step = np.random.randint(low=0, high=self.envs.action_space.n, size=self.cpu_actions.shape, dtype=self.cpu_actions.dtype)
-                    if args.test:
-                        self.actions_to_step[0] = int(
-                            input(
-                                'Macro Action: '
-                            )
-                        )
-
-                self.actions_to_step = [self.actions_to_step, self.predicted_next_observations_to_downer_layer]
-
-        # Obser reward and next obs
-        self.obs, self.reward_raw_OR_reward, self.done, self.info = self.envs.step(self.actions_to_step)
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).cuda()
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
@@ -350,64 +535,19 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
             self.reward_raw = self.reward_raw_OR_reward.astype(float)
-
             self.reward = np.sign(self.reward_raw)
             self.reward = self.reward_raw
         else:
             '''otherwise, this is reward'''
             self.reward = self.reward_raw_OR_reward
 
-        if (predicted_next_observations_by_upper_layer is not None) and is_final_step_by_upper_layer:
+        self.generate_reward_bounty()
 
-            obs_rb = torch.from_numpy(self.obs).float().cuda()
-            prediction_rb = predicted_next_observations_by_upper_layer
-            obs_rb = obs_rb.view(obs_rb.size()[0],-1)/255.0
-            prediction_rb = prediction_rb.view(*prediction_rb.size()[:2],-1)/255.0
-            action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
-
-            self.reward_bounty = torch.zeros(args.num_processes).cuda()
-            for process_i in range(args.num_processes):
-                for action_i in range(prediction_rb.size()[0]):
-                    if action_i==action_rb[process_i]:
-                        continue
-                    self.reward_bounty[process_i] += (obs_rb[process_i]-prediction_rb[action_i,process_i]).abs().mean()
-            self.reward_bounty = self.reward_bounty/(prediction_rb.size()[0]-1)*args.reward_bounty
-
-            '''mask reward bounty, since the final state is start state,
-            and the estimation from transition model is not accurate'''
-            self.reward_bounty *= self.masks.squeeze()
-            '''convert to numpy'''
-            self.reward_bounty = self.reward_bounty.cpu().numpy()
-
-            # for reward_i in range(args.num_processes):
-            #     if self.reward_bounty[reward_i]>10:
-            #         self.reward_bounty[reward_i] = 1
-            #     else:
-            #         self.reward_bounty[reward_i] = 0
-
-        else:
-            self.reward_bounty = np.copy(self.reward)
-            self.reward_bounty.fill(0.0)
-
-        if is_final_step_by_upper_layer:
+        if self.is_final_step_by_upper_layer:
             '''mask it and stop reward function'''
             self.masks = self.masks * 0.0
 
-        if args.test and self.hierarchy_id in [0]:
-            if args.reward_bounty > 0.0:
-                print('[reward {} ][reward_bounty {}][done {}][masks {}]'.format(
-                    self.reward_raw_OR_reward[0],
-                    self.reward_bounty[0],
-                    self.done[0],
-                    self.masks[0].item(),
-                ))
-            if args.use_fake_reward_bounty:
-                print('[reward {} ][done {}][masks {}]'.format(
-                    self.reward_raw_OR_reward[0],
-                    self.done[0],
-                    self.masks[0].item(),
-                ))
-
+        self.log_for_specify_action()
 
         self.reward_final = self.reward + self.reward_bounty
 
@@ -422,6 +562,9 @@ class HierarchyLayer(object):
 
         self.update_current_obs(self.obs)
 
+        if self.reward_bounty_raw_returned is not None:
+            self.rollouts.reward_bounty_raw[self.rollouts.step].copy_(self.reward_bounty_raw_returned.unsqueeze(1))
+
         self.rollouts.insert(
             self.current_obs,
             self.states,
@@ -429,19 +572,14 @@ class HierarchyLayer(object):
             self.action_log_prob,
             self.value,
             torch.from_numpy(
-                np.expand_dims(
-                    np.stack(
-                        self.reward_final
-                    ),
-                    1,
-                )
-            ).float(),
+                self.reward_final
+            ).unsqueeze(1),
             self.masks,
         )
 
-        # return reward instead of reward_final to upper layer
-        # since reward_bounty will stop upper layer from exploring
-        return self.obs, self.reward, self.done, self.info
+        '''return reward instead of reward_final to upper layer
+        since reward_bounty will stop upper layer from exploring'''
+        return self.obs, self.reward, self.reward_bounty_raw_to_return, self.done, self.info
 
     def refresh_update_type(self):
         if args.reward_bounty > 0.0:
@@ -478,8 +616,9 @@ class HierarchyLayer(object):
         if args.act_deterministically:
             self.deterministic = True
 
-        # self.update_type = 'actor_critic'
-        # self.deterministic = False
+        if args.test_reward_bounty or args.test_action_vis or args.test_action:
+            self.update_type = 'none'
+            self.deterministic = True
 
     def update_agent_one_step(self):
         '''update the self.actor_critic with self.agent,
@@ -541,7 +680,7 @@ class HierarchyLayer(object):
             print(print_string)
 
         '''visualize results'''
-        if self.update_i % args.vis_interval == 0:
+        if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
             action_count = np.zeros(4)
@@ -619,7 +758,7 @@ class HierarchyLayer(object):
     def step_summary_from_env_0(self):
 
         '''for log behavior'''
-        if (time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval:
+        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
             '''log behavior every x minutes'''
             if self.episode_reward['len']==0:
                 self.last_time_log_behavior = time.time()
@@ -762,10 +901,10 @@ def main():
         the downer layers is controlled and kept running.
         Note that the top hierarchy does no have to call step,
         calling one_step is enough'''
-        hierarchy_layer[-1].one_step(
-            predicted_next_observations_by_upper_layer = None,
-            is_final_step_by_upper_layer = False,
-        )
+        hierarchy_layer[-1].predicted_next_observations_by_upper_layer = None
+        hierarchy_layer[-1].predicted_reward_bounty_by_upper_layer = None
+        hierarchy_layer[-1].is_final_step_by_upper_layer = False
+        hierarchy_layer[-1].one_step()
 
 if __name__ == "__main__":
     main()

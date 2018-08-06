@@ -53,42 +53,18 @@ class Policy(nn.Module):
         else:
             self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
-
         self.input_action_space = input_action_space
-
-        self.input_action_linear = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
-
-        self.final_feature_linear_critic = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
-
-        self.final_feature_linear_dist = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
 
 
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
 
     def get_final_features(self, inputs, states, masks, input_action=None):
-        # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
-        # input_action_features = self.input_action_linear(input_action)
-        final_features = base_features
-        final_features_critic = self.final_feature_linear_critic(final_features)
-        final_features_dist = self.final_feature_linear_dist(final_features)
-        return final_features_critic, final_features_dist, states
+        return base_features, states
 
-    def act(self, inputs, states, masks, deterministic=False, input_action=None):
-        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
+    def get_value_dist(self, base_features, input_action):
+
         if self.num_subpolicy > 1:
             index_dic = {}
             tensor_dic = {}
@@ -97,7 +73,7 @@ class Policy(nn.Module):
             for dic_i in range(self.num_subpolicy):
                 index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                 if index_dic[str(dic_i)].size()[0] != 0:
-                    tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
+                    tensor_dic[str(dic_i)] = torch.index_select(base_features,0,index_dic[str(dic_i)])
                     y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
 
             value = torch.zeros((input_action.size()[0],1)).cuda()
@@ -105,10 +81,18 @@ class Policy(nn.Module):
                 if str(y_i) in y_dic:
                     value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
 
-            dist, _ = self.dist(final_features_dist,action_index)
+            dist, dist_features = self.dist(base_features,action_index)
+
         else:
-            value = self.critic_linear(final_features_critic)
-            dist, _ = self.dist(final_features_dist)
+            value = self.critic_linear(base_features)
+            dist, dist_features = self.dist(base_features)
+
+        return value, dist, dist_features
+
+    def act(self, inputs, states, masks, deterministic=False, input_action=None):
+        base_features, states = self.get_final_features(inputs, states, masks, input_action)
+
+        value, dist, dist_features = self.get_value_dist(base_features, input_action)
 
         if deterministic:
             action = dist.mode()
@@ -116,55 +100,17 @@ class Policy(nn.Module):
             action = dist.sample()
 
         action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
 
         return value, action, action_log_probs, states
 
     def get_value(self, inputs, states, masks, input_action=None):
-        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.num_subpolicy > 1:
-            if torch.sum(input_action)>0:
-                index_dic = {}
-                tensor_dic = {}
-                y_dic = {}
-                action_index = np.where(input_action==1)[1]
-                for dic_i in range(self.num_subpolicy):
-                    index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
-                    if index_dic[str(dic_i)].size()[0] != 0:
-                        tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
-                        y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
-
-                value = torch.zeros((input_action.size()[0],1)).cuda()
-                for y_i in range(self.num_subpolicy):
-                    if str(y_i) in y_dic:
-                        value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
-            else:
-                value = self.critic_linear[0](final_features_critic)
-        else:
-            value = self.critic_linear(final_features_critic)
+        base_features, states = self.get_final_features(inputs, states, masks, input_action)
+        value, dist, dist_features = self.get_value_dist(base_features, input_action)
         return value
 
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
-        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.num_subpolicy > 1:
-            index_dic = {}
-            tensor_dic = {}
-            y_dic = {}
-            action_index = np.where(input_action==1)[1]
-            for dic_i in range(self.num_subpolicy):
-                index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
-                if index_dic[str(dic_i)].size()[0] != 0:
-                    tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
-                    y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
-
-            value = torch.zeros((input_action.size()[0],1)).cuda()
-            for y_i in range(self.num_subpolicy):
-                if str(y_i) in y_dic:
-                    value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
-            dist, dist_features = self.dist(final_features_dist,action_index)
-        else:
-            value = self.critic_linear(final_features_critic)
-            dist, dist_features = self.dist(final_features_dist)
+        base_features, states = self.get_final_features(inputs, states, masks, input_action)
+        value, dist, dist_features = self.get_value_dist(base_features, input_action)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy()
@@ -199,7 +145,6 @@ class CNNBase(nn.Module):
             nn.LeakyReLU(),
             Flatten(),
             self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
-            nn.LayerNorm(self.linear_size),
             nn.LeakyReLU()
         )
 
@@ -277,11 +222,13 @@ class MLPBase(nn.Module):
         return x, states
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_space, num_subpolicy, linear_size=512):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=512):
         super(TransitionModel, self).__init__()
+        '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
         self.input_observation_shape = input_observation_shape
-        self.output_observation_space = output_observation_space
+        self.output_observation_shape = output_observation_shape
+        self.mutual_information = mutual_information
 
         self.linear_size = linear_size
         self.num_subpolicy = num_subpolicy
@@ -316,49 +263,63 @@ class TransitionModel(nn.Module):
             nn.LeakyReLU()
         )
 
-        # self.input_action_space = input_action_space
-        # self.input_action_linear = nn.Sequential(
-        #     self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
-        #     nn.BatchNorm1d(self.linear_size),
-        #     nn.LeakyReLU(),
-        # )
+        self.reward_bounty_linear = nn.Sequential(
+            self.linear_init_(nn.Linear(self.linear_size, 1)),
+        )
 
-        self.deconv = []
-        for decon_i in range(self.num_subpolicy):
-            self.deconv += [nn.Sequential(
-                self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
-                # nn.BatchNorm1d(32 * 7 * 7),
-                nn.LeakyReLU(),
-                DeFlatten((32,7,7)),
-                self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
-                # nn.BatchNorm2d(64),
-                nn.LeakyReLU(),
-                self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
-                # nn.BatchNorm2d(32),
-                nn.LeakyReLU(),
-                self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_space.shape[0], 8, stride=4)),
-                # output do not normalize
-                nn.Sigmoid(),
-            )]
-        self.deconv = nn.ModuleList(self.deconv)
+        if not self.mutual_information:
 
-    def forward(self, inputs, input_action):
-        before_deconv = self.conv(inputs/255.0)#*self.input_action_linear(input_action)
-        index_dic = {}
-        tensor_dic = {}
-        y_dic = {}
-        action_index = np.where(input_action==1)[1]
-        for dic_i in range(self.num_subpolicy):
-            index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
-            if index_dic[str(dic_i)].size()[0] != 0:
-                tensor_dic[str(dic_i)] = torch.index_select(before_deconv,0,index_dic[str(dic_i)])
-                y_dic[str(dic_i)] = self.deconv[dic_i](tensor_dic[str(dic_i)])
-        after_deconv = torch.zeros((inputs.size()[0],*self.output_observation_space.shape)).cuda()
-        for y_i in range(self.num_subpolicy):
-            if str(y_i) in y_dic:
-                after_deconv.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
+            self.deconv = []
+            for decon_i in range(self.num_subpolicy):
+                self.deconv += [nn.Sequential(
+                    self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
+                    # nn.BatchNorm1d(32 * 7 * 7),
+                    nn.LeakyReLU(),
+                    DeFlatten((32,7,7)),
+                    self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
+                    # nn.BatchNorm2d(64),
+                    nn.LeakyReLU(),
+                    self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
+                    # nn.BatchNorm2d(32),
+                    nn.LeakyReLU(),
+                    self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_shape[0], 8, stride=4)),
+                    # output do not normalize
+                    nn.Sigmoid(),
+                )]
+            self.deconv = nn.ModuleList(self.deconv)
 
-        return after_deconv*255.0, before_deconv
+        else:
+
+            self.label_linear = nn.Sequential(
+                self.linear_init_(nn.Linear(self.linear_size, num_subpolicy)),
+            )
+
+
+    def forward(self, inputs, input_action=None):
+
+        before_deconv = self.conv(inputs/255.0)
+
+        if not self.mutual_information:
+
+            index_dic = {}
+            tensor_dic = {}
+            y_dic = {}
+            action_index = np.where(input_action==1)[1]
+            for dic_i in range(self.num_subpolicy):
+                index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
+                if index_dic[str(dic_i)].size()[0] != 0:
+                    tensor_dic[str(dic_i)] = torch.index_select(before_deconv,0,index_dic[str(dic_i)])
+                    y_dic[str(dic_i)] = self.deconv[dic_i](tensor_dic[str(dic_i)])
+            after_deconv = torch.zeros((inputs.size()[0],*self.output_observation_shape)).cuda()
+            for y_i in range(self.num_subpolicy):
+                if str(y_i) in y_dic:
+                    after_deconv.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
+
+            return after_deconv*255.0, before_deconv, self.reward_bounty_linear(before_deconv)
+
+        else:
+
+            return F.log_softmax(self.label_linear(before_deconv), dim=1), self.reward_bounty_linear(before_deconv)
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)
