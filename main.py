@@ -233,7 +233,6 @@ class HierarchyLayer(object):
                 print(self.actions)
 
                 self.bounty_results = []
-                self.action_dic = {}
 
         if args.test_action_vis:
             if self.hierarchy_id == 1.0:
@@ -336,12 +335,11 @@ class HierarchyLayer(object):
             if self.hierarchy_id in [0]:
                 if self.episode_reward['len'] < 4.0:
                     new_key = False
-                    self.action[0,0] = self.action[0,0].item()
                     try:
-                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().numpy().sum())
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().item())
                     except Exception as e:
                         new_key = True
-                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().numpy().sum()]
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().item()]
                     self.actions_count += 1
                     if self.actions_count%4 == 0 and not new_key:
                         self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] += [' ']
@@ -357,7 +355,7 @@ class HierarchyLayer(object):
         if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
             if args.test_action_vis:
                 if self.episode_reward['len'] == 3.0:
-                    if self.actions_count == 100:
+                    if self.actions_count == self.action_sum:
                         for action_keys in self.action_dic.keys():
                             print('macro action: {}, action list: {}'.format(action_keys, self.action_dic[action_keys]))
                         print(s)
@@ -618,16 +616,8 @@ class HierarchyLayer(object):
         if args.act_deterministically:
             self.deterministic = True
 
-        if args.test_reward_bounty:
-            self.update_type = 'actor_critic'
-            self.deterministic = True
-
-        if args.test_action_vis:
-            self.update_type = 'actor_critic'
-            self.deterministic = True
-
-        if args.test_action:
-            self.update_type = 'actor_critic'
+        if args.test_reward_bounty or args.test_action_vis or args.test_action:
+            self.update_type = 'none'
             self.deterministic = True
 
     def update_agent_one_step(self):
