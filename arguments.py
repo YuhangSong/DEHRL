@@ -108,11 +108,10 @@ def get_args():
     parser.add_argument('--aux', type=str, default='',
                         help='some aux information you may want to record along with this run')
 
-    parser.add_argument('--test', action='store_true',
-                        help='')
-
+    parser.add_argument('--test-reward-bounty', action='store_true',
+                        help='to test what reward bounty will each macro-action produce')
     parser.add_argument('--test-action', action='store_true',
-                        help='')
+                        help='specify actions at every level')
 
     args = parser.parse_args()
     args.transition_model_epoch = int(args.actor_critic_epoch)
