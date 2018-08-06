@@ -506,10 +506,10 @@ class HierarchyLayer(object):
                 input_action = self.rollouts.input_actions[self.step_i],
             )
 
-        # DEBUG:
-        if self.hierarchy_id in [1]:
-            '''hierarchy 1 behavior randomly, this is a debug behavior'''
-            self.action.random_(0,to=self.envs.action_space.n)
+        # # DEBUG:
+        # if self.hierarchy_id in [1]:
+        #     '''hierarchy 1 behavior randomly, this is a debug behavior'''
+        #     self.action.random_(0,to=self.envs.action_space.n)
 
         self.specify_action()
 
