@@ -468,16 +468,16 @@ class HierarchyLayer(object):
                 input_action = self.rollouts.input_actions[self.step_i],
             )
 
-        self.specify_action()
-
-        env_0_sleeping = self.envs.get_sleeping(env_index=0)
-
         # DEBUG:
         if self.hierarchy_id in [1]:
             '''hierarchy 1 behavior randomly, this is a debug behavior'''
             self.action.random_(0,to=self.envs.action_space.n)
 
+        self.specify_action()
+
         self.generate_actions_to_step()
+
+        env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
         '''Obser reward and next obs'''
         self.reward_bounty_raw_returned = None
@@ -580,7 +580,7 @@ class HierarchyLayer(object):
 
         if args.test_reward_bounty:
             self.update_type = 'actor_critic'
-            self.deterministic = False
+            self.deterministic = True
 
         if args.test_action:
             self.update_type = 'actor_critic'
