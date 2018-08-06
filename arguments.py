@@ -112,6 +112,8 @@ def get_args():
                         help='to test what reward bounty will each macro-action produce')
     parser.add_argument('--test-action', action='store_true',
                         help='specify actions at every level')
+    parser.add_argument('--test-action-vis', action='store_true',
+                        help='see actions at every level')
 
     args = parser.parse_args()
     args.transition_model_epoch = int(args.actor_critic_epoch)
