@@ -233,6 +233,19 @@ class HierarchyLayer(object):
                 print(self.actions)
 
                 self.bounty_results = []
+                self.action_dic = {}
+
+        if args.test_action_vis:
+            if self.hierarchy_id == 1.0:
+                self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
+                self.macros_count = 0
+                print(self.macros)
+
+            if self.hierarchy_id == 0.0:
+                self.action_sum = 5*5*4
+                self.actions_count = 0
+                self.action_dic = {}
+
 
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
@@ -319,9 +332,36 @@ class HierarchyLayer(object):
                     self.macros_count += 1
                     print('set macro action: {}'.format(self.action[0,0].item()))
 
+        if args.test_action_vis:
+            if self.hierarchy_id in [0]:
+                if self.episode_reward['len'] < 4.0:
+                    new_key = False
+                    self.action[0,0] = self.action[0,0].item()
+                    try:
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().numpy().sum())
+                    except Exception as e:
+                        new_key = True
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().numpy().sum()]
+                    self.actions_count += 1
+                    if self.actions_count%4 == 0 and not new_key:
+                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] += [' ']
+
+            if self.hierarchy_id in [1]:
+                if self.episode_reward['len']==0.0:
+                    self.action[0,0] = self.macros[self.macros_count]
+                    self.macros_count += 1
+                    print('set macro action: {}'.format(self.action[0,0].item()))
+
     def log_for_specify_action(self):
 
-        if (args.test_reward_bounty or args.test_action) and self.hierarchy_id in [0]:
+        if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
+            if args.test_action_vis:
+                if self.episode_reward['len'] == 3.0:
+                    if self.actions_count == 100:
+                        for action_keys in self.action_dic.keys():
+                            print('macro action: {}, action list: {}'.format(action_keys, self.action_dic[action_keys]))
+                        print(s)
+
             print_str = ''
             print_str += '[reward {} ][done {}][masks {}]'.format(
                 self.reward_raw_OR_reward[0],
@@ -582,6 +622,10 @@ class HierarchyLayer(object):
             self.update_type = 'actor_critic'
             self.deterministic = True
 
+        if args.test_action_vis:
+            self.update_type = 'actor_critic'
+            self.deterministic = True
+
         if args.test_action:
             self.update_type = 'actor_critic'
             self.deterministic = True
@@ -646,7 +690,7 @@ class HierarchyLayer(object):
             print(print_string)
 
         '''visualize results'''
-        if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action)):
+        if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
             action_count = np.zeros(4)
@@ -724,7 +768,7 @@ class HierarchyLayer(object):
     def step_summary_from_env_0(self):
 
         '''for log behavior'''
-        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action)):
+        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
             '''log behavior every x minutes'''
             if self.episode_reward['len']==0:
                 self.last_time_log_behavior = time.time()
