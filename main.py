@@ -549,7 +549,12 @@ class HierarchyLayer(object):
 
         self.log_for_specify_action()
 
-        self.reward_final = self.reward + self.reward_bounty
+        if self.hierarchy_id in [args.num_hierarchy-1]:
+            '''top level only receive reward from env'''
+            self.reward_final = self.reward
+        else:
+            '''other levels only receives reward_bounty'''
+            self.reward_final = self.reward_bounty
 
         if not env_0_sleeping:
             self.step_summary_from_env_0()
