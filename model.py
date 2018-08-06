@@ -53,42 +53,18 @@ class Policy(nn.Module):
         else:
             self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
-
         self.input_action_space = input_action_space
-
-        self.input_action_linear = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.input_action_space.n, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
-
-        self.final_feature_linear_critic = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
-
-        self.final_feature_linear_dist = nn.Sequential(
-            self.base.leakrelu_init_(nn.Linear(self.base.linear_size, self.base.linear_size)),
-            nn.LayerNorm(self.base.linear_size),
-            nn.LeakyReLU(),
-        )
 
 
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
 
     def get_final_features(self, inputs, states, masks, input_action=None):
-        # input_action = torch.zeros(inputs.size()[0],self.input_action_space.n).cuda()
         base_features, states = self.base(inputs, states, masks)
-        # input_action_features = self.input_action_linear(input_action)
-        final_features = base_features
-        final_features_critic = self.final_feature_linear_critic(final_features)
-        final_features_dist = self.final_feature_linear_dist(final_features)
-        return final_features_critic, final_features_dist, states
+        return base_features, states
 
-    def act(self, inputs, states, masks, deterministic=False, input_action=None):
-        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
+    def get_value_dist(self, base_features, input_action):
+
         if self.num_subpolicy > 1:
             index_dic = {}
             tensor_dic = {}
@@ -97,7 +73,7 @@ class Policy(nn.Module):
             for dic_i in range(self.num_subpolicy):
                 index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                 if index_dic[str(dic_i)].size()[0] != 0:
-                    tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
+                    tensor_dic[str(dic_i)] = torch.index_select(base_features,0,index_dic[str(dic_i)])
                     y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
 
             value = torch.zeros((input_action.size()[0],1)).cuda()
@@ -105,10 +81,18 @@ class Policy(nn.Module):
                 if str(y_i) in y_dic:
                     value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
 
-            dist, _ = self.dist(final_features_dist,action_index)
+            dist, dist_features = self.dist(base_features,action_index)
+
         else:
-            value = self.critic_linear(final_features_critic)
-            dist, _ = self.dist(final_features_dist)
+            value = self.critic_linear(base_features)
+            dist, dist_features = self.dist(base_features)
+
+        return value, dist, dist_features
+
+    def act(self, inputs, states, masks, deterministic=False, input_action=None):
+        base_features, states = self.get_final_features(inputs, states, masks, input_action)
+
+        value, dist, dist_features = self.get_value_dist(base_features, input_action)
 
         if deterministic:
             action = dist.mode()
@@ -121,50 +105,13 @@ class Policy(nn.Module):
         return value, action, action_log_probs, states
 
     def get_value(self, inputs, states, masks, input_action=None):
-        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.num_subpolicy > 1:
-            if torch.sum(input_action)>0:
-                index_dic = {}
-                tensor_dic = {}
-                y_dic = {}
-                action_index = np.where(input_action==1)[1]
-                for dic_i in range(self.num_subpolicy):
-                    index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
-                    if index_dic[str(dic_i)].size()[0] != 0:
-                        tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
-                        y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
-
-                value = torch.zeros((input_action.size()[0],1)).cuda()
-                for y_i in range(self.num_subpolicy):
-                    if str(y_i) in y_dic:
-                        value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
-            else:
-                value = self.critic_linear[0](final_features_critic)
-        else:
-            value = self.critic_linear(final_features_critic)
+        base_features, states = self.get_final_features(inputs, states, masks, input_action)
+        value, dist, dist_features = self.get_value_dist(base_features, input_action)
         return value
 
     def evaluate_actions(self, inputs, states, masks, action, input_action=None):
-        final_features_critic, final_features_dist, states = self.get_final_features(inputs, states, masks, input_action)
-        if self.num_subpolicy > 1:
-            index_dic = {}
-            tensor_dic = {}
-            y_dic = {}
-            action_index = np.where(input_action==1)[1]
-            for dic_i in range(self.num_subpolicy):
-                index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
-                if index_dic[str(dic_i)].size()[0] != 0:
-                    tensor_dic[str(dic_i)] = torch.index_select(final_features_critic,0,index_dic[str(dic_i)])
-                    y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
-
-            value = torch.zeros((input_action.size()[0],1)).cuda()
-            for y_i in range(self.num_subpolicy):
-                if str(y_i) in y_dic:
-                    value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
-            dist, dist_features = self.dist(final_features_dist,action_index)
-        else:
-            value = self.critic_linear(final_features_critic)
-            dist, dist_features = self.dist(final_features_dist)
+        base_features, states = self.get_final_features(inputs, states, masks, input_action)
+        value, dist, dist_features = self.get_value_dist(base_features, input_action)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy()
@@ -199,7 +146,6 @@ class CNNBase(nn.Module):
             nn.LeakyReLU(),
             Flatten(),
             self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
-            nn.LayerNorm(self.linear_size),
             nn.LeakyReLU()
         )
 
