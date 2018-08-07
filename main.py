@@ -333,7 +333,7 @@ class HierarchyLayer(object):
 
         if args.test_action_vis:
             if self.hierarchy_id in [0]:
-                if self.episode_reward['len'] < 4.0:
+                if self.episode_reward['len'] < 16.0:
                     new_key = False
                     try:
                         self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().item())

@@ -310,7 +310,7 @@ class OverCooked(gym.Env):
                             reward = 10
                 if self.args.reward_level == 1:
                     if self.single_goal == 0:
-                        reward = 10
+                        reward = 0
                     done = True
         elif distance_2 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 2 not in self.cur_goal:
@@ -322,7 +322,7 @@ class OverCooked(gym.Env):
                             reward = 10
                 if self.args.reward_level == 1:
                     if self.single_goal == 1:
-                        reward = 10
+                        reward = 0
                     done = True
         elif distance_3 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 3 not in self.cur_goal:
@@ -334,7 +334,7 @@ class OverCooked(gym.Env):
                             reward = 10
                 if self.args.reward_level == 1:
                     if self.single_goal == 2:
-                        reward = 10
+                        reward = 0
                     done = True
         elif distance_4 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             if 4 not in self.cur_goal:
@@ -346,7 +346,7 @@ class OverCooked(gym.Env):
                             reward = 10
                 if self.args.reward_level == 1:
                     if self.single_goal == 3:
-                        reward = 10
+                        reward = 0
                     done = True
 
         if self.args.reward_level == 2:
