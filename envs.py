@@ -44,6 +44,32 @@ class SleepAfterDone(gym.Wrapper):
             self.reward, done, self.info = type(self.reward)(0), True, self.info
         return self.obs, self.reward, done, self.info
 
+class DelayDone(gym.Wrapper):
+    def __init__(self, env):
+        """make the env sleep after returning done,
+        keep sleeping untill be reset() is called
+        """
+        gym.Wrapper.__init__(self, env)
+        self.going_to_done = False
+
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)
+
+    def step(self, ac):
+
+        if not self.going_to_done:
+            self.obs, self.reward, self.done, self.info = self.env.step(ac)
+
+            if self.done:
+                self.done = False
+                self.going_to_done = True
+
+        else:
+            self.done = True
+            self.going_to_done = False
+
+        return self.obs, self.reward, self.done, self.info
+
 def make_env(rank, args):
     def _thunk():
         if args.env_name.startswith("dm"):
@@ -75,6 +101,8 @@ def make_env(rank, args):
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = WrapPyTorch(env)
 
+
+        env = DelayDone(env)
         env = SleepAfterDone(env)
 
         return env
