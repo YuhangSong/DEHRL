@@ -57,7 +57,7 @@ class OverCooked(gym.Env):
         elif self.args.reward_level in [1]:
             self.episode_length_limit = 4*6*2
         elif self.args.reward_level in [2]:
-            self.episode_length_limit = 50*4
+            self.episode_length_limit = 72*4
 
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)
