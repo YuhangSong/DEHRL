@@ -186,7 +186,10 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
-            self.final_reward['raw'] = 0.0
+
+        '''initialize final_reward, since it is possible that the episode length is longer than num_steps'''
+        for episode_reward_type in self.episode_reward.keys():
+            self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
 
         '''try to load checkpoint'''
         try:
@@ -674,6 +677,7 @@ class HierarchyLayer(object):
                 int((self.num_trained_frames-self.num_trained_frames_at_start) / (self.end - self.start)),
             )
             print_string += ', final_reward '
+
             for episode_reward_type in self.episode_reward.keys():
                 print_string += '[{}:{:8.2f}]'.format(
                     episode_reward_type,
@@ -785,9 +789,6 @@ class HierarchyLayer(object):
 
         if self.done[0]:
             for episode_reward_type in self.episode_reward.keys():
-                if 'sp' in episode_reward_type:
-                    if int(episode_reward_type.split('_')[1]) != self.actions_to_step[0][1]:
-                        continue
                 self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
                 self.episode_reward[episode_reward_type] = 0.0
 
