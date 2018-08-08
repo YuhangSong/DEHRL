@@ -74,7 +74,7 @@ if len(args.hierarchy_interval) != (args.num_hierarchy-1):
 
 if len(args.num_steps) != (args.num_hierarchy):
     print('# WARNING: Exlicity num_steps is not matching args.num_hierarchy, use the first num_steps for all layers')
-    args.num_steps = [args.num_steps[0]]*(args.num_hierarchy-1)
+    args.num_steps = [args.num_steps[0]]*(args.num_hierarchy)
 
 if bottom_envs.action_space.__class__.__name__ == "Discrete":
     action_shape = 1
@@ -315,7 +315,9 @@ class HierarchyLayer(object):
             if self.hierarchy_id in [1]:
                 self.action[0,0] = int(
                     input(
-                        'Macro Act: '
+                        '[Macro Action {}], Act: '.format(
+                            self.action[0,0].item(),
+                        )
                     )
                 )
 
