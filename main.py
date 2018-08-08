@@ -315,7 +315,9 @@ class HierarchyLayer(object):
             if self.hierarchy_id in [1]:
                 self.action[0,0] = int(
                     input(
-                        'Macro Act: '
+                        '[Macro Action {}], Act: '.format(
+                            self.action[0,0].item(),
+                        )
                     )
                 )
 

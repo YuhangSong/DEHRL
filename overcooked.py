@@ -441,7 +441,7 @@ class OverCooked(gym.Env):
         self.leg_count = np.zeros(self.leg_num*4+1)
 
         if self.args.reward_level == 1:
-            self.single_goal = np.random.randint(0,self.goal_num)
+            self.single_goal = np.random.randint(1,2)
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
