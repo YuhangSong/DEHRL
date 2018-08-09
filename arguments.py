@@ -131,8 +131,8 @@ def get_args():
     if args.env_name in ['OverCooked']:
         args.save_dir = os.path.join(args.save_dir, 'r_l-{}'.format(args.reward_level))
         args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
-        args.save_dir = os.path.join(args.save_dir, 'reset_legs-{}'.format(args.reset_leg))
-        args.save_dir = os.path.join(args.save_dir, 'add_goal_color-{}'.format(args.add_goal_color))
+        args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
+        args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
