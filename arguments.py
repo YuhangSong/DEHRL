@@ -71,6 +71,8 @@ def get_args():
                         help='if use fake reward bounty')
     parser.add_argument('--reset-leg', action='store_true',
                         help='if reset four legs after four steps')
+    parser.add_argument('--add-goal-color', action='store_true',
+                        help='if add area color when get the goal')
 
     '''policy details'''
     parser.add_argument('--num-hierarchy',      type=int,
@@ -114,6 +116,8 @@ def get_args():
                         help='specify actions at every level')
     parser.add_argument('--test-action-vis', action='store_true',
                         help='see actions at every level')
+    parser.add_argument('--run-overcooked', action='store_true',
+                        help='run overcooked to debug the game')
 
     args = parser.parse_args()
     args.transition_model_epoch = int(args.actor_critic_epoch)
@@ -128,6 +132,7 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'r_l-{}'.format(args.reward_level))
         args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
         args.save_dir = os.path.join(args.save_dir, 'reset_legs-{}'.format(args.reset_leg))
+        args.save_dir = os.path.join(args.save_dir, 'add_goal_color-{}'.format(args.add_goal_color))
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
