@@ -38,7 +38,7 @@ class OverCooked(gym.Env):
         self.color_area = 0
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
-        self.move_discount = 10
+        self.move_discount = 10/3
         '''body thickness, default -- 2, -1 means solid'''
         self.body_thickness = -1
         '''leg size, default -- self.screen_width/20'''
@@ -58,7 +58,7 @@ class OverCooked(gym.Env):
         elif self.args.reward_level in [1]:
             self.episode_length_limit = 4*6*2
         elif self.args.reward_level in [2]:
-            self.episode_length_limit = 72*4
+            self.episode_length_limit = 24*4
 
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)

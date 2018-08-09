@@ -181,6 +181,7 @@ class HierarchyLayer(object):
 
         self.episode_reward['norm'] = 0.0
         self.episode_reward['bounty'] = 0.0
+        self.episode_reward['bounty_clip'] = 0.0
         self.episode_reward['len'] = 0.0
 
         if self.hierarchy_id in [0]:
@@ -477,22 +478,18 @@ class HierarchyLayer(object):
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
 
-                self.reward_bounty[process_i] = self.reward_bounty_raw_to_return[process_i]
+            self.reward_bounty = self.reward_bounty_raw_to_return
 
-                if args.clip_reward_bounty:
-                    if not args.mutual_information:
-                        threshold = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i],process_i]
-                    else:
-                        threshold = self.predicted_reward_bounty_by_upper_layer[process_i]
-                    self.reward_bounty[process_i] = np.clip(
-                        np.sign(
-                            (self.reward_bounty[process_i]-threshold),
-                        ),
-                        a_min = 0.0,
-                        a_max = 1.0,
-                    )
+            if args.clip_reward_bounty:
 
-                self.reward_bounty[process_i] = self.reward_bounty[process_i]*args.reward_bounty
+                if not args.mutual_information:
+                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]]
+                else:
+                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
+
+                self.reward_bounty = (self.reward_bounty-self.bounty_clip).sign().clamp(0.0,1,0)
+
+            self.reward_bounty = self.reward_bounty*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
             and the estimation from transition model is not accurate'''
@@ -789,6 +786,7 @@ class HierarchyLayer(object):
         '''summarize reward'''
         self.episode_reward['norm'] += self.reward[0]
         self.episode_reward['bounty'] += self.reward_bounty[0]
+        self.episode_reward['bounty_clip'] += self.bounty_clip[0]
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, summarize reward_raw'''
             self.episode_reward['raw'] += self.reward_raw[0]
