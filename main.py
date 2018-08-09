@@ -323,6 +323,14 @@ class HierarchyLayer(object):
                         )
                     )
                 )
+            if self.hierarchy_id in [2]:
+                self.action[0,0] = int(
+                    input(
+                        '[top Action {}], Act: '.format(
+                            self.action[0,0].item(),
+                        )
+                    )
+                )
 
         if args.test_reward_bounty:
             if self.hierarchy_id in [0]:
