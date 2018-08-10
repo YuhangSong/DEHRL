@@ -684,9 +684,10 @@ class HierarchyLayer(object):
             action_count = np.zeros(4)
             for info_index in range(len(self.info)):
                 action_count += self.info[info_index]['action_count']
-            leg_count = np.zeros(17)
-            for leg_index in range(len(self.info)):
-                leg_count += self.info[leg_index]['leg_count']
+            if args.see_leg_fre:
+                leg_count = np.zeros(17)
+                for leg_index in range(len(self.info)):
+                    leg_count += self.info[leg_index]['leg_count']
 
             if self.hierarchy_id in [0]:
                 for index_action in range(4):
@@ -697,15 +698,15 @@ class HierarchyLayer(object):
                         ),
                         simple_value = action_count[index_action],
                     )
-
-                for index_leg in range(17):
-                    self.summary.value.add(
-                        tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
-                            0,
-                            index_leg,
-                        ),
-                        simple_value = leg_count[index_leg],
-                    )
+                if args.see_leg_fre:
+                    for index_leg in range(17):
+                        self.summary.value.add(
+                            tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
+                                0,
+                                index_leg,
+                            ),
+                            simple_value = leg_count[index_leg],
+                        )
 
             for episode_reward_type in self.episode_reward.keys():
                 self.summary.value.add(

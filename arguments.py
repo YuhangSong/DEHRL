@@ -118,6 +118,8 @@ def get_args():
                         help='see actions at every level')
     parser.add_argument('--run-overcooked', action='store_true',
                         help='run overcooked to debug the game')
+    parser.add_argument('--see-leg-fre', action='store_true',
+                        help='see the frequency of each leg through tensorboard')
 
     args = parser.parse_args()
     args.transition_model_epoch = int(args.actor_critic_epoch)
