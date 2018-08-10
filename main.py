@@ -756,12 +756,13 @@ class HierarchyLayer(object):
 
     def step_summary_from_env_0(self):
 
-        '''for log behavior'''
-        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
-            '''log behavior every x minutes'''
-            if self.episode_reward['len']==0:
-                self.last_time_log_behavior = time.time()
-                self.log_behavior = True
+        if self.hierarchy_id > 0:
+            '''for log behavior, hierarchy_id=0 is very long, ignore logging it'''
+            if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
+                '''log behavior every x minutes'''
+                if self.episode_reward['len']==0:
+                    self.last_time_log_behavior = time.time()
+                    self.log_behavior = True
 
         if self.log_behavior:
             self.summary_behavior_at_step()
