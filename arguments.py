@@ -122,6 +122,15 @@ def get_args():
                         help='see the frequency of each leg through tensorboard')
 
     args = parser.parse_args()
+
+    '''none = []'''
+    if args.num_subpolicy is None:
+        args.num_subpolicy = []
+    if args.hierarchy_interval is None:
+        args.hierarchy_interval = []
+    if args.num_steps is None:
+        args.num_steps = []
+
     args.transition_model_epoch = int(args.actor_critic_epoch)
 
     '''basic save path'''

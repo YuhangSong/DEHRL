@@ -187,6 +187,8 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
+            self.episode_reward_raw_all = 0.0
+            self.episode_count = 0.0
 
         '''initialize final_reward, since it is possible that the episode length is longer than num_steps'''
         for episode_reward_type in self.episode_reward.keys():
@@ -665,7 +667,7 @@ class HierarchyLayer(object):
             )
             print_string += ', final_reward '
 
-            for episode_reward_type in self.episode_reward.keys():
+            for episode_reward_type in self.final_reward.keys():
                 print_string += '[{}:{:8.2f}]'.format(
                     episode_reward_type,
                     self.final_reward[episode_reward_type]
@@ -681,32 +683,34 @@ class HierarchyLayer(object):
         if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
-            action_count = np.zeros(4)
-            for info_index in range(len(self.info)):
-                action_count += self.info[info_index]['action_count']
-            if args.see_leg_fre:
-                leg_count = np.zeros(17)
-                for leg_index in range(len(self.info)):
-                    leg_count += self.info[leg_index]['leg_count']
-
-            if self.hierarchy_id in [0]:
-                for index_action in range(4):
-                    self.summary.value.add(
-                        tag = 'hierarchy_{}/action_{}'.format(
-                            0,
-                            index_action,
-                        ),
-                        simple_value = action_count[index_action],
-                    )
+            if args.env_name in ['OverCooked']:
+                action_count = np.zeros(4)
+                for info_index in range(len(self.info)):
+                    action_count += self.info[info_index]['action_count']
                 if args.see_leg_fre:
-                    for index_leg in range(17):
+                    leg_count = np.zeros(17)
+                    for leg_index in range(len(self.info)):
+                        leg_count += self.info[leg_index]['leg_count']
+
+            if args.env_name in ['OverCooked']:
+                if self.hierarchy_id in [0]:
+                    for index_action in range(4):
                         self.summary.value.add(
-                            tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
+                            tag = 'hierarchy_{}/action_{}'.format(
                                 0,
-                                index_leg,
+                                index_action,
                             ),
-                            simple_value = leg_count[index_leg],
+                            simple_value = action_count[index_action],
                         )
+                    if args.see_leg_fre:
+                        for index_leg in range(17):
+                            self.summary.value.add(
+                                tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
+                                    0,
+                                    index_leg,
+                                ),
+                                simple_value = leg_count[index_leg],
+                            )
 
             for episode_reward_type in self.episode_reward.keys():
                 self.summary.value.add(
@@ -781,6 +785,11 @@ class HierarchyLayer(object):
             for episode_reward_type in self.episode_reward.keys():
                 self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
                 self.episode_reward[episode_reward_type] = 0.0
+
+            if self.hierarchy_id in [0]:
+                self.episode_reward_raw_all += self.final_reward['raw']
+                self.episode_count += 1
+                self.final_reward['raw_all'] = self.episode_reward_raw_all / self.episode_count
 
             if self.log_behavior:
                 self.summary_behavior_at_done()
