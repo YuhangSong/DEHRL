@@ -433,7 +433,7 @@ class HierarchyLayer(object):
                 '''predict states'''
                 self.transition_model.eval()
                 with torch.no_grad():
-                    self.predicted_next_observations_to_downer_layer, _, self.predicted_reward_bounty_to_downer_layer = self.transition_model(
+                    self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer = self.transition_model(
                         inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
                         input_action = self.action_onehot_batch,
                     )

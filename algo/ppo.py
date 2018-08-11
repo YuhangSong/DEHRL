@@ -258,12 +258,12 @@ class PPO(object):
                     self.this_layer.hierarchy_id,
                 ))
                 if not self.this_layer.checkpoint_loaded:
-                    epoch *= 200
+                    epoch = 800
 
             for e in range(epoch):
 
                 data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
-                    mini_batch_size = int(self.this_layer.args.actor_critic_mini_batch_size/self.this_layer.hierarchy_interval),
+                    mini_batch_size = int(self.this_layer.args.transition_model_mini_batch_size),
                     recent_steps = int(self.this_layer.rollouts.num_steps/self.this_layer.hierarchy_interval)-1,
                     recent_at = self.upper_layer.step_i,
                 )
@@ -271,7 +271,6 @@ class PPO(object):
                 for sample in data_generator:
 
                     observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch = sample
-
 
                     self.optimizer_transition_model.zero_grad()
 
@@ -288,7 +287,7 @@ class PPO(object):
                     self.upper_layer.transition_model.train()
 
                     if not self.this_layer.args.mutual_information:
-                        predicted_next_observations_batch, before_deconv, reward_bounty = self.upper_layer.transition_model(
+                        predicted_next_observations_batch, reward_bounty = self.upper_layer.transition_model(
                             inputs = observations_batch,
                             input_action = action_onehot_batch,
                         )
