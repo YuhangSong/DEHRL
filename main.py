@@ -26,6 +26,13 @@ import algo
 
 args = get_args()
 
+if args.test_action:
+    from visdom import Visdom
+    viz = Visdom()
+    win = None
+    win_dic = {}
+    win_dic['Obs'] = None
+
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
@@ -320,6 +327,7 @@ class HierarchyLayer(object):
                         )
                     )
                 )
+
             if self.hierarchy_id in [1]:
                 self.action[0,0] = int(
                     input(
@@ -543,6 +551,13 @@ class HierarchyLayer(object):
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
             self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
+
+            win_dic['Obs'] = viz.images(
+                self.obs[0],
+                win=win_dic['Obs'],
+                opts=dict(title=' ')
+            )
+            
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
