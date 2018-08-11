@@ -281,20 +281,6 @@ class PPO(object):
                     action_onehot_batch.fill_(0.0)
                     action_onehot_batch.scatter_(1,actions_batch.long(),1.0)
 
-                    '''generate indexs'''
-                    next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
-                    print(observations_batch.size())
-                    print(next_masks_batch_index.size())
-                    next_masks_batch_index_observations_batch      = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
-                    next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
-                    next_masks_batch_index_action_onehot_batch     = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*action_onehot_batch    .size()[1:])
-                    next_masks_batch_index_reward_bounty_raw_batch = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*reward_bounty_raw_batch.size()[1:])
-
-                    observations_batch = observations_batch.gather(0,next_masks_batch_index_observations_batch)
-                    action_onehot_batch = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch)
-                    next_observations_batch = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch)
-                    reward_bounty_raw_batch = reward_bounty_raw_batch.gather(0,next_masks_batch_index_reward_bounty_raw_batch)
-
                     if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
                         action_onehot_batch = torch.autograd.Variable(action_onehot_batch, requires_grad=True)
 
