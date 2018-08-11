@@ -132,7 +132,7 @@ def get_args():
         args.num_steps = []
 
     args.transition_model_epoch = args.actor_critic_epoch
-    args.transition_model_mini_batch_size = 128
+    args.transition_model_mini_batch_size = 64
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
