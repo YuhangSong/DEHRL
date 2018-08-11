@@ -257,7 +257,8 @@ class PPO(object):
                 print('[H-{}] First time train transition_model, train more epoch'.format(
                     self.this_layer.hierarchy_id,
                 ))
-                epoch *= 200
+                if not self.this_layer.checkpoint_loaded:
+                    epoch *= 200
 
             for e in range(epoch):
 
@@ -269,9 +270,10 @@ class PPO(object):
 
                 for sample in data_generator:
 
-                    self.optimizer_transition_model.zero_grad()
-
                     observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch = sample
+
+
+                    self.optimizer_transition_model.zero_grad()
 
                     action_onehot_batch = torch.zeros(observations_batch.size()[0],self.upper_layer.actor_critic.output_action_space.n).cuda()
 
@@ -281,6 +283,8 @@ class PPO(object):
 
                     '''generate indexs'''
                     next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
+                    print(observations_batch.size())
+                    print(next_masks_batch_index.size())
                     next_masks_batch_index_observations_batch      = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
                     next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
                     next_masks_batch_index_action_onehot_batch     = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*action_onehot_batch    .size()[1:])

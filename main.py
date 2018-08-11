@@ -208,8 +208,11 @@ class HierarchyLayer(object):
                     print('[H-{:1}] Load transition_model previous point: Successed'.format(self.hierarchy_id))
                 except Exception as e:
                     print('[H-{:1}] Load transition_model previous point: Failed, due to {}'.format(self.hierarchy_id,e))
+            self.checkpoint_loaded = True
         except Exception as e:
             self.num_trained_frames = 0
+            self.checkpoint_loaded = False
+
         print('[H-{:1}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
         self.num_trained_frames_at_start = self.num_trained_frames
 
@@ -497,6 +500,23 @@ class HierarchyLayer(object):
             and the estimation from transition model is not accurate'''
             self.reward_bounty *= self.masks.squeeze()
 
+        if args.reward_bounty>0:
+            if self.hierarchy_id in [args.num_hierarchy-1]:
+                '''top level only receive reward from env'''
+                self.reward_final = self.reward
+
+            else:
+                '''other levels only receives reward_bounty'''
+                self.reward_final = self.reward_bounty
+
+        else:
+            self.reward_final = self.reward
+
+        if args.reward_bounty>0:
+            if self.is_final_step_by_upper_layer:
+                '''mask it and stop reward function'''
+                self.masks = self.masks * 0.0
+
 
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
@@ -543,18 +563,7 @@ class HierarchyLayer(object):
 
         self.generate_reward_bounty()
 
-        if self.is_final_step_by_upper_layer:
-            '''mask it and stop reward function'''
-            self.masks = self.masks * 0.0
-
         self.log_for_specify_action()
-
-        if self.hierarchy_id in [args.num_hierarchy-1]:
-            '''top level only receive reward from env'''
-            self.reward_final = self.reward
-        else:
-            '''other levels only receives reward_bounty'''
-            self.reward_final = self.reward_bounty
 
         if not env_0_sleeping:
             self.step_summary_from_env_0()
