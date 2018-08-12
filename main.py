@@ -551,13 +551,13 @@ class HierarchyLayer(object):
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
             self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
+            if args.test_action:
+                win_dic['Obs'] = viz.images(
+                    self.obs[0],
+                    win=win_dic['Obs'],
+                    opts=dict(title=' ')
+                )
 
-            win_dic['Obs'] = viz.images(
-                self.obs[0],
-                win=win_dic['Obs'],
-                opts=dict(title=' ')
-            )
-            
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
