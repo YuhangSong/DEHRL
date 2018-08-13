@@ -99,6 +99,8 @@ def get_args():
                         help='whether use mutual information as bounty reward' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='whether clip the reward bounty' )
+    parser.add_argument('--clip-reward-bounty-active-function', type=str,
+                        help='active function of clip reward bounty: linear, u, relu, shrink_relu' )
 
 
     '''for log behavior'''
@@ -166,6 +168,8 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
         '''clip reward bounty'''
         args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
+        if args.clip_reward_bounty:
+            args.save_dir = os.path.join(args.save_dir, 'c_r_b_a_f-{}'.format(args.clip_reward_bounty_active_function))
 
     if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
         '''for encourage_ac_connection'''

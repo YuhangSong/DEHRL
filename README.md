@@ -75,17 +75,17 @@ source activate ehrl
 
 ## OverCooked
 
-Level 1
+<!-- Level 1
 ```bash
 CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp test_2_goals --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --train-mode together --encourage-ac-connection none --clip-reward-bounty --log-behavior-interval 5 --aux r_0
-```
+``` -->
 
-Level 2 with goal color
+Level 2
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp test_auto_clip_active_function --obs-type 'image' --env-name "OverCooked" --reward-level 2 --num-hierarchy 3 --num-subpolicy 5 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --train-mode together --encourage-ac-connection none --clip-reward-bounty --log-behavior-interval 5 --aux r_0_no_color
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp test_auto_clip_active_function --obs-type 'image' --env-name "OverCooked" --reward-level 2 --num-hierarchy 3 --num-subpolicy 5 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function shrink_relu --log-behavior-interval 5 --aux r_0
 ```
 
-## Atari
+<!-- ## Atari
 
 Baseline
 ```bash
@@ -97,7 +97,7 @@ CUDA_VISIBLE_DEVICES=2 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 our
 ```bash
 CUDA_VISIBLE_DEVICES=3 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp atari --obs-type 'image' --env-name "PongNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --train-mode together --encourage-ac-connection none --clip-reward-bounty --log-behavior-interval 5 --aux r_0
-```
+``` -->
 
 ## TODO list
 * check the logic of the game under reward_level=1(finished)

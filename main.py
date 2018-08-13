@@ -492,7 +492,24 @@ class HierarchyLayer(object):
                 else:
                     self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
 
-                self.reward_bounty = (self.reward_bounty-self.bounty_clip).sign().clamp(min=0.0,max=1.0)
+                delta = (self.reward_bounty-self.bounty_clip)
+
+                if args.clip_reward_bounty_active_function in ['linear']:
+                    self.reward_bounty = delta
+                elif args.clip_reward_bounty_active_function in ['u']:
+                    self.reward_bounty = delta.sign().clamp(min=0.0,max=1.0)
+                elif args.clip_reward_bounty_active_function in ['relu']:
+                    self.reward_bounty = F.relu(delta)
+                elif args.clip_reward_bounty_active_function in ['shrink_relu']:
+                    delta[0] = -0.1
+                    delta[1] = 0.1
+                    delta[2] = 10.0
+                    delta[3] = -10.0
+                    print(delta)
+                    positive_active = delta.sign().clamp(min=0.0,max=1.0)
+                    self.reward_bounty = delta * positive_active + positive_active - 1
+                    print(self.reward_bounty)
+                    print(s)
 
             self.reward_bounty = self.reward_bounty*args.reward_bounty
 
