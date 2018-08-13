@@ -104,11 +104,11 @@ class OverCooked(gym.Env):
                    (int(self.goal_color[0][0]), int(self.goal_color[0][1]), int(self.goal_color[0][2])), -1)
         cv2.circle(self.img, (int(self.screen_width - self.screen_width / 20), int(self.screen_height / 20)),
                    int(self.screen_height / 20 - 1.5),
-                   (int(self.goal_color[1][0]), int(self.goal_color[1][1]), int(self.goal_color[1][2])), 3)
+                   (int(self.goal_color[1][0]), int(self.goal_color[1][1]), int(self.goal_color[1][2])), 1)
         cv2.rectangle(self.img, (
         int(self.screen_width - self.screen_width / 10 + 2), int(self.screen_height - self.screen_height / 10 + 2)),
                       (int(self.screen_width - 2), int(self.screen_height - 2)),
-                      (int(self.goal_color[2][0]), int(self.goal_color[2][1]), int(self.goal_color[2][2])), 4)
+                      (int(self.goal_color[2][0]), int(self.goal_color[2][1]), int(self.goal_color[2][2])), 1)
         cv2.polylines(self.img, [self.triangle_line], True,
                       (int(self.goal_color[3][0]), int(self.goal_color[3][1]), int(self.goal_color[3][2])), 1)
         # stoves
@@ -137,7 +137,7 @@ class OverCooked(gym.Env):
         if goal_num == 1:
             cv2.circle(canvas, (int(position[0]+self.screen_height/20), int(position[1]+self.screen_height/20)),int(self.screen_height / 20),(int(self.goal_color[0][0]), int(self.goal_color[0][1]), int(self.goal_color[0][2])), -1)
         elif goal_num == 2:
-            cv2.circle(canvas, (int(position[0]+self.screen_height/20), int(position[1]+self.screen_height/20)),int(self.screen_height / 20 - 1.5),(int(self.goal_color[1][0]), int(self.goal_color[1][1]), int(self.goal_color[1][2])), 3)
+            cv2.circle(canvas, (int(position[0]+self.screen_height/20), int(position[1]+self.screen_height/20)),int(self.screen_height / 20 - 1.5),(int(self.goal_color[1][0]), int(self.goal_color[1][1]), int(self.goal_color[1][2])), 1)
         elif goal_num == 3:
             triangle_line = []
             triangle_line.append(np.array([int(position[0]), int(position[1]+self.screen_height/10)]))
@@ -149,7 +149,7 @@ class OverCooked(gym.Env):
         elif goal_num == 4:
             cv2.rectangle(canvas, (int(position[0] + 2), int(position[1] + 2)),
                           (int(position[0]+self.screen_width/10 - 2), int(position[1]+self.screen_height/10 - 2)),
-                          (int(self.goal_color[2][0]), int(self.goal_color[2][1]), int(self.goal_color[2][2])), 4)
+                          (int(self.goal_color[2][0]), int(self.goal_color[2][1]), int(self.goal_color[2][2])), 1)
 
     def configure(self, display=None):
         self.display = display
