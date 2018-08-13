@@ -572,7 +572,6 @@ class OverCooked(gym.Env):
     def render(self):
         canvas = self.img.copy()
         if self.args.add_goal_color:
-            print(self.color_area)
             if len(self.color_area) > 0:
                 if 1 in self.color_area:
                     cv2.rectangle(canvas, (int(self.min_x), int(self.min_y)), (int((self.min_x+self.max_x)/2), int((self.min_y+self.max_y)/2)), (170,255,127), -1)
