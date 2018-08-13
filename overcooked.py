@@ -35,7 +35,7 @@ class OverCooked(gym.Env):
         self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
         self.info = {}
-        self.color_area = 0
+        self.color_area = []
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
         self.move_discount = 10/3
@@ -159,6 +159,7 @@ class OverCooked(gym.Env):
         return [seed]
 
     def step(self, action_list):
+        reset_body = False
 
         if self.args.use_fake_reward_bounty:
             # for use_fake_reward_bounty
@@ -302,7 +303,9 @@ class OverCooked(gym.Env):
 
 
         if distance_1 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
-            self.color_area = 1
+            reset_body = True
+            if 1 not in self.color_area:
+                self.color_area += [1]
             if 1 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 1
                 self.goal_id += 1
@@ -315,7 +318,9 @@ class OverCooked(gym.Env):
                         reward = 10
                     done = True
         elif distance_2 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
-            self.color_area = 2
+            reset_body = True
+            if 2 not in self.color_area:
+                self.color_area += [2]
             if 2 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 2
                 self.goal_id += 1
@@ -328,7 +333,9 @@ class OverCooked(gym.Env):
                         reward = 10
                     done = True
         elif distance_3 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
-            self.color_area = 3
+            reset_body = True
+            if 3 not in self.color_area:
+                self.color_area += [3]
             if 3 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 3
                 self.goal_id += 1
@@ -341,7 +348,9 @@ class OverCooked(gym.Env):
                         reward = 10
                     done = True
         elif distance_4 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
-            self.color_area = 4
+            reset_body = True
+            if 4 not in self.color_area:
+                self.color_area += [4]
             if 4 not in self.cur_goal:
                 self.cur_goal[self.goal_id] = 4
                 self.goal_id += 1
@@ -363,6 +372,8 @@ class OverCooked(gym.Env):
                 done = True
 
         obs = self.obs()
+        if reset_body:
+            self.reset_after_goal()
 
         if self.episode_length_limit > 0:
             if self.eposide_length >= self.episode_length_limit:
@@ -443,7 +454,7 @@ class OverCooked(gym.Env):
         self.cur_goal = np.zeros(self.goal_num)
         self.goal_ram = np.zeros(self.goal_num)
         self.leg_move_count = 0
-        self.color_area = 0
+        self.color_area = []
         # self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
 
@@ -482,6 +493,28 @@ class OverCooked(gym.Env):
         # obs = self.processes_obs(obs)
 
         return obs
+
+    def reset_after_goal(self):
+        self.action_mem = np.zeros(self.leg_num)
+        self.leg_move_count = 0
+
+        self.position = [self.screen_width/2-self.screen_width/20, self.screen_height/2-self.screen_height/20]
+        self.state = np.zeros((self.leg_num,2))
+        self.leg_position = []
+        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]-self.leg_size]))
+        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]+self.screen_height/10]))
+        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]-self.leg_size]))
+        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]+self.screen_height/10]))
+
+        self.reset_legposi = []
+        self.reset_legposi.append(
+            np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+        self.reset_legposi.append(
+            np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+        self.reset_legposi.append(
+            np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+        self.reset_legposi.append(
+            np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
 
     def processes_obs(self, obs):
         obs = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)
@@ -539,14 +572,15 @@ class OverCooked(gym.Env):
     def render(self):
         canvas = self.img.copy()
         if self.args.add_goal_color:
-            if self.color_area > 0:
-                if self.color_area == 1:
+            print(self.color_area)
+            if len(self.color_area) > 0:
+                if 1 in self.color_area:
                     cv2.rectangle(canvas, (int(self.min_x), int(self.min_y)), (int((self.min_x+self.max_x)/2), int((self.min_y+self.max_y)/2)), (170,255,127), -1)
-                elif self.color_area == 2:
+                if 2 in self.color_area:
                     cv2.rectangle(canvas, (int(self.max_x), int(self.min_y)), (int((self.min_x+self.max_x)/2), int((self.min_y+self.max_y)/2)), (170,255,127), -1)
-                elif self.color_area == 3:
+                if 3 in self.color_area:
                     cv2.rectangle(canvas, (int(self.min_x), int(self.max_y)), (int((self.min_x+self.max_x)/2), int((self.min_y+self.max_y)/2)), (170,255,127), -1)
-                elif self.color_area == 4:
+                if 4 in self.color_area:
                     cv2.rectangle(canvas, (int(self.max_x), int(self.max_y)), (int((self.min_x+self.max_x)/2), int((self.min_y+self.max_y)/2)), (170,255,127), -1)
 
         cv2.rectangle(canvas, (int(self.position[0]), int(self.position[1])), (int(self.position[0]+self.screen_width/10), int(self.position[1]+self.screen_height/10)), (92,92,205), self.body_thickness)
@@ -556,7 +590,7 @@ class OverCooked(gym.Env):
         cv2.rectangle(canvas, (int(self.leg_position[2][0]), int(self.leg_position[2][1])), (int(self.leg_position[2][0] + self.leg_size), int(self.leg_position[2][1] + self.leg_size)),(0, 92, 205), -1)
         cv2.rectangle(canvas, (int(self.leg_position[3][0]), int(self.leg_position[3][1])), (int(self.leg_position[3][0] + self.leg_size), int(self.leg_position[3][1] + self.leg_size)),(0, 92, 205), -1)
 
-        self.color_area = 0
+        # self.color_area = 0
         if np.sum(self.cur_goal)>0:
             if self.cur_goal[0]>0:
                 position = np.array([0, self.screen_height+self.screen_height/10])
