@@ -30,7 +30,7 @@ class OverCooked(gym.Env):
         self.screen_width = 84
         self.screen_height = 84
         self.leg_num = 4
-        self.goal_num = 4
+        self.goal_num = 2
         self.eposide_length = 0
         self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
@@ -129,7 +129,7 @@ class OverCooked(gym.Env):
             position = np.array([0,self.screen_height])
             self.draw_goals(self.single_goal+1,position,self.img)
         elif self.args.reward_level == 2:
-            for i in range(4):
+            for i in range(self.goal_num):
                 position = np.array([i*self.screen_width/10,self.screen_height])
                 self.draw_goals(self.realgoal[i],position,self.img)
 
@@ -372,8 +372,8 @@ class OverCooked(gym.Env):
                 done = True
 
         obs = self.obs()
-        if reset_body:
-            self.reset_after_goal()
+        # if reset_body:
+        #     self.reset_after_goal()
 
         if self.episode_length_limit > 0:
             if self.eposide_length >= self.episode_length_limit:
@@ -485,7 +485,7 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
 
-        goal_list = [1, 2, 4, 3]
+        goal_list = list(range(1,self.goal_num+1))
         random.shuffle(goal_list)
         self.setgoal(goal_list)
 
@@ -591,18 +591,10 @@ class OverCooked(gym.Env):
 
         # self.color_area = 0
         if np.sum(self.cur_goal)>0:
-            if self.cur_goal[0]>0:
-                position = np.array([0, self.screen_height+self.screen_height/10])
-                self.draw_goals(self.cur_goal[0], position, canvas)
-            if self.cur_goal[1]>0:
-                position = np.array([self.screen_width/10, self.screen_height+self.screen_height/10])
-                self.draw_goals(self.cur_goal[1], position, canvas)
-            if self.cur_goal[2]>0:
-                position = np.array([2*self.screen_width/10, self.screen_height+self.screen_height/10])
-                self.draw_goals(self.cur_goal[2], position, canvas)
-            if self.cur_goal[3]>0:
-                position = np.array([3*self.screen_width/10, self.screen_height+self.screen_height/10])
-                self.draw_goals(self.cur_goal[3], position, canvas)
+            for i in range(self.goal_num):
+                if self.cur_goal[i]>0:
+                    position = np.array([self.screen_width/10*i, self.screen_height+self.screen_height/10])
+                    self.draw_goals(self.cur_goal[i], position, canvas)
         # cv2.imwrite('C:\\Users\\IceClear\\Desktop' + '\\' + 'frame' + '.jpg', canvas)  # 存储为图像
         if self.args.render:
             cv2.imshow('overcooked',canvas)
