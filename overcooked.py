@@ -371,9 +371,9 @@ class OverCooked(gym.Env):
                 reward = 0
                 done = True
 
+        if reset_body:
+            self.reset_after_goal()
         obs = self.obs()
-        # if reset_body:
-        #     self.reset_after_goal()
 
         if self.episode_length_limit > 0:
             if self.eposide_length >= self.episode_length_limit:
