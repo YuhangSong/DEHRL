@@ -30,7 +30,7 @@ class OverCooked(gym.Env):
         self.screen_width = 84
         self.screen_height = 84
         self.leg_num = 4
-        self.goal_num = 4
+        self.goal_num = 3
         self.eposide_length = 0
         self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
@@ -61,9 +61,15 @@ class OverCooked(gym.Env):
             if self.goal_num in [4]:
                 # get 4 food in sequence
                 self.episode_length_limit = 6+12+6+12
+            elif self.goal_num in [3]:
+                # get 3 food in sequence
+                self.episode_length_limit = 6+12+6
             elif self.goal_num in [2]:
                 # get 2 food in sequence
                 self.episode_length_limit = 6+12
+            elif self.goal_num in [1]:
+                # get 1 food in sequence
+                self.episode_length_limit = 6
             else:
                 raise NotImplementedError
             self.episode_length_limit = self.episode_length_limit*4*2
