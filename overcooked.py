@@ -30,7 +30,7 @@ class OverCooked(gym.Env):
         self.screen_width = 84
         self.screen_height = 84
         self.leg_num = 4
-        self.goal_num = 2
+        self.goal_num = 4
         self.eposide_length = 0
         self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
