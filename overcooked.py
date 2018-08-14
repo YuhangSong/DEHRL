@@ -58,8 +58,17 @@ class OverCooked(gym.Env):
         elif self.args.reward_level in [1]:
             self.episode_length_limit = 4*6*2
         elif self.args.reward_level in [2]:
-            # get 4 food in sequence at least requrie 36 macro step
-            self.episode_length_limit = 36*4*2
+            if self.goal_num in [4]:
+                # get 4 food in sequence
+                self.episode_length_limit = 6+12+6+12
+            elif self.goal_num in [2]:
+                # get 2 food in sequence
+                self.episode_length_limit = 6+12
+            else:
+                raise NotImplementedError
+            self.episode_length_limit = self.episode_length_limit*4*2
+        else:
+            raise NotImplementedError
 
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)
