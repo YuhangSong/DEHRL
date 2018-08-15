@@ -87,6 +87,8 @@ def get_args():
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
+    parser.add_argument('--distance', type=str,
+                        help='distance to use: l2, feature' )
     parser.add_argument('--encourage-ac-connection', type=str,
                         help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
     parser.add_argument('--encourage-ac-connection-type', type=str,
@@ -162,6 +164,8 @@ def get_args():
     if args.reward_bounty > 0.0:
         '''transition_model training details'''
         args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
+        '''distance to use'''
+        args.save_dir = os.path.join(args.save_dir, 'd-{}'.format(args.distance))
         '''train mode'''
         args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
         '''mutual information'''

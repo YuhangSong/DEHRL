@@ -26,6 +26,12 @@ import algo
 
 args = get_args()
 
+# params for ShiTomasi corner detection
+feature_params = dict( maxCorners = 100,
+                       qualityLevel = 0.3,
+                       minDistance = 7,
+                       blockSize = 7 )
+
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
@@ -456,9 +462,20 @@ class HierarchyLayer(object):
 
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
 
+            action_total_for_rb = self.predicted_next_observations_by_upper_layer.size()[0]
+            obs_rb = self.obs
+
             if not args.mutual_information:
-                obs_rb = torch.from_numpy(self.obs).float().cuda()/255.0
-                self.predicted_next_observations_by_upper_layer = self.predicted_next_observations_by_upper_layer/255.0
+
+                if args.distance in ['l2']:
+                    obs_rb = torch.from_numpy(obs_rb).float().cuda()
+
+                if args.distance in ['feature']:
+                    self.predicted_next_observations_by_upper_layer = self.predicted_next_observations_by_upper_layer.byte().cpu().numpy()
+
+                if args.distance in ['l2']:
+                    self.predicted_next_observations_by_upper_layer /= 255.0
+                    obs_rb /= 255.0
 
             else:
                 self.upper_layer.transition_model.eval()
@@ -468,14 +485,27 @@ class HierarchyLayer(object):
                     )
                     predicted_action_resulted_from = predicted_action_resulted_from.exp()
 
+
             for process_i in range(args.num_processes):
 
                 if not args.mutual_information:
                     difference_list = []
-                    for action_i in range(self.predicted_next_observations_by_upper_layer.size()[0]):
-                        difference = (obs_rb[process_i]-self.predicted_next_observations_by_upper_layer[action_i,process_i]).abs().mean()
+
+                    for action_i in range(action_total_for_rb):
+
+                        if args.distance in ['feature']:
+                            im1 = cv2.goodFeaturesToTrack(obs_rb[process_i][0], mask = None, **feature_params)
+                            im2 = cv2.goodFeaturesToTrack(self.predicted_next_observations_by_upper_layer[action_i,process_i][0], mask = None, **feature_params)
+                            num_features = np.min([im1.shape[0],im2.shape[0]])
+                            difference = np.mean(np.abs(im1[:num_features]-im2[:num_features]))
+                        elif args.distance in ['l2']:
+                            difference = (obs_rb[process_i]-self.predicted_next_observations_by_upper_layer[action_i,process_i]).abs().mean()
+                        else:
+                            raise NotImplementedError
+
                         if action_i==action_rb[process_i]:
                             continue
+
                         difference_list += [difference]
 
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
