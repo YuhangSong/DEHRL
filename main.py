@@ -490,10 +490,13 @@ class HierarchyLayer(object):
                         elif args.distance in ['match']:
                             p0_kp, des0 = sift.detectAndCompute(obs_rb[process_i][0].astype(np.uint8),None)
                             p1_kp, des1 = sift.detectAndCompute(prediction_rb[action_i,process_i][0].astype(np.uint8),None)
-                            matches = flann.knnMatch(des0,des1,k=2)
+
                             difference = 0.0
-                            for m,n in matches:
-                                difference += m.distance
+                            if des1 is not None:
+                                '''it is possible that des1 is None, since the prediction is not ready yet'''
+                                matches = flann.knnMatch(des0,des1,k=2)
+                                for m,n in matches:
+                                    difference += m.distance
 
                         if action_i==action_rb[process_i]:
                             continue
@@ -685,7 +688,7 @@ class HierarchyLayer(object):
         self.rollouts.after_update()
 
         '''save checkpoint'''
-        if self.update_i % args.save_interval == 0 and args.save_dir != "":
+        if (self.update_i % args.save_interval == 0 and args.save_dir != "") or (self.update_i in [1,2]):
             try:
                 np.save(
                     args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
