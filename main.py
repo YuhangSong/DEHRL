@@ -19,6 +19,7 @@ from model import Policy
 from storage import RolloutStorage
 import tensorflow as tf
 import cv2
+from scipy import ndimage
 
 import utils
 
@@ -487,6 +488,7 @@ class HierarchyLayer(object):
                                     (obs_rb[process_i]-prediction_rb[action_i,process_i])
                                 )
                             )/255.0
+
                         elif args.distance in ['match']:
                             p0_kp, des0 = sift.detectAndCompute(obs_rb[process_i][0].astype(np.uint8),None)
                             p1_kp, des1 = sift.detectAndCompute(prediction_rb[action_i,process_i][0].astype(np.uint8),None)
@@ -497,6 +499,22 @@ class HierarchyLayer(object):
                                 matches = flann.knnMatch(des0,des1,k=2)
                                 for m,n in matches:
                                     difference += m.distance
+
+                        elif args.distance in ['mass_center']:
+                            mass_center_0 = np.asarray(
+                                ndimage.measurements.center_of_mass(
+                                    obs_rb[process_i][0].astype(np.uint8)
+                                )
+                            )
+                            mass_center_1 = np.asarray(
+                                ndimage.measurements.center_of_mass(
+                                    prediction_rb[action_i,process_i][0].astype(np.uint8)
+                                )
+                            )
+                            difference = np.linalg.norm(mass_center_0-mass_center_1)
+
+                        else:
+                            raise NotImplementedError
 
                         if action_i==action_rb[process_i]:
                             continue
