@@ -109,7 +109,7 @@ def make_env(rank, args):
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = WrapPyTorch(env)
 
-        env = DelayDone(env)
+        # env = DelayDone(env)
         env = SleepAfterDone(env)
 
         return env

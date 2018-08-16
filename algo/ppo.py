@@ -91,9 +91,10 @@ class PPO(object):
 
             '''prepare epoch'''
             epoch = self.this_layer.args.actor_critic_epoch
-            if self.this_layer.update_i in [0]:
-                print('[H-{}] First time train actor_critic, skip, since transition_model need to be trained first.'.format(
+            if (self.this_layer.update_i in [0,1]) and (not self.this_layer.checkpoint_loaded):
+                print('[H-{}] {}-th time train actor_critic, skip, since transition_model need to be trained first.'.format(
                     self.this_layer.hierarchy_id,
+                    self.this_layer.update_i,
                 ))
                 epoch *= 0
 
@@ -253,12 +254,12 @@ class PPO(object):
 
             '''prepare epoch'''
             epoch = self.this_layer.args.transition_model_epoch
-            if self.this_layer.update_i in [0]:
-                print('[H-{}] First time train transition_model, train more epoch'.format(
+            if (self.this_layer.update_i in [0,1]) and (not self.this_layer.checkpoint_loaded):
+                print('[H-{}] {}-th time train transition_model, train more epoch'.format(
                     self.this_layer.hierarchy_id,
+                    self.this_layer.update_i,
                 ))
-                if not self.this_layer.checkpoint_loaded:
-                    epoch = 800
+                epoch = 800
 
             for e in range(epoch):
 
@@ -326,11 +327,19 @@ class PPO(object):
                         target = reward_bounty_raw_batch,
                         reduction='elementwise_mean',
                     )
+                    if self.this_layer.update_i in [0]:
+                        mse_loss_reward_bounty *= 0.0
 
                     if not self.this_layer.args.mutual_information:
-                        mse_loss = mse_loss_transition + mse_loss_reward_bounty
+                        if self.this_layer.update_i not in [0]:
+                            mse_loss = mse_loss_transition + mse_loss_reward_bounty
+                        else:
+                            mse_loss = mse_loss_transition
                     else:
-                        mse_loss = nll_loss + mse_loss_reward_bounty
+                        if self.this_layer.update_i not in [0]:
+                            mse_loss = nll_loss + mse_loss_reward_bounty
+                        else:
+                            mse_loss = nll_loss
 
                     '''backward'''
                     mse_loss.backward(
@@ -353,10 +362,11 @@ class PPO(object):
                     self.optimizer_transition_model.step()
 
 
-                if self.this_layer.update_i in [0]:
+                if self.this_layer.update_i in [0,1]:
                     print_str = ''
-                    print_str += '[H-{}] First time train transition_model, epoch {}, ml {}, mlrb {}'.format(
+                    print_str += '[H-{}] {}-th time train transition_model, epoch {}, ml {}, mlrb {}'.format(
                         self.this_layer.hierarchy_id,
+                        self.this_layer.update_i,
                         e,
                         mse_loss.item(),
                         mse_loss_reward_bounty.item(),

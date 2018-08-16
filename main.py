@@ -348,7 +348,7 @@ class HierarchyLayer(object):
                 if self.episode_reward['len'] < 4.0:
                     self.action[0,0] = self.actions[self.actions_count]
                     self.actions_count += 1
-                    print('set action to {}'.format(self.action[0,0].item()))
+                    print('{} set action to {}'.format(self.actions_count,self.action[0,0].item()))
             if self.hierarchy_id in [1]:
                 if self.episode_reward['len']==0.0:
                     self.action[0,0] = self.macros[self.macros_count]
@@ -395,6 +395,8 @@ class HierarchyLayer(object):
                     self.reward_bounty[0],
                 )
                 if args.test_reward_bounty:
+                    print(self.actions_count)
+                    print(self.episode_reward['len'])
                     if self.episode_reward['len'] == 3.0:
                         self.bounty_results += [self.reward_bounty[0]]
                         if self.actions_count == (len(self.actions)):
@@ -515,26 +517,26 @@ class HierarchyLayer(object):
 
             self.reward_bounty = self.reward_bounty_raw_to_return
 
-            if args.clip_reward_bounty:
-
-                if not args.mutual_information:
-                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]]
-                else:
-                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
-
-                delta = (self.reward_bounty-self.bounty_clip)
-
-                if args.clip_reward_bounty_active_function in ['linear']:
-                    self.reward_bounty = delta
-                elif args.clip_reward_bounty_active_function in ['u']:
-                    self.reward_bounty = delta.sign().clamp(min=0.0,max=1.0)
-                elif args.clip_reward_bounty_active_function in ['relu']:
-                    self.reward_bounty = F.relu(delta)
-                elif args.clip_reward_bounty_active_function in ['shrink_relu']:
-                    positive_active = delta.sign().clamp(min=0.0,max=1.0)
-                    self.reward_bounty = delta * positive_active + positive_active - 1
-                else:
-                    raise Exception('No Supported')
+            # if args.clip_reward_bounty:
+            #
+            #     if not args.mutual_information:
+            #         self.bounty_clip = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]]
+            #     else:
+            #         self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
+            #
+            #     delta = (self.reward_bounty-self.bounty_clip)
+            #
+            #     if args.clip_reward_bounty_active_function in ['linear']:
+            #         self.reward_bounty = delta
+            #     elif args.clip_reward_bounty_active_function in ['u']:
+            #         self.reward_bounty = delta.sign().clamp(min=0.0,max=1.0)
+            #     elif args.clip_reward_bounty_active_function in ['relu']:
+            #         self.reward_bounty = F.relu(delta)
+            #     elif args.clip_reward_bounty_active_function in ['shrink_relu']:
+            #         positive_active = delta.sign().clamp(min=0.0,max=1.0)
+            #         self.reward_bounty = delta * positive_active + positive_active - 1
+            #     else:
+            #         raise Exception('No Supported')
 
             self.reward_bounty = self.reward_bounty*args.reward_bounty
 
