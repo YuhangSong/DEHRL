@@ -94,6 +94,13 @@ if args.act_deterministically:
     print("================ Note that I am acting deterministically =================")
     print('==========================================================================')
 
+if args.distance in ['match']:
+    sift = cv2.xfeatures2d.SIFT_create()
+    FLANN_INDEX_KDTREE = 1
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    search_params = dict(checks = 50)
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+
 class HierarchyLayer(object):
     """docstring for HierarchyLayer."""
     """
@@ -457,8 +464,8 @@ class HierarchyLayer(object):
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
 
             if not args.mutual_information:
-                obs_rb = torch.from_numpy(self.obs).float().cuda()/255.0
-                self.predicted_next_observations_by_upper_layer = self.predicted_next_observations_by_upper_layer/255.0
+                obs_rb = self.obs
+                prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
 
             else:
                 self.upper_layer.transition_model.eval()
@@ -472,8 +479,22 @@ class HierarchyLayer(object):
 
                 if not args.mutual_information:
                     difference_list = []
-                    for action_i in range(self.predicted_next_observations_by_upper_layer.size()[0]):
-                        difference = (obs_rb[process_i]-self.predicted_next_observations_by_upper_layer[action_i,process_i]).abs().mean()
+                    for action_i in range(prediction_rb.shape[0]):
+
+                        if args.distance in ['l1']:
+                            difference = np.mean(
+                                np.abs(
+                                    (obs_rb[process_i]-prediction_rb[action_i,process_i])
+                                )
+                            )/255.0
+                        elif args.distance in ['match']:
+                            p0_kp, des0 = sift.detectAndCompute(obs_rb[process_i][0].astype(np.uint8),None)
+                            p1_kp, des1 = sift.detectAndCompute(prediction_rb[action_i,process_i][0].astype(np.uint8),None)
+                            matches = flann.knnMatch(des0,des1,k=2)
+                            difference = 0.0
+                            for m,n in matches:
+                                difference += m.distance
+
                         if action_i==action_rb[process_i]:
                             continue
                         difference_list += [difference]
