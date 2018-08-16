@@ -88,7 +88,7 @@ def get_args():
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
     parser.add_argument('--distance', type=str,
-                        help='distance to meansure the difference between states: l1, match, mass_center' )
+                        help='distance to meansure the difference between states: l1, match, mass_center, l1_mass_center' )
     parser.add_argument('--encourage-ac-connection', type=str,
                         help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
     parser.add_argument('--encourage-ac-connection-type', type=str,

@@ -482,25 +482,14 @@ class HierarchyLayer(object):
                     difference_list = []
                     for action_i in range(prediction_rb.shape[0]):
 
-                        if args.distance in ['l1']:
-                            difference = np.mean(
+                        if args.distance in ['l1','l1_mass_center']:
+                            difference_l1 = np.mean(
                                 np.abs(
                                     (obs_rb[process_i]-prediction_rb[action_i,process_i])
                                 )
                             )/255.0
 
-                        elif args.distance in ['match']:
-                            p0_kp, des0 = sift.detectAndCompute(obs_rb[process_i][0].astype(np.uint8),None)
-                            p1_kp, des1 = sift.detectAndCompute(prediction_rb[action_i,process_i][0].astype(np.uint8),None)
-
-                            difference = 0.0
-                            if des1 is not None:
-                                '''it is possible that des1 is None, since the prediction is not ready yet'''
-                                matches = flann.knnMatch(des0,des1,k=2)
-                                for m,n in matches:
-                                    difference += m.distance
-
-                        elif args.distance in ['mass_center']:
+                        if args.distance in ['mass_center','l1_mass_center']:
                             mass_center_0 = np.asarray(
                                 ndimage.measurements.center_of_mass(
                                     obs_rb[process_i][0].astype(np.uint8)
@@ -511,8 +500,28 @@ class HierarchyLayer(object):
                                     prediction_rb[action_i,process_i][0].astype(np.uint8)
                                 )
                             )
-                            difference = np.linalg.norm(mass_center_0-mass_center_1)
+                            difference_mass_center = np.linalg.norm(mass_center_0-mass_center_1)
 
+                        if args.distance in ['match']:
+                            raise DeprecationWarning
+                            # p0_kp, des0 = sift.detectAndCompute(obs_rb[process_i][0].astype(np.uint8),None)
+                            # p1_kp, des1 = sift.detectAndCompute(prediction_rb[action_i,process_i][0].astype(np.uint8),None)
+                            #
+                            # difference = 0.0
+                            # if des1 is not None:
+                            #     '''it is possible that des1 is None, since the prediction is not ready yet'''
+                            #     matches = flann.knnMatch(des0,des1,k=2)
+                            #     for m,n in matches:
+                            #         difference += m.distance
+
+                        if args.distance in ['l1']:
+                            difference = difference_l1
+                        elif args.distance in ['mass_center']:
+                            difference = difference_mass_center
+                        elif args.distance in ['l1_mass_center']:
+                            difference = difference_l1*5.0+difference_mass_center
+                        elif args.distance in ['match']:
+                            raise DeprecationWarning
                         else:
                             raise NotImplementedError
 
