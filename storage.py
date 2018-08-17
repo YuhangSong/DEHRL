@@ -95,7 +95,7 @@ class RolloutStorage(object):
         rc_masks                  = self.masks                 [recent_at-recent_steps:recent_at+1]
         num_steps, num_processes = rc_rewards.size()[0:2]
         batch_size = num_processes * num_steps
-        sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False)
+        sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=True)
         for indices in sampler:
             observations_batch           = rc_observations     [ :-1].view(-1,*rc_observations.size()[2:])[indices]
             reward_bounty_raw_batch      = rc_reward_bounty_raw      .view(-1, 1                         )[indices]
