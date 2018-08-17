@@ -265,7 +265,7 @@ class PPO(object):
             for e in range(epoch):
 
                 data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
-                    mini_batch_size = int(self.this_layer.args.transition_model_mini_batch_size),
+                    mini_batch_size = int(self.this_layer.args.transition_model_mini_batch_size[self.this_layer.hierarchy_id]),
                     recent_steps = int(self.this_layer.rollouts.num_steps/self.this_layer.hierarchy_interval)-1,
                     recent_at = self.upper_layer.step_i,
                 )

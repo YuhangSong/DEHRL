@@ -103,6 +103,8 @@ def get_args():
                         help='whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
                         help='active function of clip reward bounty: linear, u, relu, shrink_relu' )
+    parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
+                        help='num of the subpolicies per hierarchy' )
 
 
     '''for log behavior'''
@@ -136,7 +138,6 @@ def get_args():
         args.num_steps = []
 
     args.transition_model_epoch = args.actor_critic_epoch
-    args.transition_model_mini_batch_size = 64
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
