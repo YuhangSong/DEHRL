@@ -137,7 +137,7 @@ def get_args():
     if args.num_steps is None:
         args.num_steps = []
 
-    args.transition_model_epoch = args.actor_critic_epoch
+    args.transition_model_epoch = 1
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)

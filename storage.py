@@ -87,21 +87,16 @@ class RolloutStorage(object):
             yield observations_batch, input_actions_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
-    def transition_model_feed_forward_generator(self, mini_batch_size, recent_steps, recent_at):
-        rc_rewards                = self.rewards               [recent_at-recent_steps:recent_at  ]
-        rc_reward_bounty_raw      = self.reward_bounty_raw     [recent_at-recent_steps:recent_at  ]
-        rc_observations           = self.observations          [recent_at-recent_steps:recent_at+1]
-        rc_actions                = self.actions               [recent_at-recent_steps:recent_at  ]
-        rc_masks                  = self.masks                 [recent_at-recent_steps:recent_at+1]
-        num_steps, num_processes = rc_rewards.size()[0:2]
+    def transition_model_feed_forward_generator(self, mini_batch_size):
+        num_steps, num_processes = self.rewards.size()[0:2]
         batch_size = num_processes * num_steps
         sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False)
         for indices in sampler:
-            observations_batch           = rc_observations     [ :-1].view(-1,*rc_observations.size()[2:])[indices]
-            reward_bounty_raw_batch      = rc_reward_bounty_raw      .view(-1, 1                         )[indices]
-            next_observations_batch      = rc_observations     [1:  ].view(-1,*rc_observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
-            actions_batch                = rc_actions                .view(-1, rc_actions.size(-1)       )[indices]
-            next_masks_batch             = rc_masks            [1:  ].view(-1, 1                         )[indices]
+            observations_batch           = self.observations     [ :-1].view(-1,*self.observations.size()[2:])[indices]
+            reward_bounty_raw_batch      = self.reward_bounty_raw      .view(-1, 1                         )[indices]
+            next_observations_batch      = self.observations     [1:  ].view(-1,*self.observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
+            actions_batch                = self.actions                .view(-1, self.actions.size(-1)       )[indices]
+            next_masks_batch             = self.masks            [1:  ].view(-1, 1                         )[indices]
 
             yield observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch
 
