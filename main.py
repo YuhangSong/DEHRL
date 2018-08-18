@@ -94,6 +94,13 @@ input_actions_onehot_global[-1][:,0]=1.0
 
 sess = tf.Session()
 
+if args.test_action:
+     from visdom import Visdom
+     viz = Visdom(port=6008)
+     win = None
+     win_dic = {}
+     win_dic['Obs'] = None
+
 if args.act_deterministically:
     print('==========================================================================')
     print("================ Note that I am acting deterministically =================")
@@ -327,23 +334,23 @@ class HierarchyLayer(object):
         so that we can get insight on with is happening'''
 
         if args.test_action:
-            if self.hierarchy_id in [0]:
-                self.action[0,0] = int(
-                    input(
-                        '[Macro Action {}, actual action {}], Act: '.format(
-                            utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
-                            self.action[0,0].item(),
-                        )
-                    )
-                )
-            if self.hierarchy_id in [1]:
-                self.action[0,0] = int(
-                    input(
-                        '[Macro Action {}], Act: '.format(
-                            self.action[0,0].item(),
-                        )
-                    )
-                )
+            # if self.hierarchy_id in [0]:
+            #     self.action[0,0] = int(
+            #         input(
+            #             '[Macro Action {}, actual action {}], Act: '.format(
+            #                 utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
+            #                 self.action[0,0].item(),
+            #             )
+            #         )
+            #     )
+            # if self.hierarchy_id in [1]:
+            #     self.action[0,0] = int(
+            #         input(
+            #             '[Macro Action {}], Act: '.format(
+            #                 self.action[0,0].item(),
+            #             )
+            #         )
+            #     )
             if self.hierarchy_id in [2]:
                 self.action[0,0] = int(
                     input(
@@ -617,6 +624,14 @@ class HierarchyLayer(object):
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
+        if self.hierarchy_id in [2]:
+            if args.test_action:
+                win_dic['Obs'] = viz.images(
+                    self.obs[0],
+                    win=win_dic['Obs'],
+                    opts=dict(title='obs')
+                )
+
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).cuda()
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
@@ -831,10 +846,17 @@ class HierarchyLayer(object):
 
     def reset(self):
         '''as a environment, it has reset method'''
-        obs = self.envs.reset()
-        self.update_current_obs(obs)
+        self.obs = self.envs.reset()
+        if self.hierarchy_id in [2]:
+            if args.test_action:
+                win_dic['Obs'] = viz.images(
+                    self.obs[0],
+                    win=win_dic['Obs'],
+                    opts=dict(title='obs')
+                )
+        self.update_current_obs(self.obs)
         self.rollouts.observations[0].copy_(self.current_obs)
-        return obs
+        return self.obs
 
     def update_current_obs(self, obs):
         '''update self.current_obs, which contains args.num_stack frames, with obs, which is current frame'''

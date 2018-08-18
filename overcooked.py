@@ -501,9 +501,9 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
 
-        goal_set = [1,2,3,4]
+        goal_set = [2,4,3,1]
         goal_list = []
-        # DEBUG: 
+        # DEBUG:
         # random.shuffle(goal_set)
         for i in range(self.goal_num):
             goal_list += [goal_set[i]]
