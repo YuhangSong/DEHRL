@@ -216,15 +216,11 @@ class HierarchyLayer(object):
         '''try to load checkpoint'''
         try:
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
-            # DEBUG:
-            if self.hierarchy_id in [2]:
-                print('Testing top policy, do not load.')
-            else:
-                try:
-                    self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
-                    print('[H-{:1}] Load actor_critic previous point: Successed'.format(self.hierarchy_id))
-                except Exception as e:
-                    print('[H-{:1}] Load actor_critic previous point: Failed, due to {}'.format(self.hierarchy_id,e))
+            try:
+                self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
+                print('[H-{:1}] Load actor_critic previous point: Successed'.format(self.hierarchy_id))
+            except Exception as e:
+                print('[H-{:1}] Load actor_critic previous point: Failed, due to {}'.format(self.hierarchy_id,e))
             if self.transition_model is not None:
                 try:
                     self.transition_model.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id)))
@@ -711,12 +707,6 @@ class HierarchyLayer(object):
             self.deterministic = True
 
         if args.test_reward_bounty or args.test_action_vis or args.test_action:
-            self.update_type = 'none'
-            self.deterministic = True
-
-        # DEBUG:
-        if self.hierarchy_id not in [2]:
-            # this is a debug behavior, only check if top policy can work
             self.update_type = 'none'
             self.deterministic = True
 

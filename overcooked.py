@@ -78,7 +78,6 @@ class OverCooked(gym.Env):
 
         self.realgoal = np.zeros(self.goal_num)
         self.cur_goal = np.zeros(self.goal_num)
-        self.seed()
         self.viewer = None
         self.leg_id = 0
         self.goal_id = 0
@@ -170,9 +169,8 @@ class OverCooked(gym.Env):
     def configure(self, display=None):
         self.display = display
 
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
+    def seed(self, seed):
+        np.random.seed(seed)
 
     def step(self, action_list):
         reset_body = False
@@ -501,13 +499,11 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
 
-        goal_set = [2,4,3,1]
-        goal_list = []
-        # DEBUG:
-        # random.shuffle(goal_set)
-        for i in range(self.goal_num):
-            goal_list += [goal_set[i]]
-        self.setgoal(goal_list)
+        goal_list_choices = [
+            [2,4,3,1],
+            [1,3,2,4],
+        ]
+        self.setgoal(goal_list_choices[np.random.randint(0,len(goal_list_choices))])
 
         obs = self.obs()
         # obs = self.processes_obs(obs)
