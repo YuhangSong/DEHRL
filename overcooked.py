@@ -503,7 +503,7 @@ class OverCooked(gym.Env):
 
         goal_set = [1,2,3,4]
         goal_list = []
-        random.shuffle(goal_set)
+        # random.shuffle(goal_set)
         for i in range(self.goal_num):
             goal_list += [goal_set[i]]
         self.setgoal(goal_list)

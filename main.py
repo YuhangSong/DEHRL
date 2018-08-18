@@ -94,6 +94,13 @@ input_actions_onehot_global[-1][:,0]=1.0
 
 sess = tf.Session()
 
+if args.test_action:
+     from visdom import Visdom
+     viz = Visdom()
+     win = None
+     win_dic = {}
+     win_dic['Obs'] = None
+
 if args.act_deterministically:
     print('==========================================================================')
     print("================ Note that I am acting deterministically =================")
@@ -210,7 +217,10 @@ class HierarchyLayer(object):
         try:
             self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
             try:
-                self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
+                if self.hierarchy_id<2:
+                    self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
+                else:
+                    self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id+1)))
                 print('[H-{:1}] Load actor_critic previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
                 print('[H-{:1}] Load actor_critic previous point: Failed, due to {}'.format(self.hierarchy_id,e))
@@ -610,6 +620,12 @@ class HierarchyLayer(object):
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
             self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
+            if args.test_action:
+                win_dic['Obs'] = viz.images(
+                     self.obs[0],
+                     win=win_dic['Obs'],
+                     opts=dict(title=' ')
+                 )
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
@@ -725,7 +741,10 @@ class HierarchyLayer(object):
                     args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
                     np.array([self.num_trained_frames]),
                 )
-                self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
+                if self.hierarchy_id<2:
+                    self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
+                else:
+                    self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id+1))
                 if self.transition_model is not None:
                     self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
                 print("[H-{:1}] Save checkpoint successed.".format(self.hierarchy_id))
