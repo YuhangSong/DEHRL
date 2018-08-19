@@ -30,7 +30,7 @@ class OverCooked(gym.Env):
         self.screen_width = 84
         self.screen_height = 84
         self.leg_num = 4
-        self.goal_num = 4
+        self.goal_num = 2
         self.eposide_length = 0
         self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
@@ -76,7 +76,7 @@ class OverCooked(gym.Env):
         else:
             raise NotImplementedError
 
-        self.realgoal = np.arange(1,5)
+        self.realgoal = np.arange(1,self.goal_num+1)
         self.cur_goal = np.zeros(self.goal_num)
         self.viewer = None
         self.leg_id = 0
@@ -473,7 +473,7 @@ class OverCooked(gym.Env):
         self.goal_id = 0
         self.eposide_length = 0
         self.action_mem = np.zeros(self.leg_num)
-        self.realgoal = np.arange(1,5)
+        self.realgoal = np.arange(1,self.goal_num+1)
         self.cur_goal = np.zeros(self.goal_num)
         self.goal_ram = np.zeros(self.goal_num)
         self.leg_move_count = 0
