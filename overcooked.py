@@ -76,7 +76,7 @@ class OverCooked(gym.Env):
         else:
             raise NotImplementedError
 
-        self.realgoal = np.zeros(self.goal_num)
+        self.realgoal = np.arange(1,5)
         self.cur_goal = np.zeros(self.goal_num)
         self.viewer = None
         self.leg_id = 0
@@ -138,8 +138,7 @@ class OverCooked(gym.Env):
         cv2.rectangle(self.img, (int(self.screen_width / 10), int(self.screen_height - self.screen_height / 10)),
                       (int(self.screen_width - self.screen_width / 10), self.screen_height), (255, 228, 225), -1)
 
-    def setgoal(self,goal_arr):
-        self.realgoal = np.array(goal_arr)
+    def setgoal(self):
         if self.args.reward_level == 1:
             position = np.array([0,self.screen_height])
             self.draw_goals(self.single_goal+1,position,self.img)
@@ -474,7 +473,7 @@ class OverCooked(gym.Env):
         self.goal_id = 0
         self.eposide_length = 0
         self.action_mem = np.zeros(self.leg_num)
-        self.realgoal = np.zeros(self.goal_num)
+        self.realgoal = np.arange(1,5)
         self.cur_goal = np.zeros(self.goal_num)
         self.goal_ram = np.zeros(self.goal_num)
         self.leg_move_count = 0
@@ -509,19 +508,13 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
 
-        goal_list_choices = [
-            [2,4,3,1],
-            [1,3,2,4],
-        ]
-
-        goal_list = goal_list_choices[np.random.randint(0,len(goal_list_choices))]
-        self.setgoal(goal_list)
+        np.random.shuffle(self.realgoal)
+        self.setgoal()
 
         if self.args.reward_level == 2:
-            self.show_next_goal(goal_list[0])
+            self.show_next_goal(self.realgoal[0])
 
         obs = self.obs()
-        # obs = self.processes_obs(obs)
 
         return obs
 
