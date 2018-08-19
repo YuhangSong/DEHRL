@@ -270,44 +270,11 @@ class PPO(object):
                     recent_at = self.upper_layer.step_i,
                 )
 
-                num_trained_sample = 0
-                num_skipped_sample = 0
-
                 for sample in data_generator:
 
-                    observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch = sample
+                    observations_batch, next_observations_batch, action_onehot_batch, reward_bounty_raw_batch = sample
 
                     self.optimizer_transition_model.zero_grad()
-
-                    action_onehot_batch = torch.zeros(observations_batch.size()[0],self.upper_layer.actor_critic.output_action_space.n).cuda()
-
-                    '''convert actions_batch to action_onehot_batch'''
-                    action_onehot_batch.fill_(0.0)
-                    action_onehot_batch.scatter_(1,actions_batch.long(),1.0)
-
-                    '''generate indexs'''
-                    next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
-
-                    if next_masks_batch_index.size()[0] < 16:
-                        '''at least it should have 16 samples, otherwise the batch normlize is not working properly'''
-                        print('# WARNING: [H-{}] Skip this batch since the mini_batch_size after indexing is {}'.format(
-                            self.this_layer.hierarchy_id,
-                            next_masks_batch_index.size()[0],
-                        ))
-                        num_skipped_sample += next_masks_batch_index.size()[0]
-                        continue
-                    else:
-                        num_trained_sample += next_masks_batch_index.size()[0]
-
-                    next_masks_batch_index_observations_batch      = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
-                    next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
-                    next_masks_batch_index_action_onehot_batch     = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*action_onehot_batch    .size()[1:])
-                    next_masks_batch_index_reward_bounty_raw_batch = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*reward_bounty_raw_batch.size()[1:])
-                    '''index mini batch'''
-                    observations_batch = observations_batch.gather(0,next_masks_batch_index_observations_batch)
-                    action_onehot_batch = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch)
-                    next_observations_batch = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch)
-                    reward_bounty_raw_batch = reward_bounty_raw_batch.gather(0,next_masks_batch_index_reward_bounty_raw_batch)
 
                     if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
                         action_onehot_batch = torch.autograd.Variable(action_onehot_batch, requires_grad=True)
@@ -372,13 +339,6 @@ class PPO(object):
                             gradients_reward.backward(self.mone)
 
                     self.optimizer_transition_model.step()
-
-                if num_skipped_sample > 0:
-                    print('# WARNING: [H-{}] Train {} samples out of {} samples.'.format(
-                        self.this_layer.hierarchy_id,
-                        num_trained_sample,
-                        num_trained_sample+num_skipped_sample,
-                    ))
 
                 if self.this_layer.update_i in [0,1]:
                     print_str = ''

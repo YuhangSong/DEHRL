@@ -14,6 +14,7 @@ class RolloutStorage(object):
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
+        self.action_space = action_space
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
         else:
@@ -88,22 +89,40 @@ class RolloutStorage(object):
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
     def transition_model_feed_forward_generator(self, mini_batch_size, recent_steps, recent_at):
-        rc_rewards                = self.rewards               [recent_at-recent_steps:recent_at  ]
-        rc_reward_bounty_raw      = self.reward_bounty_raw     [recent_at-recent_steps:recent_at  ]
-        rc_observations           = self.observations          [recent_at-recent_steps:recent_at+1]
-        rc_actions                = self.actions               [recent_at-recent_steps:recent_at  ]
-        rc_masks                  = self.masks                 [recent_at-recent_steps:recent_at+1]
-        num_steps, num_processes = rc_rewards.size()[0:2]
-        batch_size = num_processes * num_steps
+
+        '''get recent and flatten'''
+        observations_batch           = self.observations          [recent_at-recent_steps:recent_at+1]     [ :-1].view(-1,*self.observations.size()[2:])
+        reward_bounty_raw_batch      = self.reward_bounty_raw     [recent_at-recent_steps:recent_at  ]           .view(-1, 1                           )
+        next_observations_batch      = self.observations          [recent_at-recent_steps:recent_at+1]     [1:  ].view(-1,*self.observations.size()[2:])
+        actions_batch                = self.actions               [recent_at-recent_steps:recent_at  ]           .view(-1, self.actions.size(-1)       )
+        next_masks_batch             = self.masks                 [recent_at-recent_steps:recent_at+1]     [1:  ].view(-1, 1                           )
+
+        '''generate indexs'''
+        next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
+
+        next_masks_batch_index_observations_batch      = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
+        next_masks_batch_index_reward_bounty_raw_batch = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*reward_bounty_raw_batch.size()[1:])
+        next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
+        next_masks_batch_index_actions_batch           = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*actions_batch          .size()[1:])
+
+        '''index'''
+        observations_batch      = observations_batch     .gather(0,next_masks_batch_index_observations_batch)
+        reward_bounty_raw_batch = reward_bounty_raw_batch.gather(0,next_masks_batch_index_reward_bounty_raw_batch)
+        next_observations_batch = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch)
+        actions_batch           = actions_batch          .gather(0,next_masks_batch_index_actions_batch)
+
+        '''convert actions_batch to action_onehot_batch'''
+        action_onehot_batch = torch.zeros(observations_batch.size()[0],self.action_space.n).cuda().fill_(0.0).scatter_(1,actions_batch.long(),1.0)
+
+        batch_size = observations_batch.size()[0]
+
+        if batch_size < 2*mini_batch_size:
+            '''if only one batch can be sampled'''
+            mini_batch_size = batch_size
+
         sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=True)
         for indices in sampler:
-            observations_batch           = rc_observations     [ :-1].view(-1,*rc_observations.size()[2:])[indices]
-            reward_bounty_raw_batch      = rc_reward_bounty_raw      .view(-1, 1                         )[indices]
-            next_observations_batch      = rc_observations     [1:  ].view(-1,*rc_observations.size()[2:])[indices][:,-self.observation_space.shape[0]:,:,:]
-            actions_batch                = rc_actions                .view(-1, rc_actions.size(-1)       )[indices]
-            next_masks_batch             = rc_masks            [1:  ].view(-1, 1                         )[indices]
-
-            yield observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch
+            yield observations_batch[indices], next_observations_batch[indices][:,-self.observation_space.shape[0]:,:,:], action_onehot_batch[indices], reward_bounty_raw_batch[indices]
 
     def recurrent_generator(self, advantages, num_mini_batch):
         raise Exception('Not supported')
