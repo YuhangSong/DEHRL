@@ -101,7 +101,7 @@ class OverCooked(gym.Env):
 
     def canvas_clear(self):
         # canvas
-        self.img = np.ones((int(self.screen_width + self.screen_width / 5), int(self.screen_height), 3), np.uint8) * 255
+        self.img = np.ones((int(self.screen_width + self.screen_width / 4.5), int(self.screen_height), 3), np.uint8) * 255
         self.goal_color = []
         self.goal_color.append(np.array([55, 255, 155]))
         self.goal_color.append(np.array([155, 0, 155]))
@@ -147,6 +147,15 @@ class OverCooked(gym.Env):
             for i in range(self.goal_num):
                 position = np.array([i*self.screen_width/10,self.screen_height])
                 self.draw_goals(self.realgoal[i],position,self.img)
+
+    def show_next_goal(self,goal_num):
+        show_position = np.array([int(self.screen_width*0.7),int(self.screen_height*1.05)])
+        cv2.rectangle(self.img, (show_position[0], show_position[1]),
+                      (int(show_position[0]+self.screen_width/9), int(show_position[1]+self.screen_height/9)),
+                      (255,255,255), -1)
+        if goal_num<len(self.realgoal):
+            self.draw_goals(self.realgoal[goal_num],show_position,self.img)
+
 
     def draw_goals(self,goal_num,position,canvas):
         if goal_num == 1:
@@ -384,6 +393,7 @@ class OverCooked(gym.Env):
             elif self.cur_goal[self.goal_num-1]>0:
                 reward = 0
                 done = True
+            self.show_next_goal(self.goal_id)
 
         # if reset_body:
         #     self.reset_after_goal()
@@ -503,7 +513,12 @@ class OverCooked(gym.Env):
             [2,4,3,1],
             [1,3,2,4],
         ]
-        self.setgoal(goal_list_choices[np.random.randint(0,len(goal_list_choices))])
+
+        goal_list = goal_list_choices[np.random.randint(0,len(goal_list_choices))]
+        self.setgoal(goal_list)
+
+        if self.args.reward_level == 2:
+            self.show_next_goal(goal_list[0])
 
         obs = self.obs()
         # obs = self.processes_obs(obs)
