@@ -69,9 +69,10 @@ if len(args.num_subpolicy) != (args.num_hierarchy-1):
 '''for top hierarchy layer'''
 args.num_subpolicy += [2]
 
-if len(args.transition_model_mini_batch_size) != (args.num_hierarchy-1):
-    print('# WARNING: Exlicity transition_model_mini_batch_size is not matching args.num_hierarchy, use the first transition_model_mini_batch_size for all layers')
-    args.transition_model_mini_batch_size = [args.transition_model_mini_batch_size[0]]*(args.num_hierarchy-1)
+if args.reward_bounty > 0:
+    if len(args.transition_model_mini_batch_size) != (args.num_hierarchy-1):
+        print('# WARNING: Exlicity transition_model_mini_batch_size is not matching args.num_hierarchy, use the first transition_model_mini_batch_size for all layers')
+        args.transition_model_mini_batch_size = [args.transition_model_mini_batch_size[0]]*(args.num_hierarchy-1)
 
 if len(args.hierarchy_interval) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity hierarchy_interval is not matching args.num_hierarchy, use the first hierarchy_interval for all layers')
