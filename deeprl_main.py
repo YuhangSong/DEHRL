@@ -346,6 +346,7 @@ def option_ciritc_pixel_atari(name):
     config.entropy_weight = 0.01
     config.termination_regularizer = 0.01
     config.logger = get_logger(file_name=option_ciritc_pixel_atari.__name__)
+
     run_steps(OptionCriticAgent(config))
 
 
@@ -546,9 +547,8 @@ def action_conditional_video_prediction():
     # acvp_train(game, prefix)
 
 if __name__ == '__main__':
-    mkdir('data/video')
-    mkdir('dataset')
-    mkdir('log')
+    mkdir('../results/deeprl/data/video')
+    mkdir('../results/deeprl/log')
     set_one_thread()
     select_device(-1)
     # select_device(0)
