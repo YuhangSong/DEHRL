@@ -91,9 +91,10 @@ class PPO(object):
 
             '''prepare epoch'''
             epoch = self.this_layer.args.actor_critic_epoch
-            if self.this_layer.update_i in [0]:
-                print('[H-{}] First time train actor_critic, skip, since transition_model need to be trained first.'.format(
+            if self.this_layer.update_i in [0,1]:
+                print('[H-{}] {}-th time train actor_critic, skip, since transition_model need to be trained first.'.format(
                     self.this_layer.hierarchy_id,
+                    self.this_layer.update_i,
                 ))
                 epoch *= 0
 
@@ -253,43 +254,27 @@ class PPO(object):
 
             '''prepare epoch'''
             epoch = self.this_layer.args.transition_model_epoch
-            if self.this_layer.update_i in [0]:
-                print('[H-{}] First time train transition_model, train more epoch'.format(
+            if self.this_layer.update_i in [0,1]:
+                print('[H-{}] {}-th time train transition_model, train more epoch'.format(
                     self.this_layer.hierarchy_id,
+                    self.this_layer.update_i,
                 ))
-                epoch *= 200
+                if not self.this_layer.checkpoint_loaded:
+                    epoch = 800
 
             for e in range(epoch):
 
                 data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
-                    mini_batch_size = int(self.this_layer.args.actor_critic_mini_batch_size/self.this_layer.hierarchy_interval),
+                    mini_batch_size = int(self.this_layer.args.transition_model_mini_batch_size[self.this_layer.hierarchy_id]),
                     recent_steps = int(self.this_layer.rollouts.num_steps/self.this_layer.hierarchy_interval)-1,
                     recent_at = self.upper_layer.step_i,
                 )
 
                 for sample in data_generator:
 
+                    observations_batch, next_observations_batch, action_onehot_batch, reward_bounty_raw_batch = sample
+
                     self.optimizer_transition_model.zero_grad()
-
-                    observations_batch, next_observations_batch, actions_batch, next_masks_batch, reward_bounty_raw_batch = sample
-
-                    action_onehot_batch = torch.zeros(observations_batch.size()[0],self.upper_layer.actor_critic.output_action_space.n).cuda()
-
-                    '''convert actions_batch to action_onehot_batch'''
-                    action_onehot_batch.fill_(0.0)
-                    action_onehot_batch.scatter_(1,actions_batch.long(),1.0)
-
-                    '''generate indexs'''
-                    next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
-                    next_masks_batch_index_observations_batch      = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
-                    next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
-                    next_masks_batch_index_action_onehot_batch     = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*action_onehot_batch    .size()[1:])
-                    next_masks_batch_index_reward_bounty_raw_batch = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*reward_bounty_raw_batch.size()[1:])
-
-                    observations_batch = observations_batch.gather(0,next_masks_batch_index_observations_batch)
-                    action_onehot_batch = action_onehot_batch.gather(0,next_masks_batch_index_action_onehot_batch)
-                    next_observations_batch = next_observations_batch.gather(0,next_masks_batch_index_next_observations_batch)
-                    reward_bounty_raw_batch = reward_bounty_raw_batch.gather(0,next_masks_batch_index_reward_bounty_raw_batch)
 
                     if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
                         action_onehot_batch = torch.autograd.Variable(action_onehot_batch, requires_grad=True)
@@ -298,7 +283,7 @@ class PPO(object):
                     self.upper_layer.transition_model.train()
 
                     if not self.this_layer.args.mutual_information:
-                        predicted_next_observations_batch, before_deconv, reward_bounty = self.upper_layer.transition_model(
+                        predicted_next_observations_batch, reward_bounty = self.upper_layer.transition_model(
                             inputs = observations_batch,
                             input_action = action_onehot_batch,
                         )
@@ -316,16 +301,24 @@ class PPO(object):
                         '''compute mse loss'''
                         nll_loss = self.NLLLoss(predicted_action_log_probs, action_onehot_batch.nonzero()[:,1])
 
-                    mse_loss_reward_bounty = F.mse_loss(
-                        input = reward_bounty,
-                        target = reward_bounty_raw_batch,
-                        reduction='elementwise_mean',
-                    )
+                    if self.this_layer.update_i not in [0]:
+                        '''for the first epoch, reward bounty is not accurate'''
+                        mse_loss_reward_bounty = F.mse_loss(
+                            input = reward_bounty,
+                            target = reward_bounty_raw_batch,
+                            reduction='elementwise_mean',
+                        )
 
                     if not self.this_layer.args.mutual_information:
-                        mse_loss = mse_loss_transition + mse_loss_reward_bounty
+                        if self.this_layer.update_i not in [0]:
+                            mse_loss = mse_loss_transition + mse_loss_reward_bounty
+                        else:
+                            mse_loss = mse_loss_transition
                     else:
-                        mse_loss = nll_loss + mse_loss_reward_bounty
+                        if self.this_layer.update_i not in [0]:
+                            mse_loss = nll_loss + mse_loss_reward_bounty
+                        else:
+                            mse_loss = nll_loss
 
                     '''backward'''
                     mse_loss.backward(
@@ -347,15 +340,18 @@ class PPO(object):
 
                     self.optimizer_transition_model.step()
 
-
-                if self.this_layer.update_i in [0]:
+                if self.this_layer.update_i in [0,1]:
                     print_str = ''
-                    print_str += '[H-{}] First time train transition_model, epoch {}, ml {}, mlrb {}'.format(
+                    print_str += '[H-{}] {}-th time train transition_model, epoch {}, ml {}'.format(
                         self.this_layer.hierarchy_id,
+                        self.this_layer.update_i,
                         e,
                         mse_loss.item(),
-                        mse_loss_reward_bounty.item(),
                     )
+                    if self.this_layer.update_i not in [0]:
+                        print_str += ', mlrb {}'.format(
+                            mse_loss_reward_bounty.item(),
+                        )
                     if not self.this_layer.args.mutual_information:
                         print_str += ', mlt {}'.format(
                             mse_loss_transition.item(),

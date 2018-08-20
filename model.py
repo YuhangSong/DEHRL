@@ -249,18 +249,22 @@ class TransitionModel(nn.Module):
 
         self.conv = nn.Sequential(
             self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
-            nn.BatchNorm2d(32),
-            nn.LeakyReLU(),
+            # input do not normalize
+            nn.LeakyReLU(inplace=True),
+
             self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
             nn.BatchNorm2d(64),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(inplace=True),
+
             self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
             nn.BatchNorm2d(32),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(inplace=True),
+
             Flatten(),
+
             self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
-            nn.BatchNorm1d(self.linear_size),
-            nn.LeakyReLU()
+            # fc donot normalize
+            # fc linear
         )
 
         self.reward_bounty_linear = nn.Sequential(
@@ -269,24 +273,32 @@ class TransitionModel(nn.Module):
 
         if not self.mutual_information:
 
-            self.deconv = []
-            for decon_i in range(self.num_subpolicy):
-                self.deconv += [nn.Sequential(
-                    self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
-                    # nn.BatchNorm1d(32 * 7 * 7),
-                    nn.LeakyReLU(),
-                    DeFlatten((32,7,7)),
-                    self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
-                    # nn.BatchNorm2d(64),
-                    nn.LeakyReLU(),
-                    self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
-                    # nn.BatchNorm2d(32),
-                    nn.LeakyReLU(),
-                    self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_shape[0], 8, stride=4)),
-                    # output do not normalize
-                    nn.Sigmoid(),
-                )]
-            self.deconv = nn.ModuleList(self.deconv)
+            self.input_action_space = input_action_space
+            self.input_action_linear = nn.Sequential(
+                self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
+                # fc donot normalize
+                # fc linear
+            )
+
+            self.deconv = nn.Sequential(
+                self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
+                # project donot normalize
+                nn.LeakyReLU(),
+
+                DeFlatten((32,7,7)),
+
+                self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
+                nn.BatchNorm2d(64),
+                nn.LeakyReLU(),
+
+                self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
+                nn.BatchNorm2d(32),
+                nn.LeakyReLU(),
+
+                self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_shape[0], 8, stride=4)),
+                # output do not normalize
+                nn.Sigmoid(),
+            )
 
         else:
 
@@ -297,29 +309,21 @@ class TransitionModel(nn.Module):
 
     def forward(self, inputs, input_action=None):
 
-        before_deconv = self.conv(inputs/255.0)
+        before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
+
+        predicted_reward_bounty = self.reward_bounty_linear(before_deconv)
 
         if not self.mutual_information:
 
-            index_dic = {}
-            tensor_dic = {}
-            y_dic = {}
-            action_index = np.where(input_action==1)[1]
-            for dic_i in range(self.num_subpolicy):
-                index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
-                if index_dic[str(dic_i)].size()[0] != 0:
-                    tensor_dic[str(dic_i)] = torch.index_select(before_deconv,0,index_dic[str(dic_i)])
-                    y_dic[str(dic_i)] = self.deconv[dic_i](tensor_dic[str(dic_i)])
-            after_deconv = torch.zeros((inputs.size()[0],*self.output_observation_shape)).cuda()
-            for y_i in range(self.num_subpolicy):
-                if str(y_i) in y_dic:
-                    after_deconv.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
+            predicted_state = self.deconv(before_deconv)*255.0
 
-            return after_deconv*255.0, before_deconv, self.reward_bounty_linear(before_deconv)
+            return predicted_state, predicted_reward_bounty
 
         else:
 
-            return F.log_softmax(self.label_linear(before_deconv), dim=1), self.reward_bounty_linear(before_deconv)
+            predicted_action_resulted_from = F.log_softmax(self.label_linear(before_deconv), dim=1)
+
+            return predicted_action_resulted_from, predicted_reward_bounty
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)

@@ -71,6 +71,8 @@ def get_args():
                         help='if use fake reward bounty')
     parser.add_argument('--reset-leg', action='store_true',
                         help='if reset four legs after four steps')
+    parser.add_argument('--add-goal-color', action='store_true',
+                        help='if add area color when get the goal')
 
     '''policy details'''
     parser.add_argument('--num-hierarchy',      type=int,
@@ -85,6 +87,8 @@ def get_args():
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
+    parser.add_argument('--distance', type=str,
+                        help='distance to meansure the difference between states: l1, match, mass_center, l1_mass_center' )
     parser.add_argument('--encourage-ac-connection', type=str,
                         help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
     parser.add_argument('--encourage-ac-connection-type', type=str,
@@ -97,6 +101,10 @@ def get_args():
                         help='whether use mutual information as bounty reward' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='whether clip the reward bounty' )
+    parser.add_argument('--clip-reward-bounty-active-function', type=str,
+                        help='active function of clip reward bounty: linear, u, relu, shrink_relu' )
+    parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
+                        help='num of the subpolicies per hierarchy' )
 
 
     '''for log behavior'''
@@ -114,9 +122,22 @@ def get_args():
                         help='specify actions at every level')
     parser.add_argument('--test-action-vis', action='store_true',
                         help='see actions at every level')
+    parser.add_argument('--run-overcooked', action='store_true',
+                        help='run overcooked to debug the game')
+    parser.add_argument('--see-leg-fre', action='store_true',
+                        help='see the frequency of each leg through tensorboard')
 
     args = parser.parse_args()
-    args.transition_model_epoch = int(args.actor_critic_epoch)
+
+    '''none = []'''
+    if args.num_subpolicy is None:
+        args.num_subpolicy = []
+    if args.hierarchy_interval is None:
+        args.hierarchy_interval = []
+    if args.num_steps is None:
+        args.num_steps = []
+
+    args.transition_model_epoch = args.actor_critic_epoch
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
@@ -127,7 +148,8 @@ def get_args():
     if args.env_name in ['OverCooked']:
         args.save_dir = os.path.join(args.save_dir, 'r_l-{}'.format(args.reward_level))
         args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
-        args.save_dir = os.path.join(args.save_dir, 'reset_legs-{}'.format(args.reset_leg))
+        args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
+        args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
@@ -141,6 +163,8 @@ def get_args():
     args.save_dir = os.path.join(args.save_dir, 'a_c_m_b_s-{}'.format(args.actor_critic_mini_batch_size))
     args.save_dir = os.path.join(args.save_dir, 'a_c_e-{}'.format(args.actor_critic_epoch))
     if args.reward_bounty > 0.0:
+        '''distance'''
+        args.save_dir = os.path.join(args.save_dir, 'd-{}'.format(args.distance))
         '''transition_model training details'''
         args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
@@ -149,6 +173,8 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
         '''clip reward bounty'''
         args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
+        if args.clip_reward_bounty:
+            args.save_dir = os.path.join(args.save_dir, 'c_r_b_a_f-{}'.format(args.clip_reward_bounty_active_function))
 
     if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
         '''for encourage_ac_connection'''
