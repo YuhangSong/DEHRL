@@ -57,6 +57,8 @@ conda install pytorch torchvision -c soumith
 pip install opencv-contrib-python
 conda install scikit-image
 pip install --upgrade imutils
+# install all the requirements
+pip install -e .
 ```
 
 Run commands here:
@@ -96,6 +98,14 @@ our
 ```bash
 CUDA_VISIBLE_DEVICES=3 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp test_atari --obs-type 'image' --env-name "PongNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
+
+## DeepRL
+This repo include [DeepRL](https://github.com/ShangtongZhang/DeepRL) as comparison, see the deeprl_main.py for details. We mainly compare with OC.
+
+```bash
+python deeprl_main.py
+```
+
 
 ## TODO list
 * check the logic of the game under reward_level=1(finished)
