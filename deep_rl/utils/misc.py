@@ -18,8 +18,10 @@ try:
 except:
     # python == 2.7
     from pathlib2 import Path
+import tensorflow as tf
 
-def run_steps(agent):
+
+def run_steps(agent, summary_writer, args):
     viz = Visdom()
     win = None
     win_dic = {}
@@ -31,22 +33,18 @@ def run_steps(agent):
     t0 = time.time()
     while True:
         if config.save_interval and not agent.total_steps % config.save_interval:
-            agent.save('data/model-%s-%s-%s.bin' % (agent_name, config.task_name, config.tag))
+            agent.save('%s/model-%s-%s-%s.bin' % (args.save_dir, agent_name, config.task_name, config.tag))
         if config.log_interval and not agent.total_steps % config.log_interval and len(agent.episode_rewards):
             rewards = agent.episode_rewards
             agent.episode_rewards = []
 
-            try:
-                # try expend
-                recorder += [np.sum(rewards)]
-            except Exception as e:
-                # else, initialize
-                recorder = [np.sum(rewards)]
-            win_dic['curve'] = viz.line(
-                            torch.from_numpy(np.asarray(recorder)),
-                            win=win_dic['curve'],
-                            opts=dict(title= 'OC-curve')
-                        )
+            summary = tf.Summary()
+            summary.value.add(
+                tag = 'hierarchy_0/final_reward_raw',
+                simple_value = np.sum(rewards),
+            )
+            summary_writer.add_summary(summary, agent.total_steps)
+            summary_writer.flush()
 
             config.logger.info('total steps %d, returns %.2f/%.2f/%.2f/%.2f (mean/median/min/max), %.2f steps/s' % (
                 agent.total_steps, np.mean(rewards), np.median(rewards), np.min(rewards), np.max(rewards),
@@ -62,8 +60,8 @@ def run_steps(agent):
 def get_time_str():
     return datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 
-def get_default_log_dir(name):
-    return './log/%s-%s' % (name, get_time_str())
+def get_default_log_dir(name, args):
+    return args.save_dir + ('/%s-%s' % (name, get_time_str()))
 
 def mkdir(path):
     Path(path).mkdir(parents=True, exist_ok=True)

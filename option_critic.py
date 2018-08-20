@@ -5,6 +5,22 @@
 #######################################################################
 
 from deep_rl import *
+import tensorflow as tf
+
+sess = tf.Session()
+
+from arguments_for_option_critic import get_args
+args = get_args()
+try:
+    os.makedirs(args.save_dir)
+    print('Dir empty, making new log dir...')
+except Exception as e:
+    if e.__class__.__name__ in ['FileExistsError']:
+        print('Dir exsit, checking checkpoint...')
+    else:
+        raise e
+
+summary_writer = tf.summary.FileWriter(args.save_dir)
 
 # DQN
 def dqn_cart_pole():
@@ -31,7 +47,7 @@ def dqn_cart_pole():
     config.eval_interval = int(5e3)
     config.max_steps = 1e5
     # config.async_actor = False
-    config.logger = get_logger()
+    config.logger = get_logger(log_dir=args.save_dir)
     run_steps(DQNAgent(config))
 
 def dqn_pixel_atari(name):
@@ -322,7 +338,7 @@ def option_ciritc_pixel_atari(name):
     config.history_length = 4
 
     if name in ['OverCooked']:
-        from arguments import get_args
+        from arguments_for_option_critic import get_args
         args = get_args()
         task_fn = lambda log_dir: PixelAtari(name, frame_skip=1, history_length=config.history_length, log_dir=log_dir, args=args)
     else:
@@ -330,7 +346,7 @@ def option_ciritc_pixel_atari(name):
 
     config.num_workers = 16
     config.task_fn = lambda: ParallelizedTask(task_fn, config.num_workers,
-                                              log_dir=get_default_log_dir(option_ciritc_pixel_atari.__name__),
+                                              log_dir=get_default_log_dir(option_ciritc_pixel_atari.__name__, args),
                                               single_process=True)
     config.eval_env = task_fn(None)
     config.optimizer_fn = lambda params: torch.optim.RMSprop(params, lr=1e-4, alpha=0.99, eps=1e-5)
@@ -345,8 +361,8 @@ def option_ciritc_pixel_atari(name):
     config.max_steps = int(2e7)
     config.entropy_weight = 0.01
     config.termination_regularizer = 0.01
-    config.logger = get_logger(file_name=option_ciritc_pixel_atari.__name__)
-    run_steps(OptionCriticAgent(config))
+    config.logger = get_logger(log_dir=args.save_dir)
+    run_steps(OptionCriticAgent(config), summary_writer, args)
 
 
 # PPO
@@ -546,9 +562,7 @@ def action_conditional_video_prediction():
     # acvp_train(game, prefix)
 
 if __name__ == '__main__':
-    mkdir('data/video')
-    mkdir('dataset')
-    mkdir('log')
+
     set_one_thread()
     select_device(-1)
     # select_device(0)
