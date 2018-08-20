@@ -320,7 +320,14 @@ def option_critic_cart_pole():
 def option_ciritc_pixel_atari(name):
     config = Config()
     config.history_length = 4
-    task_fn = lambda log_dir: PixelAtari(name, frame_skip=4, history_length=config.history_length, log_dir=log_dir)
+
+    if name in ['OverCooked']:
+        from arguments import get_args
+        args = get_args()
+        task_fn = lambda log_dir: PixelAtari(name, frame_skip=1, history_length=config.history_length, log_dir=log_dir, args=args)
+    else:
+        task_fn = lambda log_dir: PixelAtari(name, frame_skip=4, history_length=config.history_length, log_dir=log_dir)
+
     config.num_workers = 16
     config.task_fn = lambda: ParallelizedTask(task_fn, config.num_workers,
                                               log_dir=get_default_log_dir(option_ciritc_pixel_atari.__name__),
@@ -557,7 +564,7 @@ if __name__ == '__main__':
     # ppo_continuous()
     # ddpg_low_dim_state()
 
-    game = 'Breakout'
+    game = 'OverCooked'
     # dqn_pixel_atari(game)
     # quantile_regression_dqn_pixel_atari(game)
     # categorical_dqn_pixel_atari(game)

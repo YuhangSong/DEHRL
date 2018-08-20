@@ -58,26 +58,28 @@ class FireResetEnv(gym.Wrapper):
         return self.env.step(ac)
 
 class EpisodicLifeEnv(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, overcooked = False):
         """Make end-of-life == end-of-episode, but only reset on true game over.
         Done by DeepMind for the DQN and co. since it helps value estimation.
         """
         gym.Wrapper.__init__(self, env)
         self.lives = 0
         self.was_real_done  = True
+        self.overcooked = overcooked
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
         self.was_real_done = done
-        # check current lives, make loss of life terminal,
-        # then update lives to handle bonus lives
-        lives = self.env.unwrapped.ale.lives()
-        if lives < self.lives and lives > 0:
-            # for Qbert sometimes we stay in lives == 0 condtion for a few frames
-            # so its important to keep lives > 0, so that we only reset once
-            # the environment advertises done.
-            done = True
-        self.lives = lives
+        if not self.overcooked:
+            # check current lives, make loss of life terminal,
+            # then update lives to handle bonus lives
+            lives = self.env.unwrapped.ale.lives()
+            if lives < self.lives and lives > 0:
+                # for Qbert sometimes we stay in lives == 0 condtion for a few frames
+                # so its important to keep lives > 0, so that we only reset once
+                # the environment advertises done.
+                done = True
+            self.lives = lives
         return obs, reward, done, info
 
     def reset(self, **kwargs):
@@ -90,7 +92,8 @@ class EpisodicLifeEnv(gym.Wrapper):
         else:
             # no-op step to advance from terminal/lost life state
             obs, _, _, _ = self.env.step(0)
-        self.lives = self.env.unwrapped.ale.lives()
+        if not self.overcooked:
+            self.lives = self.env.unwrapped.ale.lives()
         return obs
 
 class MaxAndSkipEnv(gym.Wrapper):
@@ -143,16 +146,18 @@ class SkipEnv(gym.Wrapper):
         return obs
 
 class WarpFrame(gym.ObservationWrapper):
-    def __init__(self, env):
+    def __init__(self, env, overcooked = False):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
+        self.overcooked = overcooked
         self.width = 84
         self.height = 84
         self.observation_space = spaces.Box(low=0, high=255,
             shape=(self.height, self.width, 1), dtype=np.uint8)
 
     def observation(self, frame):
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        if not self.overcooked:
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         return frame[:, :, None]
 
@@ -210,9 +215,10 @@ class StackFrame(gym.Wrapper):
 
 class WrapPyTorch(gym.ObservationWrapper):
     # from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/envs.py
-    def __init__(self, env=None):
+    def __init__(self, env=None, overcooked = False):
         super(WrapPyTorch, self).__init__(env)
         obs_shape = self.observation_space.shape
+        self.overcooked = overcooked
         self.observation_space = Box(
             self.observation_space.low[0,0,0],
             self.observation_space.high[0,0,0],
@@ -279,6 +285,14 @@ def wrap_deepmind(env, episode_life=True, history_length=1):
         env = FireResetEnv(env)
     env = WarpFrame(env)
     env = WrapPyTorch(env)
+    if history_length:
+        env = StackFrame(env, history_length)
+    return env
+
+def wrap_overcooked(env,history_length=1):
+    env = EpisodicLifeEnv(env,overcooked=True)
+    env = WarpFrame(env,overcooked=True)
+    env = WrapPyTorch(env,overcooked=True)
     if history_length:
         env = StackFrame(env, history_length)
     return env

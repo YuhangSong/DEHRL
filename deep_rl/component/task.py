@@ -44,16 +44,25 @@ class ClassicalControl(BaseTask):
 
 class PixelAtari(BaseTask):
     def __init__(self, name, seed=0, log_dir=None,
-                 frame_skip=4, history_length=4, dataset=False, episode_life=True):
-        name += 'NoFrameskip-v4'
-        BaseTask.__init__(self)
-        env = make_atari(name, frame_skip)
-        env.seed(seed)
-        if dataset:
-            env = DatasetEnv(env)
-            self.dataset_env = env
-        env = self.set_monitor(env, log_dir)
-        env = wrap_deepmind(env, history_length=history_length, episode_life=episode_life)
+                 frame_skip=4, history_length=4, dataset=False, episode_life=True, args=None):
+
+        if name in ['OverCooked']:
+            '''OverCooked game we wrote'''
+            import overcooked
+            env = overcooked.OverCooked(
+                args = args,
+            )
+            env = wrap_overcooked(env,history_length=history_length)
+        else:
+            name += 'NoFrameskip-v4'
+            BaseTask.__init__(self)
+            env = make_atari(name, frame_skip)
+            env.seed(seed)
+            if dataset:
+                env = DatasetEnv(env)
+                self.dataset_env = env
+            env = self.set_monitor(env, log_dir)
+            env = wrap_deepmind(env, history_length=history_length, episode_life=episode_life)
         self.env = env
         self.action_dim = self.env.action_space.n
         self.state_dim = self.env.observation_space.shape
