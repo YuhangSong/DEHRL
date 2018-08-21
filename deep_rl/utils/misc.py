@@ -40,8 +40,8 @@ def run_steps(agent, summary_writer, args):
 
             summary = tf.Summary()
             summary.value.add(
-                tag = 'hierarchy_0/final_reward_raw',
-                simple_value = np.sum(rewards),
+                tag = 'hierarchy_0/final_reward_norm',
+                simple_value = np.sum(rewards)*2,
             )
             summary_writer.add_summary(summary, agent.total_steps)
             summary_writer.flush()
