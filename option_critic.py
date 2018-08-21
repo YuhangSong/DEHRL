@@ -564,8 +564,7 @@ def action_conditional_video_prediction():
 if __name__ == '__main__':
 
     set_one_thread()
-    select_device(-1)
-    # select_device(0)
+    select_device(0)
 
     # dqn_cart_pole()
     # quantile_regression_dqn_cart_pole()
