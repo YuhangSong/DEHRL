@@ -35,21 +35,22 @@ def run_steps(agent, summary_writer, args):
         if config.save_interval and not agent.total_steps % config.save_interval:
             agent.save('%s/model-%s-%s-%s.bin' % (args.save_dir, agent_name, config.task_name, config.tag))
         if config.log_interval and not agent.total_steps % config.log_interval and len(agent.episode_rewards):
-            rewards = agent.episode_rewards
-            agent.episode_rewards = []
 
             summary = tf.Summary()
             summary.value.add(
                 tag = 'hierarchy_0/final_reward_norm',
-                simple_value = np.sum(rewards)*2,
+                simple_value = agent.episode_rewards[-1]*2,
             )
             summary_writer.add_summary(summary, agent.total_steps)
             summary_writer.flush()
 
             config.logger.info('total steps %d, returns %.2f/%.2f/%.2f/%.2f (mean/median/min/max), %.2f steps/s' % (
-                agent.total_steps, np.mean(rewards), np.median(rewards), np.min(rewards), np.max(rewards),
+                agent.total_steps, np.mean(agent.episode_rewards), np.median(agent.episode_rewards), np.min(agent.episode_rewards), np.max(agent.episode_rewards),
                 config.log_interval / (time.time() - t0)))
             t0 = time.time()
+
+            agent.episode_rewards = []
+
         if config.eval_interval and not agent.total_steps % config.eval_interval:
             agent.eval_episodes()
         if config.max_steps and agent.total_steps >= config.max_steps:
