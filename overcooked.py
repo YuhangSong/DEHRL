@@ -38,7 +38,7 @@ class OverCooked(gym.Env):
         self.color_area = []
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
-        self.move_discount = 10
+        self.move_discount = 10/3
         '''body thickness, default -- 2, -1 means solid'''
         self.body_thickness = -1
         '''leg size, default -- self.screen_width/20'''
@@ -334,10 +334,10 @@ class OverCooked(gym.Env):
                 if self.args.use_fake_reward_bounty:
                     if len(action_list)>2:
                         if action_list[2] == 0:
-                            reward = 10
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 0:
-                        reward = 10
+                        reward = 1
                     done = True
         elif distance_2 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             reset_body = True
@@ -349,10 +349,10 @@ class OverCooked(gym.Env):
                 if self.args.use_fake_reward_bounty:
                     if len(action_list)>2:
                         if action_list[2] == 1:
-                            reward = 10
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 1:
-                        reward = 10
+                        reward = 1
                     done = True
         elif distance_3 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             reset_body = True
@@ -364,10 +364,10 @@ class OverCooked(gym.Env):
                 if self.args.use_fake_reward_bounty:
                     if len(action_list)>2:
                         if action_list[2] == 2:
-                            reward = 10
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 2:
-                        reward = 10
+                        reward = 1
                     done = True
         elif distance_4 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
             reset_body = True
@@ -379,15 +379,15 @@ class OverCooked(gym.Env):
                 if self.args.use_fake_reward_bounty:
                     if len(action_list)>2:
                         if action_list[2] == 3:
-                            reward = 10
+                            reward = 1
                 if self.args.reward_level == 1:
                     if self.single_goal == 3:
-                        reward = 10
+                        reward = 1
                     done = True
 
         if self.args.reward_level == 2:
             if (self.realgoal==self.cur_goal).all():
-                reward = 100
+                reward = 1
                 done = True
             elif self.cur_goal[self.goal_num-1]>0:
                 reward = 0

@@ -86,7 +86,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 This repo include The Option-Critic Architecture in [DeepRL](https://github.com/ShangtongZhang/DeepRL) as comparison. To run Option-Critic Architecture on OverCooked game:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 0 --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --log-behavior-interval 5 --aux 3x3_r_0
 ```
 
 ```base
