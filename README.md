@@ -57,7 +57,6 @@ conda install pytorch torchvision -c soumith
 pip install opencv-contrib-python
 conda install scikit-image
 pip install --upgrade imutils
-# install all the requirements
 pip install -e .
 ```
 
@@ -83,138 +82,13 @@ CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux shuffle_show_goal_r_0
 ```
 
-## DeepRL
+## Option-Critic
 This repo include The Option-Critic Architecture in [DeepRL](https://github.com/ShangtongZhang/DeepRL) as comparison. To run Option-Critic Architecture on OverCooked game:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --log-behavior-interval 5
-```
-
-
-## TODO list
-* check the logic of the game under reward_level=1(finished)
-* add observation_type = 'image' or 'ram' [float(0.0-1.0), float(0.0-1.0)] option in the game overcooked, and add support to run the game(finished)
-* Code the hierarchy policy, a general class called HierarachyPolicyLayer for heiraracy policy at any layers (1-256, 1-256, 256*256-2-policy).
-* One rollout for one hierarchy layer,
-* in a word, it should be easy to modulize our idea in this project, since the interacting & rollout & update in this project are already well modulized.
-
-```bash
---env-name "PongNoFrameskip-v4"
+CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 0 --log-behavior-interval 5 --aux r_0
 ```
 
 ```base
 tensorboard --logdir=../results/t-MovementBandits-v0/
 ```
-
-
-## Contributions
-
-Contributions are very welcome. If you know how to make this code better, please open an issue. If you want to submit a pull request, please open an issue first. Also see a todo list below.
-
-Also I'm searching for volunteers to run all experiments on Atari and MuJoCo (with multiple random seeds).
-
-## Disclaimer
-
-It's extremely difficult to reproduce results for Reinforcement Learning methods. See ["Deep Reinforcement Learning that Matters"](https://arxiv.org/abs/1709.06560) for more information. I tried to reproduce OpenAI results as closely as possible. However, majors differences in performance can be caused even by minor differences in TensorFlow and PyTorch libraries.
-
-### TODO
-* Improve this README file. Rearrange images.
-* Improve performance of KFAC, see kfac.py for more information
-* Run evaluation for all games and algorithms
-
-## Training
-
-Start a `Visdom` server with `python -m visdom.server`, it will serve `http://localhost:8097/` by default.
-
-### Atari
-#### A2C
-
-```bash
-python main.py --env-name "PongNoFrameskip-v4"
-```
-
-#### PPO
-
-```bash
-python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --vis-interval 1 --log-interval 1
-```
-
-#### ACKTR
-
-```bash
-python main.py --env-name "PongNoFrameskip-v4" --algo acktr --num-processes 32 --num-steps 20
-```
-
-### MuJoCo
-
-I **highly** recommend to use --add-timestep argument with some mujoco environments (for example, Reacher) despite it's not a default option with OpenAI implementations.
-
-#### A2C
-
-```bash
-python main.py --env-name "Reacher-v2" --num-stack 1 --num-frames 1000000
-```
-
-#### PPO
-
-```bash
-python main.py --env-name "Reacher-v2" --algo ppo --use-gae --vis-interval 1  --log-interval 1 --num-stack 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 1 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-frames 1000000
-```
-
-#### ACKTR
-
-ACKTR requires some modifications to be made specifically for MuJoCo. But at the moment, I want to keep this code as unified as possible. Thus, I'm going for better ways to integrate it into the codebase.
-
-## Enjoy
-
-Load a pretrained model from [my Google Drive](https://drive.google.com/open?id=0Bw49qC_cgohKS3k2OWpyMWdzYkk).
-
-Also pretrained models for other games are available on request. Send me an email or create an issue, and I will upload it.
-
-Disclaimer: I might have used different hyper-parameters to train these models.
-
-### Atari
-
-```bash
-python enjoy.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
-```
-
-### MuJoCo
-
-```bash
-python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v2" --num-stack 1
-```
-
-## Results
-
-### A2C
-
-![BreakoutNoFrameskip-v4](imgs/a2c_breakout.png)
-
-![SeaquestNoFrameskip-v4](imgs/a2c_seaquest.png)
-
-![QbertNoFrameskip-v4](imgs/a2c_qbert.png)
-
-![beamriderNoFrameskip-v4](imgs/a2c_beamrider.png)
-
-### PPO
-
-
-![BreakoutNoFrameskip-v4](imgs/ppo_halfcheetah.png)
-
-![SeaquestNoFrameskip-v4](imgs/ppo_hopper.png)
-
-![QbertNoFrameskip-v4](imgs/ppo_reacher.png)
-
-![beamriderNoFrameskip-v4](imgs/ppo_walker.png)
-
-
-### ACKTR
-
-![BreakoutNoFrameskip-v4](imgs/acktr_breakout.png)
-
-![SeaquestNoFrameskip-v4](imgs/acktr_seaquest.png)
-
-![QbertNoFrameskip-v4](imgs/acktr_qbert.png)
-
-![beamriderNoFrameskip-v4](imgs/acktr_beamrider.png)
