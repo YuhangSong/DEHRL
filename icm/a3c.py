@@ -171,6 +171,10 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             fetched = policy.act(last_state, *last_features)
             action, value_, features = fetched[0], fetched[1], fetched[2:]
 
+            # action_index = int(input('act:'))
+            # action *= 0.0
+            # action[action_index] = 1.0
+
             # run environment: get action_index from sampled one-hot 'action'
             stepAct = action.argmax()
             state, reward, terminal, info = env.step(stepAct)
@@ -205,6 +209,16 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 else:
                     print("Episode finished. Sum of shaped rewards: %.2f. Length: %d." % (rewards, length))
                 if 'distance' in info: print('Mario Distance Covered:', info['distance'])
+
+                summary = tf.Summary()
+                summary.value.add(
+                    tag = 'hierarchy_0/final_reward_norm',
+                    simple_value = rewards,
+                )
+                summary_writer.add_summary(summary, policy.global_step.eval())
+                summary_writer.flush()
+
+
                 length = 0
                 rewards = 0
                 terminal_end = True
@@ -420,7 +434,12 @@ class A3C(object):
         if should_compute_summary:
             fetches = [self.summary_op, self.train_op, self.global_step]
         else:
+            print('train')
             fetches = [self.train_op, self.global_step]
+
+        # print(batch.r)
+        # print(batch.a)
+        # print(batch.adv)
 
         feed_dict = {
             self.local_network.x: batch.si,

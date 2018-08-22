@@ -22,9 +22,10 @@ class OverCooked(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, args=None):
+    def __init__(self, args=None, obs_size = 84):
 
         self.args = args
+        self.obs_size = obs_size
 
         self.action_space = spaces.Discrete(17)
         self.screen_width = 84
@@ -38,7 +39,7 @@ class OverCooked(gym.Env):
         self.color_area = []
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
-        self.move_discount = 10
+        self.move_discount = 10/3
         '''body thickness, default -- 2, -1 means solid'''
         self.body_thickness = -1
         '''leg size, default -- self.screen_width/20'''
@@ -49,7 +50,7 @@ class OverCooked(gym.Env):
         if self.args.obs_type == 'ram':
             self.observation_space = spaces.Box(low=0, high=1.0, dtype=np.float64, shape=(26,))
         elif self.args.obs_type == 'image':
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self.screen_height, self.screen_width, 1),dtype=np.uint8)
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 1),dtype=np.uint8)
         else:
             raise error.Error('Unrecognized observation type: {}'.format(self.args.obs_type))
 
@@ -482,7 +483,8 @@ class OverCooked(gym.Env):
         self.leg_count = np.zeros(self.leg_num*4+1)
 
         if self.args.reward_level == 1:
-            self.single_goal = np.random.randint(0,self.goal_num)
+            # self.single_goal = np.random.randint(0,self.goal_num)
+            self.single_goal = 1
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
@@ -542,7 +544,7 @@ class OverCooked(gym.Env):
 
     def processes_obs(self, obs):
         obs = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)
-        obs = np.expand_dims(cv2.resize(obs, (84, 84)), 2)
+        obs = np.expand_dims(cv2.resize(obs, (self.obs_size, self.obs_size)), 2)
         return obs
 
     def get_keys_to_action(self):

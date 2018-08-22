@@ -27,6 +27,7 @@ def run(args, server):
         args.run_overcooked = False
         env = overcooked.OverCooked(
             args = args,
+            obs_size = 42,
         )
     else:
         from icm.envs import create_env
@@ -36,7 +37,7 @@ def run(args, server):
 
     # logging
     if args.task == 0:
-        with open(args.log_dir + '/log.txt', 'w') as fid:
+        with open(args.save_dir + '/log.txt', 'w') as fid:
             for key, val in constants.items():
                 fid.write('%s: %s\n'%(str(key), str(val)))
             fid.write('designHead: %s\n'%args.designHead)
@@ -74,7 +75,7 @@ def run(args, server):
             logger.info("==> Done restoring model! Restored %d variables.", len(variables_to_restore))
 
     config = tf.ConfigProto(device_filters=["/job:ps", "/job:worker/task:{}/cpu:0".format(args.task)])
-    logdir = os.path.join(args.log_dir, 'train')
+    logdir = os.path.join(args.save_dir, 'train')
 
     if use_tf12_api:
         summary_writer = tf.summary.FileWriter(logdir + "_%d" % args.task)
@@ -192,7 +193,7 @@ Setting up Tensorflow for data parallel work
 
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
-    args.save_dir = os.path.join(args.save_dir, 'option_critic')
+    args.save_dir = os.path.join(args.save_dir, 'icm')
 
     '''environment details'''
     args.save_dir = os.path.join(args.save_dir, 'o_t-{}'.format(args.obs_type))

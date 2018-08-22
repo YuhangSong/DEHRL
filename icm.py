@@ -37,7 +37,6 @@ parser.add_argument('--savio', action='store_true',
 parser.add_argument('--default', action='store_true', help="run with default params")
 parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
 
-
 parser.add_argument('--save-dir', default='../results/',
                     help='directory to save agent logs')
 parser.add_argument('--exp', type=str,
@@ -164,11 +163,6 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
 
 
 def run():
-    if args.default:
-        args.envWrap = True
-        args.savio = True
-        args.noLifeReward = True
-        args.unsup = 'action'
 
     # handling nuances of running multiple jobs per-machine
     psPort = 12222 + 50*args.expId
@@ -176,7 +170,7 @@ def run():
     delay = 6*delay if 'mario' in args.env_id else delay
 
     cmds, notes = create_commands(args.expName, args.num_workers, args.remotes, args.env_id,
-                                    args.log_dir, mode=args.mode, visualise=args.visualise,
+                                    args.save_dir, mode=args.mode, visualise=args.visualise,
                                     envWrap=args.envWrap, designHead=args.designHead,
                                     unsup=args.unsup, noReward=args.noReward,
                                     noLifeReward=args.noLifeReward, psPort=psPort,
