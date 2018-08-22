@@ -70,6 +70,10 @@ source activate ehrl
 
 ## OverCooked
 
+### Level 0
+
+Level 0 can be easily solved with any RL methods.
+
 ### Level 1
 
 ```bash
@@ -91,6 +95,30 @@ This repo include The Option-Critic Architecture in [DeepRL](https://github.com/
 CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 0 --log-behavior-interval 5 --aux r_0
 ```
 
+### Level 1
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --log-behavior-interval 5 --aux r_0
+```
+
+### Level 2
+
+```bash
+CUDA_VISIBLE_DEVICES=2 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --log-behavior-interval 5 --aux r_0
+```
+
+## State novelty
+
+```bash
+cd icm
+```
+
+### Level 0
+
+```bash
+CUDA_VISIBLE_DEVICES=3 CUDA_VISIBLE_DEVICES=3 python icm.py --default --env-id "OverCooked" --exp two_sequence --obs-type 'image' --reward-level 0 --log-behavior-interval 5 --aux r_0
+```
+
 ```base
-tensorboard --logdir=../results/t-MovementBandits-v0/
+tensorboard --logdir=../results/xxx/
 ```
