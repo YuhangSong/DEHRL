@@ -24,6 +24,7 @@ def run(args, server):
     if args.env_id in ["OverCooked"]:
         import overcooked
         print(args.save_dir)
+        args.run_overcooked = False
         env = overcooked.OverCooked(
             args = args,
         )
@@ -40,7 +41,7 @@ def run(args, server):
                 fid.write('%s: %s\n'%(str(key), str(val)))
             fid.write('designHead: %s\n'%args.designHead)
             fid.write('input observation: %s\n'%str(env.observation_space.shape))
-            fid.write('env name: %s\n'%str(env.spec.id))
+            fid.write('env name: %s\n'%str(args.env_id))
             fid.write('unsup method type: %s\n'%str(args.unsup))
 
     # Variable names that start with "local" are not saved in checkpoints.
@@ -188,7 +189,7 @@ Setting up Tensorflow for data parallel work
                         help='exp')
 
     args = parser.parse_args()
-    
+
     '''basic save path'''
     args.save_dir = os.path.join(args.save_dir, args.exp)
     args.save_dir = os.path.join(args.save_dir, 'option_critic')

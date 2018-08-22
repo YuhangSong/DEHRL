@@ -620,9 +620,9 @@ class OverCooked(gym.Env):
                     position = np.array([self.screen_width/10*i, self.screen_height+self.screen_height/10])
                     self.draw_goals(self.cur_goal[i], position, canvas)
         # cv2.imwrite('C:\\Users\\IceClear\\Desktop' + '\\' + 'frame' + '.jpg', canvas)  # 存储为图像
-        if self.args.render:
-            cv2.imshow('overcooked',canvas)
-            cv2.waitKey(2)
+        # if self.args.render:
+        #     cv2.imshow('overcooked',canvas)
+        #     cv2.waitKey(2)
 
         return canvas
 

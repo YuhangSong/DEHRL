@@ -195,9 +195,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             last_state = state
             last_features = features
 
-            timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
-            if timestep_limit is None: timestep_limit = env.spec.timestep_limit
-            if terminal or length >= timestep_limit:
+            # timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+            # if timestep_limit is None: timestep_limit = env.spec.timestep_limit
+            if terminal:
                 # prints summary of each life if envWrap==True else each game
                 if predictor is not None:
                     print("Episode finished. Sum of shaped rewards: %.2f. Length: %d. Bonus: %.4f." % (rewards, length, life_bonus))
@@ -211,22 +211,22 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 last_features = policy.get_initial_features()  # reset lstm memory
                 # TODO: don't reset when gym timestep_limit increases, bootstrap -- doesn't matter for atari?
                 # reset only if it hasn't already reseted
-                if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
-                    last_state = env.reset()
+                # if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
+                last_state = env.reset()
 
-            if info:
-                # summarize full game including all lives (even if envWrap=True)
-                summary = tf.Summary()
-                for k, v in info.items():
-                    summary.value.add(tag=k, simple_value=float(v))
-                if terminal:
-                    summary.value.add(tag='global/episode_value', simple_value=float(values))
-                    values = 0
-                    if predictor is not None:
-                        summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
-                        ep_bonus = 0
-                summary_writer.add_summary(summary, policy.global_step.eval())
-                summary_writer.flush()
+            # if info:
+            #     # summarize full game including all lives (even if envWrap=True)
+            #     summary = tf.Summary()
+            #     for k, v in info.items():
+            #         summary.value.add(tag=k, simple_value=float(v))
+            #     if terminal:
+            #         summary.value.add(tag='global/episode_value', simple_value=float(values))
+            #         values = 0
+            #         if predictor is not None:
+            #             summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
+            #             ep_bonus = 0
+            #     summary_writer.add_summary(summary, policy.global_step.eval())
+            #     summary_writer.flush()
 
             if terminal_end:
                 break
