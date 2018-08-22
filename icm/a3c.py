@@ -36,16 +36,12 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False):
     rewards_plus_v = np.asarray(rollout.rewards + [rollout.r])  # bootstrapping
     if rollout.unsup:
         rewards_plus_v += np.asarray(rollout.bonuses + [0])
-    if clip:
-        rewards_plus_v[:-1] = np.clip(rewards_plus_v[:-1], -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
 
     # collecting target for policy network
     rewards = np.asarray(rollout.rewards)
     if rollout.unsup:
         rewards += np.asarray(rollout.bonuses)
-    if clip:
-        rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     vpred_t = np.asarray(rollout.values + [rollout.r])
     # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
     # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
@@ -157,7 +153,6 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
     last_features = policy.get_initial_features()  # reset lstm memory
     length = 0
     rewards = 0
-    values = 0
     if predictor is not None:
         ep_bonus = 0
         life_bonus = 0
@@ -194,7 +189,6 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             rollout.add(*curr_tuple)
             rewards += reward
             length += 1
-            values += value_[0]
 
             last_state = state
             last_features = features
@@ -202,47 +196,26 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             # timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
             # if timestep_limit is None: timestep_limit = env.spec.timestep_limit
             if terminal:
-                # prints summary of each life if envWrap==True else each game
+                cur_global_step = policy.global_step.eval()
                 if predictor is not None:
-                    print("Episode finished. Sum of shaped rewards: %.2f. Length: %d. Bonus: %.4f." % (rewards, length, life_bonus))
+                    print("[%d] Episode finished. Sum of shaped rewards: %.2f. Length: %d. Bonus: %.4f." % (cur_global_step, rewards, length, life_bonus))
                     life_bonus = 0
                 else:
-                    print("Episode finished. Sum of shaped rewards: %.2f. Length: %d." % (rewards, length))
-                if 'distance' in info: print('Mario Distance Covered:', info['distance'])
+                    print("[%d] Episode finished. Sum of shaped rewards: %.2f. Length: %d." % (cur_global_step, rewards, length))
 
                 summary = tf.Summary()
                 summary.value.add(
                     tag = 'hierarchy_0/final_reward_norm',
                     simple_value = rewards,
                 )
-                summary_writer.add_summary(summary, policy.global_step.eval())
+                summary_writer.add_summary(summary, cur_global_step)
                 summary_writer.flush()
 
-
+                terminal_end = True
+                last_state = env.reset()
+                last_features = policy.get_initial_features()  # reset lstm memory
                 length = 0
                 rewards = 0
-                terminal_end = True
-                last_features = policy.get_initial_features()  # reset lstm memory
-                # TODO: don't reset when gym timestep_limit increases, bootstrap -- doesn't matter for atari?
-                # reset only if it hasn't already reseted
-                # if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
-                last_state = env.reset()
-
-            # if info:
-            #     # summarize full game including all lives (even if envWrap=True)
-            #     summary = tf.Summary()
-            #     for k, v in info.items():
-            #         summary.value.add(tag=k, simple_value=float(v))
-            #     if terminal:
-            #         summary.value.add(tag='global/episode_value', simple_value=float(values))
-            #         values = 0
-            #         if predictor is not None:
-            #             summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
-            #             ep_bonus = 0
-            #     summary_writer.add_summary(summary, policy.global_step.eval())
-            #     summary_writer.flush()
-
-            if terminal_end:
                 break
 
         if not terminal_end:
@@ -292,25 +265,29 @@ class A3C(object):
                         else:
                             self.local_ap_network = predictor = StateActionPredictor(env.observation_space.shape, numaction, designHead)
 
-            # Computing a3c loss: https://arxiv.org/abs/1506.02438
-            self.ac = tf.placeholder(tf.float32, [None, numaction], name="ac")
+            self.ac = tf.placeholder(tf.float32, [None, env.action_space.n], name="ac")
             self.adv = tf.placeholder(tf.float32, [None], name="adv")
             self.r = tf.placeholder(tf.float32, [None], name="r")
+
             log_prob_tf = tf.nn.log_softmax(pi.logits)
             prob_tf = tf.nn.softmax(pi.logits)
-            # 1) the "policy gradients" loss:  its derivative is precisely the policy gradient
+
+            # the "policy gradients" loss:  its derivative is precisely the policy gradient
             # notice that self.ac is a placeholder that is provided externally.
             # adv will contain the advantages, as calculated in process_rollout
-            pi_loss = - tf.reduce_mean(tf.reduce_sum(log_prob_tf * self.ac, 1) * self.adv)  # Eq (19)
-            # 2) loss of value function: l2_loss = (x-y)^2/2
-            vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.vf - self.r))  # Eq (28)
-            # 3) entropy to ensure randomness
-            entropy = - tf.reduce_mean(tf.reduce_sum(prob_tf * log_prob_tf, 1))
-            # final a3c loss: lr of critic is half of actor
-            self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
+            pi_loss = - tf.reduce_sum(tf.reduce_sum(log_prob_tf * self.ac, [1]) * self.adv)
 
-            # compute gradients
-            grads = tf.gradients(self.loss * 20.0, pi.var_list)  # batchsize=20. Factored out to make hyperparams not depend on it.
+            # loss of value function
+            vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.vf - self.r))
+            entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
+
+            bs = tf.to_float(tf.shape(pi.x)[0])
+            self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01
+
+            self.runner = RunnerThread(env, pi, 20, visualise,
+                                        predictor, envWrap, noReward)
+
+            grads = tf.gradients(self.loss, pi.var_list)
 
             # computing predictor loss
             if self.unsup:
@@ -326,17 +303,13 @@ class A3C(object):
                     grads = [tf.scalar_mul(tf.to_float(tf.greater(self.global_step, constants['POLICY_NO_BACKPROP_STEPS'])), grads_i)
                                     for grads_i in grads]
 
-
-            self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
-                                        predictor, envWrap, noReward)
-
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])
             if use_tf12_api:
-                tf.summary.scalar("model/policy_loss", pi_loss)
-                tf.summary.scalar("model/value_loss", vf_loss)
-                tf.summary.scalar("model/entropy", entropy)
-                tf.summary.image("model/state", pi.x)  # max_outputs=10
+                tf.summary.scalar("model/policy_loss", pi_loss / bs)
+                tf.summary.scalar("model/value_loss", vf_loss / bs)
+                tf.summary.scalar("model/entropy", entropy / bs)
+                tf.summary.image("model/state", pi.x)
                 tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads))
                 tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list))
                 if self.unsup:
@@ -348,9 +321,9 @@ class A3C(object):
                     tf.summary.scalar("model/predvar_global_norm", tf.global_norm(predictor.var_list))
                 self.summary_op = tf.summary.merge_all()
             else:
-                tf.scalar_summary("model/policy_loss", pi_loss)
-                tf.scalar_summary("model/value_loss", vf_loss)
-                tf.scalar_summary("model/entropy", entropy)
+                tf.scalar_summary("model/policy_loss", pi_loss / bs)
+                tf.scalar_summary("model/value_loss", vf_loss / bs)
+                tf.scalar_summary("model/entropy", entropy / bs)
                 tf.image_summary("model/state", pi.x)
                 tf.scalar_summary("model/grad_global_norm", tf.global_norm(grads))
                 tf.scalar_summary("model/var_global_norm", tf.global_norm(pi.var_list))
@@ -364,30 +337,29 @@ class A3C(object):
                 self.summary_op = tf.merge_all_summaries()
 
             # clip gradients
-            grads, _ = tf.clip_by_global_norm(grads, constants['GRAD_NORM_CLIP'])
+            grads, _ = tf.clip_by_global_norm(grads, 40.0)
+            # copy weights from the parameter server to the local model
+            self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
+
+            if self.unsup:
+                print(s)
+            # # copy weights from the parameter server to the local model
+            # sync_var_list = [v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)]
+            # if self.unsup:
+            #     sync_var_list += [v1.assign(v2) for v1, v2 in zip(predictor.var_list, self.ap_network.var_list)]
+            # self.sync = tf.group(*sync_var_list)
+
             grads_and_vars = list(zip(grads, self.network.var_list))
+            inc_step = self.global_step.assign_add(tf.shape(pi.x)[0])
+
             if self.unsup:
                 predgrads, _ = tf.clip_by_global_norm(predgrads, constants['GRAD_NORM_CLIP'])
                 pred_grads_and_vars = list(zip(predgrads, self.ap_network.var_list))
                 grads_and_vars = grads_and_vars + pred_grads_and_vars
 
-            # update global step by batch size
-            inc_step = self.global_step.assign_add(tf.shape(pi.x)[0])
-
             # each worker has a different set of adam optimizer parameters
-            # TODO: make optimizer global shared, if needed
-            print("Optimizer: ADAM with lr: %f" % (constants['LEARNING_RATE']))
-            print("Input observation shape: ",env.observation_space.shape)
-            opt = tf.train.AdamOptimizer(constants['LEARNING_RATE'])
+            opt = tf.train.AdamOptimizer(1e-4)
             self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
-
-            # copy weights from the parameter server to the local model
-            sync_var_list = [v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)]
-            if self.unsup:
-                sync_var_list += [v1.assign(v2) for v1, v2 in zip(predictor.var_list, self.ap_network.var_list)]
-            self.sync = tf.group(*sync_var_list)
-
-            # initialize extras
             self.summary_writer = None
             self.local_steps = 0
 
@@ -427,19 +399,16 @@ class A3C(object):
         """
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
-        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap)
+        batch = process_rollout(rollout, gamma=0.99, lambda_=1.0)
+
+        should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
 
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
 
         if should_compute_summary:
             fetches = [self.summary_op, self.train_op, self.global_step]
         else:
-            print('train')
             fetches = [self.train_op, self.global_step]
-
-        # print(batch.r)
-        # print(batch.a)
-        # print(batch.adv)
 
         feed_dict = {
             self.local_network.x: batch.si,
@@ -456,8 +425,6 @@ class A3C(object):
             feed_dict[self.local_ap_network.asample] = batch.a
 
         fetched = sess.run(fetches, feed_dict=feed_dict)
-        if batch.terminal:
-            print("Global Step Counter: %d"%fetched[-1])
 
         if should_compute_summary:
             self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])
