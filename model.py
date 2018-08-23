@@ -222,13 +222,15 @@ class MLPBase(nn.Module):
         return x, states
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=512):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, linear_size=512, args=None):
         super(TransitionModel, self).__init__()
-        '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
+        '''
+            if mutual_information, transition_model is act as a regressor to fit p(Z|c)
+        '''
 
         self.input_observation_shape = input_observation_shape
         self.output_observation_shape = output_observation_shape
-        self.mutual_information = mutual_information
+        self.args = args
 
         self.linear_size = linear_size
         self.num_subpolicy = num_subpolicy
@@ -271,14 +273,16 @@ class TransitionModel(nn.Module):
             self.linear_init_(nn.Linear(self.linear_size, 1)),
         )
 
-        if not self.mutual_information:
 
+        if self.args.bounty_type in ['diversity','transition_novelty']:
             self.input_action_space = input_action_space
             self.input_action_linear = nn.Sequential(
                 self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
                 # fc donot normalize
                 # fc linear
             )
+
+        if self.args.bounty_type in ['diversity','transition_novelty','state_novelty']:
 
             self.deconv = nn.Sequential(
                 self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
@@ -300,7 +304,7 @@ class TransitionModel(nn.Module):
                 nn.Sigmoid(),
             )
 
-        else:
+        if self.args.bounty_type in ['mutual_information']:
 
             self.label_linear = nn.Sequential(
                 self.linear_init_(nn.Linear(self.linear_size, num_subpolicy)),
@@ -309,17 +313,23 @@ class TransitionModel(nn.Module):
 
     def forward(self, inputs, input_action=None):
 
-        before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
+        conved = self.conv(inputs/255.0)
 
-        predicted_reward_bounty = self.reward_bounty_linear(before_deconv)
+        if self.args.bounty_type in ['diversity','transition_novelty']:
+            conved_actioned = conved*self.input_action_linear(input_action)
 
-        if not self.mutual_information:
+        elif self.args.bounty_type in ['mutual_information','state_novelty']:
+            conved_actioned = conved
 
-            predicted_state = self.deconv(before_deconv)*255.0
+        predicted_reward_bounty = self.reward_bounty_linear(conved_actioned)
+
+        if self.args.bounty_type in ['diversity','transition_novelty','state_novelty']:
+
+            predicted_state = self.deconv(conved_actioned)*255.0
 
             return predicted_state, predicted_reward_bounty
 
-        else:
+        elif self.args.bounty_type in ['mutual_information']:
 
             predicted_action_resulted_from = F.log_softmax(self.label_linear(before_deconv), dim=1)
 

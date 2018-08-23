@@ -1,6 +1,6 @@
-# pytorch-a2c-ppo-acktr
+# EHRL
 
-## Update 10/06/2017: added enjoy.py and a link to pretrained models!
+<!-- ## Update 10/06/2017: added enjoy.py and a link to pretrained models!
 ## Update 09/27/2017: now supports both Atari and MuJoCo/Roboschool!
 
 This is a PyTorch implementation of
@@ -33,7 +33,7 @@ I highly recommend PyBullet as a free open source alternative to MuJoCo for cont
 
 All environments are operated using exactly the same Gym interface. See their documentations for a comprehensive list.
 
-To use the DeepMind Control Suite environments, set the flag `--env-name dm.<domain_name>.<task_name>`, where `domain_name` and `task_name` are the name of a domain (e.g. `hopper`) and a task within that domain (e.g. `stand`) from the DeepMind Control Suite. Refer to their repo and their [tech report](https://arxiv.org/abs/1801.00690) for a full list of available domains and tasks. Other than setting the task, the API for interacting with the environment is exactly the same as for all the Gym environments thanks to [dm_control2gym](https://github.com/martinseilair/dm_control2gym).
+To use the DeepMind Control Suite environments, set the flag `--env-name dm.<domain_name>.<task_name>`, where `domain_name` and `task_name` are the name of a domain (e.g. `hopper`) and a task within that domain (e.g. `stand`) from the DeepMind Control Suite. Refer to their repo and their [tech report](https://arxiv.org/abs/1801.00690) for a full list of available domains and tasks. Other than setting the task, the API for interacting with the environment is exactly the same as for all the Gym environments thanks to [dm_control2gym](https://github.com/martinseilair/dm_control2gym). -->
 
 ## Requirements
 
@@ -57,6 +57,7 @@ conda install pytorch torchvision -c soumith
 pip install opencv-contrib-python
 conda install scikit-image
 pip install --upgrade imutils
+pip install tensorflow
 pip install -e .
 ```
 
@@ -68,18 +69,18 @@ source ~/.bashrc
 source activate ehrl
 ```
 
-## OverCooked
+## EHRL
+
+### Level 0
+
+Level 0 can be easily solved.
 
 ### Level 1
-
-```bash
-CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp mass_center --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 10 --distance mass_center --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
-```
 
 ### Level 2
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux shuffle_show_goal_r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --bounty-type diversity --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux shuffle_show_goal_r_0
 ```
 
 ## Option-Critic
@@ -89,6 +90,30 @@ This repo include The Option-Critic Architecture in [DeepRL](https://github.com/
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 0 --log-behavior-interval 5 --aux r_0
+```
+
+### Level 1
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --log-behavior-interval 5 --aux r_0
+```
+
+### Level 2
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --log-behavior-interval 5 --aux r_0
+```
+
+## State Novelty
+
+### Level 0
+
+Level 0 can be easily solved.
+
+### Level 1
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --bounty-type state_novelty --distance l1 --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux shuffle_show_goal_r_0
 ```
 
 ```base

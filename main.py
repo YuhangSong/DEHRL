@@ -60,8 +60,8 @@ if len(bottom_envs.observation_space.shape) == 1:
         raise Exception("I donot know why they have VecNormalize for ram observation")
     bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
 
-obs_shape = bottom_envs.observation_space.shape
-obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
+unstacked_obs_shape = bottom_envs.observation_space.shape
+stacked_obs_shape = (unstacked_obs_shape[0] * args.num_stack, *unstacked_obs_shape[1:])
 
 if len(args.num_subpolicy) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
@@ -143,7 +143,7 @@ class HierarchyLayer(object):
         ))
 
         self.actor_critic = Policy(
-            obs_shape = obs_shape,
+            obs_shape = stacked_obs_shape,
             input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
@@ -152,12 +152,16 @@ class HierarchyLayer(object):
 
         if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
             from model import TransitionModel
+            if args.bounty_type in ['diversity','transition_novelty']:
+                transition_model_input_obs_shape = stacked_obs_shape
+            elif args.bounty_type in ['mutual_information','state_novelty']:
+                transition_model_input_obs_shape = unstacked_obs_shape
             self.transition_model = TransitionModel(
-                input_observation_shape = obs_shape if not args.mutual_information else self.envs.observation_space.shape,
+                input_observation_shape = transition_model_input_obs_shape,
                 input_action_space = self.envs.action_space,
                 output_observation_shape = self.envs.observation_space.shape,
                 num_subpolicy = args.num_subpolicy[self.hierarchy_id-1],
-                mutual_information = args.mutual_information,
+                args = args,
             ).cuda()
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0
@@ -187,13 +191,13 @@ class HierarchyLayer(object):
         self.rollouts = RolloutStorage(
             num_steps = args.num_steps[self.hierarchy_id],
             num_processes = args.num_processes,
-            obs_shape = obs_shape,
+            obs_shape = stacked_obs_shape,
             input_actions = self.action_space,
             action_space = self.envs.action_space,
             state_size = self.actor_critic.state_size,
             observation_space = self.envs.observation_space,
         ).cuda()
-        self.current_obs = torch.zeros(args.num_processes, *obs_shape).cuda()
+        self.current_obs = torch.zeros(args.num_processes, *stacked_obs_shape).cuda()
 
         '''for summarizing reward'''
         self.episode_reward = {}
@@ -284,7 +288,7 @@ class HierarchyLayer(object):
 
     def step(self, inputs):
         '''as a environment, it has step method'''
-        if args.reward_bounty > 0.0 and (not args.mutual_information):
+        if args.reward_bounty > 0.0 and args.bounty_type in ['diversity','transition_novelty']:
             input_cpu_actions = inputs[0]
             self.predicted_next_observations_by_upper_layer = inputs[1]
             self.predicted_reward_bounty_by_upper_layer = inputs[2]
@@ -448,7 +452,7 @@ class HierarchyLayer(object):
 
         else:
 
-            if (self.hierarchy_id not in [0]) and (args.reward_bounty > 0.0) and (not args.mutual_information):
+            if (self.hierarchy_id not in [0]) and (args.reward_bounty > 0.0) and (args.bounty_type in ['diversity','transition_novelty']):
 
                 '''predict states'''
                 self.transition_model.eval()
@@ -476,21 +480,27 @@ class HierarchyLayer(object):
 
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
 
-            if not args.mutual_information:
-                obs_rb = self.obs
+            obs_rb = self.obs
+            if args.bounty_type in ['diversity','transition_novelty']:
                 prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
 
-            else:
+            elif args.bounty_type in ['mutual_information','state_novelty']:
                 self.upper_layer.transition_model.eval()
                 with torch.no_grad():
-                    predicted_action_resulted_from, self.predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
-                        inputs = torch.from_numpy(self.obs).float().cuda(),
-                    )
-                    predicted_action_resulted_from = predicted_action_resulted_from.exp()
+                    if args.bounty_type in ['mutual_information']:
+                        predicted_action_resulted_from, self.predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
+                            inputs = torch.from_numpy(self.obs).float().cuda(),
+                        )
+                        predicted_action_resulted_from = predicted_action_resulted_from.exp().cpu().numpy()
+                    elif args.bounty_type in ['state_novelty']:
+                        predicted_obs, self.predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
+                            inputs = torch.from_numpy(self.obs).float().cuda(),
+                        )
+                        predicted_obs = predicted_obs.cpu().numpy()
 
             for process_i in range(args.num_processes):
 
-                if not args.mutual_information:
+                if args.bounty_type in ['diversity']:
                     difference_list = []
                     for action_i in range(prediction_rb.shape[0]):
 
@@ -543,17 +553,32 @@ class HierarchyLayer(object):
 
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
 
-                else:
+                elif args.bounty_type in ['mutual_information']:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
+
+                elif args.bounty_type in ['state_novelty']:
+                    if args.distance in ['l1']:
+                        difference = np.mean(
+                            np.abs(
+                                (obs_rb[process_i]-predicted_obs[process_i])
+                            )
+                        )/255.0
+                    else:
+                        raise NotImplemented
+
+                    self.reward_bounty_raw_to_return[process_i] = difference
+
+                elif args.bounty_type in ['transition_novelty']:
+                    print(d)
 
             self.reward_bounty = self.reward_bounty_raw_to_return
 
             if args.clip_reward_bounty:
 
-                if not args.mutual_information:
+                if args.bounty_type in ['diversity','transition_novelty']:
                     self.bounty_clip = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]]
-                else:
-                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
+                elif args.bounty_type in ['mutual_information','state_novelty']:
+                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer.squeeze()
 
                 delta = (self.reward_bounty-self.bounty_clip)
 

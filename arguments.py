@@ -87,6 +87,8 @@ def get_args():
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
+    parser.add_argument('--bounty-type', type=str,
+                        help='type of the bounty: diversity, state_novelty, transition_novelty, mutual_information' )
     parser.add_argument('--distance', type=str,
                         help='distance to meansure the difference between states: l1, match, mass_center, l1_mass_center' )
     parser.add_argument('--encourage-ac-connection', type=str,
@@ -97,8 +99,6 @@ def get_args():
                         help='coefficient of encourage-ac-connection')
     parser.add_argument('--train-mode', type=str,
                         help='train mode for transition_model and actor_critic: switch, together' )
-    parser.add_argument('--mutual-information', action='store_true',
-                        help='whether use mutual information as bounty reward' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
@@ -163,14 +163,14 @@ def get_args():
     args.save_dir = os.path.join(args.save_dir, 'a_c_m_b_s-{}'.format(args.actor_critic_mini_batch_size))
     args.save_dir = os.path.join(args.save_dir, 'a_c_e-{}'.format(args.actor_critic_epoch))
     if args.reward_bounty > 0.0:
+        '''type of the bounty'''
+        args.save_dir = os.path.join(args.save_dir, 'b_t-{}'.format(args.bounty_type))
         '''distance'''
         args.save_dir = os.path.join(args.save_dir, 'd-{}'.format(args.distance))
         '''transition_model training details'''
         args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
         args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
-        '''mutual information'''
-        args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
         '''clip reward bounty'''
         args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
         if args.clip_reward_bounty:
