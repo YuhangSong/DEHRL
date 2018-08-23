@@ -80,7 +80,7 @@ Level 0 can be easily solved.
 ### Level 2
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --bounty-type diversity --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux shuffle_show_goal_r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal random --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --bounty-type diversity --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
 
 ## Option-Critic
@@ -89,19 +89,23 @@ This repo include The Option-Critic Architecture in [DeepRL](https://github.com/
 ### Level 0
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 0 --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 0 --setup-goal any --log-behavior-interval 5 --aux r_0
 ```
 
 ### Level 1
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal any --log-behavior-interval 5 --aux r_0
+```
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal random --log-behavior-interval 5 --aux r_0
 ```
 
 ### Level 2
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python option_critic.py --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal random --log-behavior-interval 5 --aux r_0
 ```
 
 ## State Novelty
@@ -113,7 +117,7 @@ Level 0 can be easily solved.
 ### Level 1
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --bounty-type state_novelty --distance l1 --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux shuffle_show_goal_r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal any --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --bounty-type state_novelty --distance l1 --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
 
 ```base

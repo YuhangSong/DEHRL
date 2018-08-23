@@ -32,6 +32,8 @@ def get_args():
                         help='if reset four legs after four steps')
     parser.add_argument('--add-goal-color', action='store_true',
                         help='if add area color when get the goal')
+    parser.add_argument('--setup-goal', type=str, default='random',
+                        help='The setup for goal: fix, random, any')
 
     '''for log behavior'''
     parser.add_argument('--log-behavior-interval', type=int, default=10,
@@ -69,6 +71,7 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
         args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
         args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
+        args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
 
     args.save_dir = os.path.join(args.save_dir, 'a-{}'.format(args.aux))
 

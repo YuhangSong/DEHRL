@@ -494,13 +494,15 @@ class OverCooked(gym.Env):
         self.leg_count = np.zeros(self.leg_num*4+1)
 
         if self.args.reward_level == 1:
-            if args.setup_goal in ['random']:
+            if self.args.setup_goal in ['random']:
                 self.single_goal = np.random.randint(0,self.goal_num)
             else:
                 self.single_goal = 0
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
+            if self.args.setup_goal in ['random']:
+                raise Exception('Not goal representation is presented in level 0')
             self.single_goal = 1
 
         self.position = [self.screen_width/2-self.screen_width/20, self.screen_height/2-self.screen_height/20]
@@ -523,10 +525,10 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
 
-        if args.setup_goal in ['random']:
+        if self.args.setup_goal in ['random']:
             np.random.shuffle(self.realgoal)
             self.setgoal()
-        elif args.setup_goal in ['fix']:
+        elif self.args.setup_goal in ['fix']:
             self.setgoal()
 
         if self.args.reward_level == 2:
