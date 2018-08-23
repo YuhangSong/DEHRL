@@ -149,6 +149,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
     the policy, and as long as the rollout exceeds a certain length, the thread
     runner appends the policy to the queue.
     """
+    action_set = [1,9,5,13]
+    action_set_index = 0
+    ac_list = []
     last_state = env.reset()
     last_features = policy.get_initial_features()  # reset lstm memory
     length = 0
@@ -164,14 +167,18 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
         for _ in range(num_local_steps):
             # run policy
             fetched = policy.act(last_state, *last_features)
-            action, value_, features = fetched[0], fetched[1], fetched[2:]
+            action, value_, logits, features = fetched[0], fetched[1], fetched[2], fetched[3:]
 
             # action_index = int(input('act:'))
+            # action_index = action_set[action_set_index%4]
+            # action_set_index += 1
             # action *= 0.0
             # action[action_index] = 1.0
+            # print(logits)
 
             # run environment: get action_index from sampled one-hot 'action'
             stepAct = action.argmax()
+            ac_list += [stepAct]
             state, reward, terminal, info = env.step(stepAct)
             if noReward:
                 reward = 0.
@@ -202,6 +209,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                     life_bonus = 0
                 else:
                     print("[%d] Episode finished. Sum of shaped rewards: %.2f. Length: %d." % (cur_global_step, rewards, length))
+
+                print(ac_list)
+                ac_list = []
 
                 summary = tf.Summary()
                 summary.value.add(
@@ -337,7 +347,7 @@ class A3C(object):
                 self.summary_op = tf.merge_all_summaries()
 
             # clip gradients
-            grads, _ = tf.clip_by_global_norm(grads, 40.0)
+            self.clipped_grads, _ = tf.clip_by_global_norm(grads, 40.0)
             # copy weights from the parameter server to the local model
             self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
 
@@ -349,7 +359,9 @@ class A3C(object):
             #     sync_var_list += [v1.assign(v2) for v1, v2 in zip(predictor.var_list, self.ap_network.var_list)]
             # self.sync = tf.group(*sync_var_list)
 
-            grads_and_vars = list(zip(grads, self.network.var_list))
+            self.var_global_norm = tf.global_norm(pi.var_list)
+
+            grads_and_vars = list(zip(self.clipped_grads, self.network.var_list))
             inc_step = self.global_step.assign_add(tf.shape(pi.x)[0])
 
             if self.unsup:
@@ -427,6 +439,6 @@ class A3C(object):
         fetched = sess.run(fetches, feed_dict=feed_dict)
 
         if should_compute_summary:
-            self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])
+            self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[2])
             self.summary_writer.flush()
         self.local_steps += 1

@@ -22,10 +22,11 @@ class OverCooked(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self, args=None, obs_size = 84):
+    def __init__(self, args=None, obs_size = 84, obs_range = '255'):
 
         self.args = args
         self.obs_size = obs_size
+        self.obs_range = obs_range
 
         self.action_space = spaces.Discrete(17)
         self.screen_width = 84
@@ -545,6 +546,8 @@ class OverCooked(gym.Env):
     def processes_obs(self, obs):
         obs = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)
         obs = np.expand_dims(cv2.resize(obs, (self.obs_size, self.obs_size)), 2)
+        if self.obs_range in ['1']:
+            obs = obs/255.0
         return obs
 
     def get_keys_to_action(self):

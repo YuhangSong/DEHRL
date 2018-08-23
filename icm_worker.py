@@ -27,7 +27,8 @@ def run(args, server):
         args.run_overcooked = False
         env = overcooked.OverCooked(
             args = args,
-            obs_size = 42,
+            obs_size = 84,
+            obs_range = '1',
         )
     else:
         from icm.envs import create_env

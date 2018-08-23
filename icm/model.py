@@ -118,10 +118,12 @@ def universeHead(x, nConvs=4):
         input: [None, 42, 42, 1]; output: [None, 288];
     '''
     print('Using universe head design')
-    for i in range(nConvs):
-        x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
-        # print('Loop{} '.format(i+1),tf.shape(x))
-        # print('Loop{}'.format(i+1),x.get_shape())
+    x = tf.nn.elu(conv2d(x, 32, "l{}".format(1), filter_size=(8, 8), stride=(4, 4), pad="VALID"))
+    x = tf.nn.elu(conv2d(x, 64, "l{}".format(2), filter_size=(4, 4), stride=(2, 2), pad="VALID"))
+    x = tf.nn.elu(conv2d(x, 32, "l{}".format(3), filter_size=(3, 3), stride=(1, 1), pad="VALID"))
+    # print(x.get_shape())
+    # print(x)
+    # print(s)
     x = flatten(x)
     return x
 
@@ -222,7 +224,7 @@ class LSTMPolicy(object):
 
     def act(self, ob, c, h):
         sess = tf.get_default_session()
-        return sess.run([self.sample, self.vf] + self.state_out,
+        return sess.run([self.sample, self.vf, self.logits] + self.state_out,
                         {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})
 
     def act_inference(self, ob, c, h):
