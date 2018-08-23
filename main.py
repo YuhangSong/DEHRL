@@ -247,10 +247,11 @@ class HierarchyLayer(object):
         self.refresh_update_type()
 
         self.last_time_log_behavior = 0.0
-        self.log_behavior = False
+        self.log_behavior = True
         self.episode_visilize_stack = {}
 
         self.predicted_next_observations_to_downer_layer = None
+        self.summary_predicted_obs = False
 
         self.agent.set_this_layer(self)
 
@@ -493,10 +494,11 @@ class HierarchyLayer(object):
                         )
                         predicted_action_resulted_from = predicted_action_resulted_from.exp().cpu().numpy()
                     elif args.bounty_type in ['state_novelty']:
-                        predicted_obs, self.predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
+                        self.predicted_obs, self.predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
                             inputs = torch.from_numpy(self.obs).float().cuda(),
                         )
-                        predicted_obs = predicted_obs.cpu().numpy()
+                        self.predicted_obs = self.predicted_obs.cpu().numpy()
+                        self.summary_predicted_obs = True
 
             for process_i in range(args.num_processes):
 
@@ -560,7 +562,7 @@ class HierarchyLayer(object):
                     if args.distance in ['l1']:
                         difference = np.mean(
                             np.abs(
-                                (obs_rb[process_i]-predicted_obs[process_i])
+                                (obs_rb[process_i]-self.predicted_obs[process_i])
                             )
                         )/255.0
                     else:
@@ -601,10 +603,12 @@ class HierarchyLayer(object):
             self.reward_bounty *= self.masks.squeeze()
 
         if args.reward_bounty>0:
+            '''how reward bounty is added to final_reward'''
 
             if args.bounty_type in ['diversity','mutual_information']:
                 '''these are two methods on option discovery, where only top level receive the real reward,
-                otherwise, real reward could bring bias to the process of discovering options'''
+                otherwise, real reward could bring bias to the process of discovering options. Besides,
+                they are masked every interval time to further avoid bias to any sub-policies'''
 
                 if self.hierarchy_id in [args.num_hierarchy-1]:
                     '''top level only receive reward from env'''
@@ -613,18 +617,20 @@ class HierarchyLayer(object):
                     '''other levels only receives reward_bounty'''
                     self.reward_final = self.reward_bounty
 
+                if self.is_final_step_by_upper_layer:
+                    self.masks = self.masks * 0.0
+
             elif args.bounty_type in ['transition_novelty','state_novelty']:
                 '''these two are exploration methods, where reward_bounty should be added to the real reward'''
-                self.reward_final = self.reward_bounty + self.reward
+
+                if self.hierarchy_id in [args.num_hierarchy-1]:
+                    '''top level only receive reward from env'''
+                    self.reward_final = self.reward
+                else:
+                    self.reward_final = self.reward_bounty + self.reward
 
         else:
             self.reward_final = self.reward
-
-        if args.reward_bounty>0:
-            if self.is_final_step_by_upper_layer:
-                '''mask it and stop reward function'''
-                self.masks = self.masks * 0.0
-
 
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
@@ -671,7 +677,7 @@ class HierarchyLayer(object):
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
-            self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float()
+            self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float().cuda()
             self.reward = self.reward_raw.sign()
         else:
             '''otherwise, this is reward'''
@@ -977,9 +983,9 @@ class HierarchyLayer(object):
         except Exception as e:
             self.episode_visilize_stack['observation'] = [img]
 
-        '''Summery state_prediction'''
+        '''Summery state_prediction at every step'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:,:,:].permute(1,2,0)
+            img = self.rollouts.observations[self.step_i][0,-unstacked_obs_shape[0]:,:,:].permute(1,2,0)
             for action_i in range(self.envs.action_space.n):
                 img = torch.cat([img,self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:].permute(1,2,0)],1)
             img = img.cpu().numpy()
@@ -987,6 +993,14 @@ class HierarchyLayer(object):
                 self.episode_visilize_stack['state_prediction'] += [img]
             except Exception as e:
                 self.episode_visilize_stack['state_prediction'] = [img]
+
+        if self.summary_predicted_obs:
+            self.summary_predicted_obs = False
+            img = np.concatenate((self.obs[0],self.predicted_obs[0]),1)[0,:,:,None]
+            try:
+                self.episode_visilize_stack['predicted_obs'] += [img]
+            except Exception as e:
+                self.episode_visilize_stack['predicted_obs'] = [img]
 
     def summary_behavior_at_done(self):
 
