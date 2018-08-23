@@ -76,6 +76,11 @@ class OverCooked(gym.Env):
         else:
             raise NotImplementedError
 
+        if args.setup_goal in ['random','fix','any']:
+            pass
+        else:
+            raise NotImplementedError
+
         self.realgoal = np.arange(1,self.goal_num+1)
         self.cur_goal = np.zeros(self.goal_num)
         self.viewer = None
@@ -336,7 +341,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 0:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 0:
+                    if self.single_goal == 0 or args.setup_goal in ['any']:
                         reward = 1
                     done = True
         elif distance_2 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
@@ -351,7 +356,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 1:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 1:
+                    if self.single_goal == 1 or args.setup_goal in ['any']:
                         reward = 1
                     done = True
         elif distance_3 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
@@ -366,7 +371,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 2:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 2:
+                    if self.single_goal == 2 or args.setup_goal in ['any']:
                         reward = 1
                     done = True
         elif distance_4 <= self.screen_width/20+self.screen_height/20+self.screen_height/20:
@@ -381,7 +386,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 3:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 3:
+                    if self.single_goal == 3 or args.setup_goal in ['any']:
                         reward = 1
                     done = True
 
@@ -390,9 +395,16 @@ class OverCooked(gym.Env):
                 reward = 1
                 done = True
             elif self.cur_goal[self.goal_num-1]>0:
-                reward = 0
+                if args.setup_goal in ['any']:
+                    reward = 1
+                else:
+                    reward = 0
                 done = True
-            self.show_next_goal(self.goal_id)
+
+            if args.setup_goal in ['random', 'fix']:
+                self.show_next_goal(self.goal_id)
+
+
 
         # if reset_body:
         #     self.reset_after_goal()
@@ -400,7 +412,7 @@ class OverCooked(gym.Env):
 
         if self.episode_length_limit > 0:
             if self.eposide_length >= self.episode_length_limit:
-                reward = 0.0
+                # reward = 0.0
                 done = True
         self.info['action_count'] = self.action_count
         self.info['leg_count'] = self.leg_count
@@ -482,7 +494,10 @@ class OverCooked(gym.Env):
         self.leg_count = np.zeros(self.leg_num*4+1)
 
         if self.args.reward_level == 1:
-            self.single_goal = np.random.randint(0,self.goal_num)
+            if args.setup_goal in ['random']:
+                self.single_goal = np.random.randint(0,self.goal_num)
+            else:
+                self.single_goal = 0
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
@@ -508,11 +523,15 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
 
-        np.random.shuffle(self.realgoal)
-        self.setgoal()
+        if args.setup_goal in ['random']:
+            np.random.shuffle(self.realgoal)
+            self.setgoal()
+        elif args.setup_goal in ['fix']:
+            self.setgoal()
 
         if self.args.reward_level == 2:
-            self.show_next_goal(self.realgoal[0])
+            if args.setup_goal in ['random', 'fix']:
+                self.show_next_goal(self.realgoal[0])
 
         obs = self.obs()
 
