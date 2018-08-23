@@ -601,13 +601,21 @@ class HierarchyLayer(object):
             self.reward_bounty *= self.masks.squeeze()
 
         if args.reward_bounty>0:
-            if self.hierarchy_id in [args.num_hierarchy-1]:
-                '''top level only receive reward from env'''
-                self.reward_final = self.reward
 
-            else:
-                '''other levels only receives reward_bounty'''
-                self.reward_final = self.reward_bounty
+            if args.bounty_type in ['diversity','mutual_information']:
+                '''these are two methods on option discovery, where only top level receive the real reward,
+                otherwise, real reward could bring bias to the process of discovering options'''
+
+                if self.hierarchy_id in [args.num_hierarchy-1]:
+                    '''top level only receive reward from env'''
+                    self.reward_final = self.reward
+                else:
+                    '''other levels only receives reward_bounty'''
+                    self.reward_final = self.reward_bounty
+
+            elif args.bounty_type in ['transition_novelty','state_novelty']:
+                '''these two are exploration methods, where reward_bounty should be added to the real reward'''
+                self.reward_final = self.reward_bounty + self.reward
 
         else:
             self.reward_final = self.reward
