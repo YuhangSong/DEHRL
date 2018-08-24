@@ -38,7 +38,13 @@ class OverCooked(gym.Env):
         self.color_area = []
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
-        self.move_discount = 10
+        if self.args.grid_size in ['7']:
+            self.move_discount = 10
+        elif self.args.grid_size in ['3']:
+            self.move_discount = 10/3
+        else:
+            raise NotImplementedError
+            
         '''body thickness, default -- 2, -1 means solid'''
         self.body_thickness = -1
         '''leg size, default -- self.screen_width/20'''

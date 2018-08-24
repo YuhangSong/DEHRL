@@ -75,6 +75,8 @@ def get_args():
                         help='if add area color when get the goal')
     parser.add_argument('--setup-goal', type=str, default='random',
                         help='The setup for goal: fix, random, any')
+    parser.add_argument('--grid-size', type=str, default='7',
+                        help='Size of gird: 7, 3')
 
     '''policy details'''
     parser.add_argument('--num-hierarchy',      type=int,
@@ -107,7 +109,6 @@ def get_args():
                         help='active function of clip reward bounty: linear, u, relu, shrink_relu' )
     parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
                         help='num of the subpolicies per hierarchy' )
-
 
     '''for log behavior'''
     parser.add_argument('--log-behavior-interval', type=int, default=10,
@@ -153,6 +154,7 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
         args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
         args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
+        args.save_dir = os.path.join(args.save_dir, 'g_s-{}'.format(args.grid_size))
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
