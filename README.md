@@ -119,7 +119,7 @@ CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 ### Level 1
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --grid-size 3 --setup-goal any --num-hierarchy 2 --num-subpolicy 1 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --bounty-type state_novelty --distance l1 --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp two_sequence --obs-type 'image' --env-name "OverCooked" --reward-level 1 --grid-size 7 --setup-goal any --num-hierarchy 2 --num-subpolicy 1 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --bounty-type state_novelty --distance l1 --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --log-behavior-interval 5 --aux r_0
 ```
 
 ```base
