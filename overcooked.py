@@ -531,7 +531,7 @@ class OverCooked(gym.Env):
             self.setgoal()
 
         if self.args.reward_level == 2:
-            if args.setup_goal in ['random', 'fix']:
+            if self.args.setup_goal in ['random', 'fix']:
                 self.show_next_goal(self.goal_id)
 
         obs = self.obs()
