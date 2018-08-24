@@ -36,6 +36,7 @@ class OverCooked(gym.Env):
         self.leg_count = np.zeros(self.leg_num*4+1)
         self.info = {}
         self.color_area = []
+        self.img = np.ones((int(self.screen_width + self.screen_width / 8), int(self.screen_height), 3), np.uint8) * 255
 
         '''move distance: screen_width/move_discount, default:10---3 step'''
         if self.args.grid_size in ['7']:
@@ -48,8 +49,30 @@ class OverCooked(gym.Env):
         '''body thickness, default -- 2, -1 means solid'''
         self.body_thickness = -1
         '''leg size, default -- self.screen_width/20'''
-        self.leg_size = self.screen_width/40
+        self.leg_size = self.screen_width/30
 
+        '''load pic'''
+        self.background = self.adjust_color(cv2.imread('./game_pic/background.png'))
+        self.background = cv2.resize(self.background,(self.screen_width,self.screen_height))
+
+        self.goal_0 = self.adjust_color(cv2.imread('./game_pic/lemen.png',cv2.IMREAD_UNCHANGED))
+        self.goal_0 = cv2.resize(self.goal_0,(int(self.screen_width/10),int(self.screen_height/10)))
+        self.goal_1 = self.adjust_color(cv2.imread('./game_pic/orange_pepper.png',cv2.IMREAD_UNCHANGED))
+        self.goal_1 = cv2.resize(self.goal_1,(int(self.screen_width/10),int(self.screen_height/10)))
+        self.goal_2 = self.adjust_color(cv2.imread('./game_pic/padan.png',cv2.IMREAD_UNCHANGED))
+        self.goal_2 = cv2.resize(self.goal_2,(int(self.screen_width/10),int(self.screen_height/10)))
+        self.goal_3 = self.adjust_color(cv2.imread('./game_pic/cabbage.png',cv2.IMREAD_UNCHANGED))
+        self.goal_3 = cv2.resize(self.goal_3,(int(self.screen_width/10),int(self.screen_height/10)))
+
+        self.body = self.adjust_color(cv2.imread('./game_pic/body.png', cv2.IMREAD_UNCHANGED))
+        self.body = cv2.resize(self.body,(int(self.screen_width/10),int(self.screen_height/10)))
+        self.leg = self.adjust_color(cv2.imread('./game_pic/leg.png', cv2.IMREAD_UNCHANGED))
+        self.leg = cv2.resize(self.leg,(int(self.leg_size),int(self.leg_size)))
+
+        self.stove = self.adjust_color(cv2.imread('./game_pic/stove.png'))
+        self.stove = cv2.resize(self.stove,(int(self.screen_height), int(self.screen_width + self.screen_width / 8)-int(self.screen_width)))
+
+        self.img[int(self.screen_width):int(self.screen_width + self.screen_width / 8),0:int(self.screen_height),:] = self.stove
 
         assert self.args.obs_type in ('ram', 'image')
         if self.args.obs_type == 'ram':
@@ -93,7 +116,7 @@ class OverCooked(gym.Env):
         self.leg_id = 0
         self.goal_id = 0
         self.action_mem = np.zeros(self.leg_num)
-        self.canvas_clear()
+
         # Just need to initialize the relevant attributes
         self.configure()
 
@@ -108,82 +131,59 @@ class OverCooked(gym.Env):
         self.goal_position.append(np.array([self.min_x, self.max_y]))
         self.goal_position.append(np.array([self.max_x, self.max_y]))
 
-        self.goal_ram = np.zeros(self.goal_num)
-
-    def canvas_clear(self):
-        # canvas
-        self.img = np.ones((int(self.screen_width + self.screen_width / 4.5), int(self.screen_height), 3), np.uint8) * 255
         self.goal_color = []
         self.goal_color.append(np.array([55, 255, 155]))
         self.goal_color.append(np.array([155, 0, 155]))
         self.goal_color.append(np.array([0, 255, 255]))
         self.goal_color.append(np.array([255, 0, 0]))
-        self.triangle_line = []
-        self.triangle_line.append(np.array([int(0), int(self.screen_height)]))
-        self.triangle_line.append(
-            np.array([int(self.screen_width / 20), int(self.screen_height - self.screen_height / 10)]))
-        self.triangle_line.append(np.array([int(self.screen_width / 10), int(self.screen_height)]))
-        self.triangle_line = np.array(self.triangle_line)
-        self.triangle_line = self.triangle_line.reshape((-1, 1, 2))
-        # goals
-        cv2.circle(self.img, (int(self.screen_width / 20), int(self.screen_height / 20)), int(self.screen_height / 20),
-                   (int(self.goal_color[0][0]), int(self.goal_color[0][1]), int(self.goal_color[0][2])), -1)
-        cv2.circle(self.img, (int(self.screen_width - self.screen_width / 20), int(self.screen_height / 20)),
-                   int(self.screen_height / 20 - 1.5),
-                   (int(self.goal_color[1][0]), int(self.goal_color[1][1]), int(self.goal_color[1][2])), 1)
-        cv2.rectangle(self.img, (
-        int(self.screen_width - self.screen_width / 10 + 2), int(self.screen_height - self.screen_height / 10 + 2)),
-                      (int(self.screen_width - 2), int(self.screen_height - 2)),
-                      (int(self.goal_color[2][0]), int(self.goal_color[2][1]), int(self.goal_color[2][2])), 1)
-        cv2.polylines(self.img, [self.triangle_line], True,
-                      (int(self.goal_color[3][0]), int(self.goal_color[3][1]), int(self.goal_color[3][2])), 1)
-        # stoves
-        cv2.rectangle(self.img, (0, int(self.screen_height / 10)),
-                      (int(self.screen_width / 10), int(self.screen_height - self.screen_height / 10)), (255, 228, 225),
-                      -1)
-        cv2.rectangle(self.img, (int(self.screen_width - self.screen_width / 10), int(self.screen_height / 10)),
-                      (self.screen_width, int(self.screen_height - self.screen_height / 10)), (255, 228, 225), -1)
-        cv2.rectangle(self.img, (int(self.screen_width / 10), 0),
-                      (int(self.screen_width - self.screen_width / 10), int(self.screen_height / 10)), (255, 228, 225),
-                      -1)
-        cv2.rectangle(self.img, (int(self.screen_width / 10), int(self.screen_height - self.screen_height / 10)),
-                      (int(self.screen_width - self.screen_width / 10), self.screen_height), (255, 228, 225), -1)
+
+        self.canvas_clear()
+
+        self.goal_ram = np.zeros(self.goal_num)
+
+    def canvas_clear(self):
+        # canvas
+        # self.img = np.ones((int(self.screen_width + self.screen_width / 8), int(self.screen_height), 3), np.uint8) * 255
+        self.show_next_goal(self.goal_id)
+        self.img[0:self.screen_width,0:self.screen_height,:] = self.background
+
+    def adjust_color(self, input):
+        '''change RGB to BGR'''
+        pic = input.copy()
+        pic[:,:,0] = input[:,:,2]
+        pic[:,:,1] = input[:,:,1]
+        pic[:,:,2] = input[:,:,0]
+        return pic
 
     def setgoal(self):
         if self.args.reward_level == 1:
-            position = np.array([0,self.screen_height])
+            position = np.array([self.screen_width/13,self.screen_height*1.01])
             self.draw_goals(self.single_goal+1,position,self.img)
         elif self.args.reward_level == 2:
             for i in range(self.goal_num):
-                position = np.array([i*self.screen_width/10,self.screen_height])
+                position = np.array([self.screen_width/13+i*self.screen_width/10,self.screen_height*1.01])
                 self.draw_goals(self.realgoal[i],position,self.img)
 
     def show_next_goal(self,goal_num):
-        show_position = np.array([int(self.screen_width*0.7),int(self.screen_height*1.05)])
-        cv2.rectangle(self.img, (show_position[0], show_position[1]),
-                      (int(show_position[0]+self.screen_width/9), int(show_position[1]+self.screen_height/9)),
-                      (255,255,255), -1)
+        show_position = np.array([int(self.screen_width*0.375),int(self.screen_height*0.885)])
+
         if goal_num<len(self.realgoal):
             self.draw_goals(self.realgoal[goal_num],show_position,self.img)
 
 
     def draw_goals(self,goal_num,position,canvas):
         if goal_num == 1:
-            cv2.circle(canvas, (int(position[0]+self.screen_height/20), int(position[1]+self.screen_height/20)),int(self.screen_height / 20),(int(self.goal_color[0][0]), int(self.goal_color[0][1]), int(self.goal_color[0][2])), -1)
+            self.overlay_image_alpha(canvas,self.goal_0,[int(position[0]),int(position[1])],self.goal_0[:,:,3]/255.0)
+            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_0[:,:,0:3]
         elif goal_num == 2:
-            cv2.circle(canvas, (int(position[0]+self.screen_height/20), int(position[1]+self.screen_height/20)),int(self.screen_height / 20 - 1.5),(int(self.goal_color[1][0]), int(self.goal_color[1][1]), int(self.goal_color[1][2])), 1)
+            self.overlay_image_alpha(canvas,self.goal_1,[int(position[0]),int(position[1])],self.goal_1[:,:,3]/255.0)
+            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_1[:,:,0:3]
         elif goal_num == 3:
-            triangle_line = []
-            triangle_line.append(np.array([int(position[0]), int(position[1]+self.screen_height/10)]))
-            triangle_line.append(np.array([int(position[0]+self.screen_width/20), int(position[1]+self.screen_height/10-self.screen_height/10)]))
-            triangle_line.append(np.array([int(position[0]+self.screen_width/10), int(position[1]+self.screen_height/10)]))
-            triangle_line = np.array(triangle_line)
-            triangle_line = triangle_line.reshape((-1, 1, 2))
-            cv2.polylines(canvas, [triangle_line], True,(int(self.goal_color[3][0]), int(self.goal_color[3][1]), int(self.goal_color[3][2])), 1)
+            self.overlay_image_alpha(canvas,self.goal_2,[int(position[0]),int(position[1])],self.goal_2[:,:,3]/255.0)
+            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_2[:,:,0:3]
         elif goal_num == 4:
-            cv2.rectangle(canvas, (int(position[0] + 2), int(position[1] + 2)),
-                          (int(position[0]+self.screen_width/10 - 2), int(position[1]+self.screen_height/10 - 2)),
-                          (int(self.goal_color[2][0]), int(self.goal_color[2][1]), int(self.goal_color[2][2])), 1)
+            self.overlay_image_alpha(canvas,self.goal_3,[int(position[0]),int(position[1])],self.goal_3[:,:,3]/255.0)
+            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_3[:,:,0:3]
 
     def configure(self, display=None):
         self.display = display
@@ -287,47 +287,39 @@ class OverCooked(gym.Env):
                 self.action_mem = np.zeros(self.leg_num)
 
                 self.leg_position = []
-                self.leg_position.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-                self.leg_position.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-                self.leg_position.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-                self.leg_position.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
+                self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
+                self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
+                self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
 
                 self.reset_legposi = []
                 self.reset_legposi.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                    np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
                 self.reset_legposi.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                    np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
                 self.reset_legposi.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                    np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
                 self.reset_legposi.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                    np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
 
         if self.args.reset_leg:
             if self.leg_move_count%4 == 0:
                 self.action_mem = np.zeros(self.leg_num)
                 self.leg_position = []
-                self.leg_position.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
-                self.leg_position.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
-                self.leg_position.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
-                self.leg_position.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
+                self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
+                self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
+                self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
 
                 self.reset_legposi = []
                 self.reset_legposi.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+                    np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
                 self.reset_legposi.append(
-                    np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+                    np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
                 self.reset_legposi.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+                    np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
                 self.reset_legposi.append(
-                    np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+                    np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
         # if action_id==17:
         distance_1 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.min_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
         distance_2 = math.sqrt(abs(self.position[0] + self.screen_width/20 - self.max_x) ** 2 + abs(self.position[1] + self.screen_height/20 - self.min_y) ** 2)
@@ -498,6 +490,7 @@ class OverCooked(gym.Env):
         self.color_area = []
         # self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
+        self.img[int(self.screen_width):int(self.screen_width + self.screen_width / 8),0:int(self.screen_height),:] = self.stove
 
         if self.args.reward_level == 1:
             if self.args.setup_goal in ['random']:
@@ -514,20 +507,20 @@ class OverCooked(gym.Env):
         self.position = [self.screen_width/2-self.screen_width/20, self.screen_height/2-self.screen_height/20]
         self.state = np.zeros((self.leg_num,2))
         self.leg_position = []
-        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]-self.leg_size]))
-        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]+self.screen_height/10]))
-        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]-self.leg_size]))
-        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]+self.screen_height/10]))
+        self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
+        self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
+        self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
+        self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
 
         self.reset_legposi = []
         self.reset_legposi.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+            np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
         self.reset_legposi.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+            np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
         self.reset_legposi.append(
-            np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+            np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
         self.reset_legposi.append(
-            np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+            np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
 
         self.canvas_clear()
 
@@ -538,8 +531,8 @@ class OverCooked(gym.Env):
             self.setgoal()
 
         if self.args.reward_level == 2:
-            if self.args.setup_goal in ['random', 'fix']:
-                self.show_next_goal(self.realgoal[0])
+            if args.setup_goal in ['random', 'fix']:
+                self.show_next_goal(self.goal_id)
 
         obs = self.obs()
 
@@ -548,24 +541,25 @@ class OverCooked(gym.Env):
     def reset_after_goal(self):
         self.action_mem = np.zeros(self.leg_num)
         self.leg_move_count = 0
+        self.img[int(self.screen_width):int(self.screen_width + self.screen_width / 8),0:int(self.screen_height),:] = self.stove
 
         self.position = [self.screen_width/2-self.screen_width/20, self.screen_height/2-self.screen_height/20]
         self.state = np.zeros((self.leg_num,2))
         self.leg_position = []
-        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]-self.leg_size]))
-        self.leg_position.append(np.array([self.position[0]-self.leg_size, self.position[1]+self.screen_height/10]))
-        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]-self.leg_size]))
-        self.leg_position.append(np.array([self.position[0]+self.screen_width/10, self.position[1]+self.screen_height/10]))
+        self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
+        self.leg_position.append(np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
+        self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
+        self.leg_position.append(np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
 
         self.reset_legposi = []
         self.reset_legposi.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+            np.array([self.position[0]-self.leg_size/2, self.position[1]-self.leg_size/2]))
         self.reset_legposi.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] + self.screen_height / 10]))
+            np.array([self.position[0]-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
         self.reset_legposi.append(
-            np.array([self.position[0] + self.screen_width / 10, self.position[1] - self.leg_size]))
+            np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]-self.leg_size/2]))
         self.reset_legposi.append(
-            np.array([self.position[0] + self.screen_width / 10, self.position[1] + self.screen_height / 10]))
+            np.array([self.position[0]+self.screen_width/10-self.leg_size/2, self.position[1]+self.screen_height/10-self.leg_size/2]))
 
     def processes_obs(self, obs):
         obs = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)
@@ -633,18 +627,18 @@ class OverCooked(gym.Env):
                 if 4 in self.color_area:
                     cv2.rectangle(canvas, (int(self.max_x), int(self.max_y)), (int((self.min_x+self.max_x)/2), int((self.min_y+self.max_y)/2)), (170,255,127), -1)
 
-        cv2.rectangle(canvas, (int(self.position[0]), int(self.position[1])), (int(self.position[0]+self.screen_width/10), int(self.position[1]+self.screen_height/10)), (92,92,205), self.body_thickness)
+        self.canvas_clear()
+        self.overlay_image_alpha(canvas,self.body,[int(self.position[0]),int(self.position[1])],self.body[:,:,3]/255.0)
         # legs
-        cv2.rectangle(canvas, (int(self.leg_position[0][0]), int(self.leg_position[0][1])),(int(self.leg_position[0][0] + self.leg_size), int(self.leg_position[0][1] + self.leg_size)),(0, 92, 205), -1)
-        cv2.rectangle(canvas, (int(self.leg_position[1][0]), int(self.leg_position[1][1])), (int(self.leg_position[1][0] + self.leg_size), int(self.leg_position[1][1] + self.leg_size)),(0, 92, 205), -1)
-        cv2.rectangle(canvas, (int(self.leg_position[2][0]), int(self.leg_position[2][1])), (int(self.leg_position[2][0] + self.leg_size), int(self.leg_position[2][1] + self.leg_size)),(0, 92, 205), -1)
-        cv2.rectangle(canvas, (int(self.leg_position[3][0]), int(self.leg_position[3][1])), (int(self.leg_position[3][0] + self.leg_size), int(self.leg_position[3][1] + self.leg_size)),(0, 92, 205), -1)
+        self.overlay_image_alpha(canvas,self.leg,[int(self.leg_position[0][0]),int(self.leg_position[0][1])],self.leg[:,:,3]/255.0)
+        self.overlay_image_alpha(canvas,self.leg,[int(self.leg_position[1][0]),int(self.leg_position[1][1])],self.leg[:,:,3]/255.0)
+        self.overlay_image_alpha(canvas,self.leg,[int(self.leg_position[2][0]),int(self.leg_position[2][1])],self.leg[:,:,3]/255.0)
+        self.overlay_image_alpha(canvas,self.leg,[int(self.leg_position[3][0]),int(self.leg_position[3][1])],self.leg[:,:,3]/255.0)
 
-        # self.color_area = 0
         if np.sum(self.cur_goal)>0:
             for i in range(self.goal_num):
                 if self.cur_goal[i]>0:
-                    position = np.array([self.screen_width/10*i, self.screen_height+self.screen_height/10])
+                    position = np.array([self.screen_width*0.55+self.screen_width/10*i, self.screen_height*1.01])
                     self.draw_goals(self.cur_goal[i], position, canvas)
         # cv2.imwrite('C:\\Users\\IceClear\\Desktop' + '\\' + 'frame' + '.jpg', canvas)  # 存储为图像
         if self.args.render:
@@ -652,6 +646,37 @@ class OverCooked(gym.Env):
             cv2.waitKey(2)
 
         return canvas
+
+    def overlay_image_alpha(self,img, img_overlay, pos, alpha_mask):
+        """Overlay img_overlay on top of img at the position specified by
+        pos and blend using alpha_mask.
+
+        Alpha mask must contain values within the range [0, 1] and be the
+        same size as img_overlay.
+        """
+
+        x, y = pos
+
+        # Image ranges
+        y1, y2 = max(0, y), min(img.shape[0], y + img_overlay.shape[0])
+        x1, x2 = max(0, x), min(img.shape[1], x + img_overlay.shape[1])
+
+        # Overlay ranges
+        y1o, y2o = max(0, -y), min(img_overlay.shape[0], img.shape[0] - y)
+        x1o, x2o = max(0, -x), min(img_overlay.shape[1], img.shape[1] - x)
+
+        # Exit if nothing to do
+        if y1 >= y2 or x1 >= x2 or y1o >= y2o or x1o >= x2o:
+            return
+
+        channels = img.shape[2]
+
+        alpha = alpha_mask[y1o:y2o, x1o:x2o]
+        alpha_inv = 1.0 - alpha
+
+        for c in range(channels):
+            img[y1:y2, x1:x2, c] = (alpha * img_overlay[y1o:y2o, x1o:x2o, c] +
+                                    alpha_inv * img[y1:y2, x1:x2, c])
 
 if __name__ == '__main__':
     from visdom import Visdom
@@ -665,6 +690,11 @@ if __name__ == '__main__':
     env = OverCooked(args)
     for i_episode in range(20):
         observation = env.reset()
+        win_dic['Obs'] = viz.images(
+            observation.transpose(2,0,1),
+            win=win_dic['Obs'],
+            opts=dict(title=' ')
+        )
         for t in range(100):
             # env.render(True)
             key = env.get_keys_to_action()
