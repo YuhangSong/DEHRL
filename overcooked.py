@@ -27,8 +27,8 @@ class OverCooked(gym.Env):
         self.args = args
 
         self.action_space = spaces.Discrete(17)
-        self.screen_width = 400
-        self.screen_height = 400
+        self.screen_width = 84
+        self.screen_height = 84
         self.leg_num = 4
         self.goal_num = 4
         self.eposide_length = 0
