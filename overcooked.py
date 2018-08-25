@@ -500,7 +500,6 @@ class OverCooked(gym.Env):
         if self.args.reward_level == 1:
             if self.args.setup_goal in ['random']:
                 self.single_goal = np.random.randint(0,self.goal_num)
-                print(self.single_goal)
             else:
                 self.single_goal = 0
             self.goal_label = np.zeros(4)
