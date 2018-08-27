@@ -1306,7 +1306,7 @@ observation_reset = env.reset()
 
 def pring_mass_center(state):
     mass_center = ndimage.measurements.center_of_mass(
-        ((np.clip(observation_reset-state,0,255)))[:,:,0].astype(np.uint8)
+        (state)[:,:,0].astype(np.uint8)
     )
     mass_center = np.asarray([mass_center[0],mass_center[1]])
     return mass_center
