@@ -761,8 +761,7 @@ class OverCooked(gym.Env):
         # self.img = np.ones((int(self.screen_width + self.screen_width / 8), int(self.screen_height), 3), np.uint8) * 255
         self.show_next_goal(self.goal_id)
         # DEBUG:
-        self.img[0:self.screen_width,0:self.screen_height,:] = self.background
-        # self.img[0:self.screen_width,0:self.screen_height,:] = self.background*0.0
+        # self.img[0:self.screen_width,0:self.screen_height,:] = self.background
 
     def adjust_color(self, input):
         '''change RGB to BGR'''
@@ -782,25 +781,29 @@ class OverCooked(gym.Env):
                 self.draw_goals(self.realgoal[i],position,self.img)
 
     def show_next_goal(self,goal_num):
-        show_position = np.array([int(self.screen_width*0.375),int(self.screen_height*0.885)])
-
-        if goal_num<len(self.realgoal):
-            self.draw_goals(self.realgoal[goal_num],show_position,self.img)
+        # DEBUG:
+        pass
+        # show_position = np.array([int(self.screen_width*0.375),int(self.screen_height*0.885)])
+        #
+        # if goal_num<len(self.realgoal):
+        #     self.draw_goals(self.realgoal[goal_num],show_position,self.img)
 
 
     def draw_goals(self,goal_num,position,canvas):
-        if goal_num == 1:
-            self.overlay_image_alpha(canvas,self.goal_0,[int(position[0]),int(position[1])],self.goal_0[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_0[:,:,0:3]
-        elif goal_num == 2:
-            self.overlay_image_alpha(canvas,self.goal_1,[int(position[0]),int(position[1])],self.goal_1[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_1[:,:,0:3]
-        elif goal_num == 3:
-            self.overlay_image_alpha(canvas,self.goal_2,[int(position[0]),int(position[1])],self.goal_2[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_2[:,:,0:3]
-        elif goal_num == 4:
-            self.overlay_image_alpha(canvas,self.goal_3,[int(position[0]),int(position[1])],self.goal_3[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_3[:,:,0:3]
+        # DEBUG:
+        pass
+        # if goal_num == 1:
+        #     self.overlay_image_alpha(canvas,self.goal_0,[int(position[0]),int(position[1])],self.goal_0[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_0[:,:,0:3]
+        # elif goal_num == 2:
+        #     self.overlay_image_alpha(canvas,self.goal_1,[int(position[0]),int(position[1])],self.goal_1[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_1[:,:,0:3]
+        # elif goal_num == 3:
+        #     self.overlay_image_alpha(canvas,self.goal_2,[int(position[0]),int(position[1])],self.goal_2[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_2[:,:,0:3]
+        # elif goal_num == 4:
+        #     self.overlay_image_alpha(canvas,self.goal_3,[int(position[0]),int(position[1])],self.goal_3[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_3[:,:,0:3]
 
     def configure(self, display=None):
         self.display = display
@@ -1107,9 +1110,9 @@ class OverCooked(gym.Env):
         self.color_area = []
         # self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
+
         # DEBUG:
-        self.img[int(self.screen_width):int(self.screen_width + self.screen_width / 8),0:int(self.screen_height),:] = self.stove
-        # self.img[int(self.screen_width):int(self.screen_width + self.screen_width / 8),0:int(self.screen_height),:] = self.stove*0.0
+        # self.img[int(self.screen_width):int(self.screen_width + self.screen_width / 8),0:int(self.screen_height),:] = self.stove
 
         if self.args.reward_level == 1:
             if self.args.setup_goal in ['random']:
