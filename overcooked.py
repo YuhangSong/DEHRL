@@ -789,18 +789,20 @@ class OverCooked(gym.Env):
 
 
     def draw_goals(self,goal_num,position,canvas):
-        if goal_num == 1:
-            self.overlay_image_alpha(canvas,self.goal_0,[int(position[0]),int(position[1])],self.goal_0[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_0[:,:,0:3]
-        elif goal_num == 2:
-            self.overlay_image_alpha(canvas,self.goal_1,[int(position[0]),int(position[1])],self.goal_1[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_1[:,:,0:3]
-        elif goal_num == 3:
-            self.overlay_image_alpha(canvas,self.goal_2,[int(position[0]),int(position[1])],self.goal_2[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_2[:,:,0:3]
-        elif goal_num == 4:
-            self.overlay_image_alpha(canvas,self.goal_3,[int(position[0]),int(position[1])],self.goal_3[:,:,3]/255.0)
-            # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_3[:,:,0:3]
+        # DEBUG:
+        # if goal_num == 1:
+        #     self.overlay_image_alpha(canvas,self.goal_0,[int(position[0]),int(position[1])],self.goal_0[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_0[:,:,0:3]
+        # elif goal_num == 2:
+        #     self.overlay_image_alpha(canvas,self.goal_1,[int(position[0]),int(position[1])],self.goal_1[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_1[:,:,0:3]
+        # elif goal_num == 3:
+        #     self.overlay_image_alpha(canvas,self.goal_2,[int(position[0]),int(position[1])],self.goal_2[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_2[:,:,0:3]
+        # elif goal_num == 4:
+        #     self.overlay_image_alpha(canvas,self.goal_3,[int(position[0]),int(position[1])],self.goal_3[:,:,3]/255.0)
+        #     # canvas[int(position[1]):int(position[1])+int(self.screen_width/10),int(position[0]):int(position[0])+int(self.screen_height/10),:] = self.goal_3[:,:,0:3]
+        pass
 
     def configure(self, display=None):
         self.display = display
