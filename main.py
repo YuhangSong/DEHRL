@@ -844,6 +844,11 @@ class HierarchyLayer(object):
                     win=win_dic['Obs'],
                     opts=dict(title='obs')
                 )
+                win_dic['Obs'] = viz.images(
+                    self.obs[0],
+                    win=win_dic['Obs'],
+                    opts=dict(title='obs')
+                )
         self.update_current_obs(self.obs)
         self.rollouts.observations[0].copy_(self.current_obs)
         return self.obs
