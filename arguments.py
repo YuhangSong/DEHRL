@@ -73,6 +73,8 @@ def get_args():
                         help='if reset four legs after four steps')
     parser.add_argument('--add-goal-color', action='store_true',
                         help='if add area color when get the goal')
+    parser.add_argument('--setup-goal', type=str, default='random',
+                        help='The setup for goal: fix, random, any')
 
     '''policy details'''
     parser.add_argument('--num-hierarchy',      type=int,
@@ -87,6 +89,8 @@ def get_args():
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
+    parser.add_argument('--bounty-type', type=str,
+                        help='type of the bounty: diversity, state_novelty, transition_novelty, mutual_information' )
     parser.add_argument('--distance', type=str,
                         help='distance to meansure the difference between states: l1, match, mass_center, l1_mass_center' )
     parser.add_argument('--encourage-ac-connection', type=str,
@@ -97,8 +101,6 @@ def get_args():
                         help='coefficient of encourage-ac-connection')
     parser.add_argument('--train-mode', type=str,
                         help='train mode for transition_model and actor_critic: switch, together' )
-    parser.add_argument('--mutual-information', action='store_true',
-                        help='whether use mutual information as bounty reward' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
@@ -150,6 +152,7 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
         args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
         args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
+        args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
@@ -163,14 +166,14 @@ def get_args():
     args.save_dir = os.path.join(args.save_dir, 'a_c_m_b_s-{}'.format(args.actor_critic_mini_batch_size))
     args.save_dir = os.path.join(args.save_dir, 'a_c_e-{}'.format(args.actor_critic_epoch))
     if args.reward_bounty > 0.0:
+        '''type of the bounty'''
+        args.save_dir = os.path.join(args.save_dir, 'b_t-{}'.format(args.bounty_type))
         '''distance'''
         args.save_dir = os.path.join(args.save_dir, 'd-{}'.format(args.distance))
         '''transition_model training details'''
         args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
         args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
-        '''mutual information'''
-        args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
         '''clip reward bounty'''
         args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
         if args.clip_reward_bounty:
