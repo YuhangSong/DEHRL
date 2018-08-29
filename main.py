@@ -26,6 +26,7 @@ import utils
 import algo
 
 args = get_args()
+args.mutual_information = False
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.recurrent_policy:

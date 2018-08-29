@@ -86,7 +86,7 @@ class OverCooked(gym.Env):
         else:
             raise NotImplementedError
 
-        if args.setup_goal in ['random','fix','any']:
+        if self.args.setup_goal in ['random','fix','any']:
             pass
         else:
             raise NotImplementedError
@@ -331,7 +331,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 0:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 0 or args.setup_goal in ['any']:
+                    if self.single_goal == 0 or self.args.setup_goal in ['any']:
                         reward = 1
                     done = True
         elif distance_2 <= self.screen_width/20+self.leg_size*2+self.body_size/2:
@@ -346,7 +346,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 1:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 1 or args.setup_goal in ['any']:
+                    if self.single_goal == 1 or self.args.setup_goal in ['any']:
                         reward = 1
                     done = True
         elif distance_3 <= self.screen_width/20+self.leg_size*2+self.body_size/2:
@@ -361,7 +361,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 2:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 2 or args.setup_goal in ['any']:
+                    if self.single_goal == 2 or self.args.setup_goal in ['any']:
                         reward = 1
                     done = True
         elif distance_4 <= self.screen_width/20+self.leg_size*2+self.body_size/2:
@@ -376,7 +376,7 @@ class OverCooked(gym.Env):
                         if action_list[2] == 3:
                             reward = 1
                 if self.args.reward_level == 1:
-                    if self.single_goal == 3 or args.setup_goal in ['any']:
+                    if self.single_goal == 3 or self.args.setup_goal in ['any']:
                         reward = 1
                     done = True
 
@@ -385,13 +385,13 @@ class OverCooked(gym.Env):
                 reward = 1
                 done = True
             elif self.cur_goal[self.goal_num-1]>0:
-                if args.setup_goal in ['any']:
+                if self.args.setup_goal in ['any']:
                     reward = 1
                 else:
                     reward = 0
                 done = True
 
-            if args.setup_goal in ['random', 'fix']:
+            if self.args.setup_goal in ['random', 'fix']:
                 self.show_next_goal(self.goal_id)
 
 
@@ -508,7 +508,7 @@ class OverCooked(gym.Env):
             self.setgoal()
 
         if self.args.reward_level == 2:
-            if args.setup_goal in ['random', 'fix']:
+            if self.args.setup_goal in ['random', 'fix']:
                 self.show_next_goal(self.goal_id)
 
         obs = self.obs()
