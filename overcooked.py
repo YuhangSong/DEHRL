@@ -27,8 +27,8 @@ class OverCooked(gym.Env):
         self.args = args
 
         self.action_space = spaces.Discrete(17)
-        self.screen_width = 84
-        self.screen_height = 84
+        self.screen_width = 400
+        self.screen_height = 400
         self.leg_num = 4
         self.goal_num = 4
         self.eposide_length = 0
@@ -50,12 +50,19 @@ class OverCooked(gym.Env):
         '''body thickness, default -- 2, -1 means solid'''
         self.body_thickness = -1
         '''leg size, default -- self.screen_width/40'''
-        self.leg_size = self.screen_width/40
+        self.leg_size = self.screen_width/30
         '''body size, default -- self.screen_width/10'''
         self.body_size = self.screen_width/10
+        '''leg position indent'''
+        if self.args.new_overcooked:
+            self.leg_indent = self.leg_size/2
+        else:
+            self.leg_indent = 0
         '''leg move distance'''
         self.leg_move_dis = self.screen_width/40
-        self.body_move_dis = (int(self.screen_width/2)-int(self.min_x)-self.body_size/2-self.leg_size)/self.body_steps
+        self.body_move_dis = (int(self.screen_width/2)-int(self.min_x)-self.body_size/2-self.leg_size+self.leg_indent)/self.body_steps
+
+
 
 
         assert self.args.obs_type in ('ram', 'image')
@@ -260,23 +267,23 @@ class OverCooked(gym.Env):
     def reset_leg_position(self):
         self.leg_position = []
         self.leg_position.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+            np.array([self.position[0]-self.leg_size+self.leg_indent, self.position[1]-self.leg_size+self.leg_indent]))
         self.leg_position.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] + self.body_size]))
+            np.array([self.position[0]-self.leg_size+self.leg_indent, self.position[1]+self.body_size-self.leg_indent]))
         self.leg_position.append(
-            np.array([self.position[0] + self.body_size, self.position[1] - self.leg_size]))
+            np.array([self.position[0]+self.body_size-self.leg_indent, self.position[1]-self.leg_size+self.leg_indent]))
         self.leg_position.append(
-            np.array([self.position[0] + self.body_size, self.position[1] + self.body_size]))
+            np.array([self.position[0]+self.body_size-self.leg_indent, self.position[1]+self.body_size-self.leg_indent]))
 
         self.reset_legposi = []
         self.reset_legposi.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] - self.leg_size]))
+            np.array([self.position[0]-self.leg_size+self.leg_indent, self.position[1]-self.leg_size+self.leg_indent]))
         self.reset_legposi.append(
-            np.array([self.position[0] - self.leg_size, self.position[1] + self.body_size]))
+            np.array([self.position[0]-self.leg_size+self.leg_indent, self.position[1]+self.body_size-self.leg_indent]))
         self.reset_legposi.append(
-            np.array([self.position[0] + self.body_size, self.position[1] - self.leg_size]))
+            np.array([self.position[0]+self.body_size-self.leg_indent, self.position[1]-self.leg_size+self.leg_indent]))
         self.reset_legposi.append(
-            np.array([self.position[0] + self.body_size, self.position[1] + self.body_size]))
+            np.array([self.position[0]+self.body_size-self.leg_indent, self.position[1]+self.body_size-self.leg_indent]))
 
     def step(self, action_list):
         reset_body = False
