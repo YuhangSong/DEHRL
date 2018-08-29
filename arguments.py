@@ -75,6 +75,8 @@ def get_args():
                         help='if add area color when get the goal')
     parser.add_argument('--setup-goal', type=str, default='random',
                         help='The setup for goal: fix, random, any')
+    parser.add_argument('--new-overcooked', action='store_true',
+                        help='if use new overcooked')
 
     '''policy details'''
     parser.add_argument('--num-hierarchy',      type=int,
