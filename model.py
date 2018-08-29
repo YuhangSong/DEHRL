@@ -121,7 +121,7 @@ class Policy(nn.Module):
         torch.save(self.state_dict(), save_path)
 
 class CNNBase(nn.Module):
-    def __init__(self, num_inputs, use_gru, linear_size=512):
+    def __init__(self, num_inputs, use_gru, linear_size=256):
         super(CNNBase, self).__init__()
 
         self.linear_size = linear_size
@@ -137,14 +137,15 @@ class CNNBase(nn.Module):
                       nn.init.calculate_gain('leaky_relu'))
 
         self.main = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+            # self.leakrelu_init_(nn.Conv2d(num_inputs, 16, 8, stride=4)),
+            self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
             nn.LeakyReLU(),
-            self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
+            self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
             nn.LeakyReLU(),
-            self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
+            self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
             nn.LeakyReLU(),
             Flatten(),
-            self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
+            self.leakrelu_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
             nn.LeakyReLU()
         )
 
@@ -173,7 +174,8 @@ class CNNBase(nn.Module):
         return self.linear_size
 
     def forward(self, inputs, states, masks):
-        x = self.main(inputs / 255.0)
+        inputs = inputs[:,-1:]/ 255.0
+        x = self.main(inputs)
 
         if hasattr(self, 'gru'):
             if inputs.size(0) == states.size(0):
@@ -222,7 +224,7 @@ class MLPBase(nn.Module):
         return x, states
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=512):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
         super(TransitionModel, self).__init__()
         '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
@@ -247,83 +249,137 @@ class TransitionModel(nn.Module):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('leaky_relu'))
 
-        self.conv = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
+        self.sigmoid_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('sigmoid'))
+
+        '''inverse model part'''
+
+        self.conv_cur_state = nn.Sequential(
+            # self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
+            self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
             # input do not normalize
             nn.LeakyReLU(inplace=True),
 
-            self.leakrelu_init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.BatchNorm2d(64),
+            self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
+            nn.BatchNorm2d(32),
             nn.LeakyReLU(inplace=True),
 
-            self.leakrelu_init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.BatchNorm2d(32),
+            self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
+            nn.BatchNorm2d(16),
             nn.LeakyReLU(inplace=True),
 
             Flatten(),
 
-            self.leakrelu_init_(nn.Linear(32 * 7 * 7, self.linear_size)),
-            # fc donot normalize
-            # fc linear
+            self.sigmoid_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
+            # output do not normalize
+            nn.Sigmoid(),
+        )
+
+        self.conv_next_state = nn.Sequential(
+            # self.leakrelu_init_(nn.Conv2d(self.output_observation_shape[0], 32, 8, stride=4)),
+            self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
+            # input do not normalize
+            nn.LeakyReLU(inplace=True),
+
+            self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(inplace=True),
+
+            self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(inplace=True),
+
+            Flatten(),
+
+            self.sigmoid_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
+            # output do not normalize
+            nn.Sigmoid(),
+        )
+
+        self.input_action_space = input_action_space
+        self.output_action_linear = nn.Sequential(
+            self.linear_init_(nn.Linear(self.linear_size*2,self.input_action_space.n)),
+            # donot normalize
+            # linear
         )
 
         self.reward_bounty_linear = nn.Sequential(
             self.linear_init_(nn.Linear(self.linear_size, 1)),
         )
 
-        if not self.mutual_information:
+        '''transition_model part'''
+        self.input_action_linear = nn.Sequential(
+            self.linear_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
+            # fc donot normalize
+            # fc linear
+        )
 
-            self.input_action_space = input_action_space
-            self.input_action_linear = nn.Sequential(
-                self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
-                # fc donot normalize
-                # fc linear
-            )
+        self.transition = nn.Sequential(
+            self.leakrelu_init_(nn.Linear(self.linear_size, self.linear_size)),
+            nn.BatchNorm1d(self.linear_size),
+            nn.LeakyReLU(inplace=True),
 
-            self.deconv = nn.Sequential(
-                self.leakrelu_init_(nn.Linear(self.linear_size, 32 * 7 * 7)),
-                # project donot normalize
-                nn.LeakyReLU(),
+            self.sigmoid_init_(nn.Linear(self.linear_size, self.linear_size)),
+            # output do not normalize
+            nn.Sigmoid(),
+        )
 
-                DeFlatten((32,7,7)),
-
-                self.leakrelu_init_(nn.ConvTranspose2d(32, 64, 3, stride=1)),
-                nn.BatchNorm2d(64),
-                nn.LeakyReLU(),
-
-                self.leakrelu_init_(nn.ConvTranspose2d(64, 32, 4, stride=2)),
-                nn.BatchNorm2d(32),
-                nn.LeakyReLU(),
-
-                self.leakrelu_init_(nn.ConvTranspose2d(32, self.output_observation_shape[0], 8, stride=4)),
-                # output do not normalize
-                nn.Sigmoid(),
-            )
-
-        else:
+        if self.mutual_information:
+            raise NotImplemented
 
             self.label_linear = nn.Sequential(
                 self.linear_init_(nn.Linear(self.linear_size, num_subpolicy)),
             )
 
 
-    def forward(self, inputs, input_action=None):
+    def forward(self, cur_state, next_state, input_action):
+        cur_state = cur_state[:,-1:]/255.0
+        next_state = next_state[:,-1:]/255.0
 
-        before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
+        cur_state_feature = self.conv_cur_state(cur_state)
+        next_state_feature = self.conv_next_state(next_state)
 
-        predicted_reward_bounty = self.reward_bounty_linear(before_deconv)
+        predicted_action = F.log_softmax(self.output_action_linear(torch.cat([cur_state_feature,next_state_feature],1)), dim=1)
 
-        if not self.mutual_information:
+        predicted_reward_bounty = self.reward_bounty_linear(cur_state_feature)
 
-            predicted_state = self.deconv(before_deconv)*255.0
+        cur_state_feature_detached = cur_state_feature.detach()
+        next_state_feature_detached = next_state_feature.detach()
+        predicted_next_state_feature = self.transition(cur_state_feature_detached*self.input_action_linear(input_action))
 
-            return predicted_state, predicted_reward_bounty
+        return predicted_next_state_feature, next_state_feature_detached, predicted_reward_bounty, predicted_action
 
-        else:
+        if self.mutual_information:
+            raise NotImplemented
 
             predicted_action_resulted_from = F.log_softmax(self.label_linear(before_deconv), dim=1)
 
             return predicted_action_resulted_from, predicted_reward_bounty
+
+    def forward_predict(self, cur_state, input_action):
+        cur_state = cur_state[:,-1:]/255.0
+
+        cur_state_feature = self.conv_cur_state(cur_state)
+
+        predicted_next_state_feature = self.transition(cur_state_feature*self.input_action_linear(input_action))
+
+        predicted_reward_bounty = self.reward_bounty_linear(cur_state_feature)
+
+        return predicted_next_state_feature, predicted_reward_bounty
+
+        if self.mutual_information:
+            raise NotImplemented
+
+            predicted_action_resulted_from = F.log_softmax(self.label_linear(before_deconv), dim=1)
+
+            return predicted_action_resulted_from, predicted_reward_bounty
+
+    def forward_next_state_feature(self, next_state):
+        next_state = next_state[:,-1:]/255.0
+        return self.conv_next_state(next_state)
+
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)

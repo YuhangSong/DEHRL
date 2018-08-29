@@ -20,7 +20,7 @@ from storage import RolloutStorage
 import tensorflow as tf
 import cv2
 from scipy import ndimage
-
+from numpy import linalg as LA
 import utils
 
 import algo
@@ -452,8 +452,8 @@ class HierarchyLayer(object):
                 '''predict states'''
                 self.transition_model.eval()
                 with torch.no_grad():
-                    self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer = self.transition_model(
-                        inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
+                    self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer = self.transition_model.forward_predict(
+                        cur_state = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
                         input_action = self.action_onehot_batch,
                     )
                 self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
@@ -476,7 +476,10 @@ class HierarchyLayer(object):
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
 
             if not args.mutual_information:
-                obs_rb = self.obs
+                with torch.no_grad():
+                    obs_rb = self.upper_layer.transition_model.forward_next_state_feature(
+                        next_state = torch.from_numpy(self.obs).float().cuda()
+                    ).cpu().numpy()
                 prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
 
             else:
@@ -525,6 +528,9 @@ class HierarchyLayer(object):
                             #     for m,n in matches:
                             #         difference += m.distance
 
+                        if args.distance in ['l2_pow']:
+                            difference_l2_pow = np.power(LA.norm(obs_rb[process_i]-prediction_rb[action_i,process_i]),2)
+
                         if args.distance in ['l1']:
                             difference = difference_l1
                         elif args.distance in ['mass_center']:
@@ -533,6 +539,8 @@ class HierarchyLayer(object):
                             difference = difference_l1*5.0+difference_mass_center
                         elif args.distance in ['match']:
                             raise DeprecationWarning
+                        elif args.distance in ['l2_pow']:
+                            difference = difference_l2_pow
                         else:
                             raise NotImplementedError
 
@@ -672,8 +680,8 @@ class HierarchyLayer(object):
         )
 
     def refresh_update_type(self):
-        if args.reward_bounty > 0.0:
 
+        if args.reward_bounty > 0.0:
             if args.train_mode in ['together']:
                 '''train_mode is together'''
 
@@ -698,7 +706,6 @@ class HierarchyLayer(object):
 
         else:
             '''there is no transition_model'''
-
             self.update_type = 'actor_critic'
             self.deterministic = False
 
@@ -945,14 +952,16 @@ class HierarchyLayer(object):
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:,:,:].permute(1,2,0)
-            for action_i in range(self.envs.action_space.n):
-                img = torch.cat([img,self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:].permute(1,2,0)],1)
-            img = img.cpu().numpy()
-            try:
-                self.episode_visilize_stack['state_prediction'] += [img]
-            except Exception as e:
-                self.episode_visilize_stack['state_prediction'] = [img]
+            # DEBUG:
+            pass
+            # img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:,:,:].permute(1,2,0)
+            # for action_i in range(self.envs.action_space.n):
+            #     img = torch.cat([img,self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:].permute(1,2,0)],1)
+            # img = img.cpu().numpy()
+            # try:
+            #     self.episode_visilize_stack['state_prediction'] += [img]
+            # except Exception as e:
+            #     self.episode_visilize_stack['state_prediction'] = [img]
 
     def summary_behavior_at_done(self):
 
