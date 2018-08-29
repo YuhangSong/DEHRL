@@ -259,7 +259,7 @@ class PPO(object):
                     self.this_layer.hierarchy_id,
                     self.this_layer.update_i,
                 ))
-                if not self.this_layer.checkpoint_loaded:
+                if not self.upper_layer.checkpoint_loaded:
                     epoch = 800
 
             for e in range(epoch):

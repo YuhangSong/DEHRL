@@ -213,24 +213,27 @@ class HierarchyLayer(object):
         for episode_reward_type in self.episode_reward.keys():
             self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
 
-        '''try to load checkpoint'''
-        try:
-            self.num_trained_frames = np.load(args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id))[0]
+        '''load checkpoint'''
+        self.num_trained_frames = 0
+
+        load_model = input('[H-{:1}] load policy model? (y/n)'.format(self.hierarchy_id))
+        if load_model in ['y']:
             try:
                 self.actor_critic.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id)))
                 print('[H-{:1}] Load actor_critic previous point: Successed'.format(self.hierarchy_id))
             except Exception as e:
                 print('[H-{:1}] Load actor_critic previous point: Failed, due to {}'.format(self.hierarchy_id,e))
+
+        load_model = input('[H-{:1}] load transition model? (y/n)'.format(self.hierarchy_id))
+        self.checkpoint_loaded = False
+        if load_model in ['y']:
             if self.transition_model is not None:
                 try:
                     self.transition_model.load_state_dict(torch.load(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id)))
+                    self.checkpoint_loaded = True
                     print('[H-{:1}] Load transition_model previous point: Successed'.format(self.hierarchy_id))
                 except Exception as e:
                     print('[H-{:1}] Load transition_model previous point: Failed, due to {}'.format(self.hierarchy_id,e))
-            self.checkpoint_loaded = True
-        except Exception as e:
-            self.num_trained_frames = 0
-            self.checkpoint_loaded = False
 
         print('[H-{:1}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
         self.num_trained_frames_at_start = self.num_trained_frames
@@ -276,6 +279,9 @@ class HierarchyLayer(object):
         self.bounty_clip = torch.zeros(args.num_processes).cuda()
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
         self.reward_bounty = torch.zeros(args.num_processes).cuda()
+
+        if self.hierarchy_id in [0]:
+            self.last_shuffle_at = 0
 
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
@@ -729,6 +735,11 @@ class HierarchyLayer(object):
         epoch_loss = self.agent.update(self.update_type)
         self.num_trained_frames += (args.num_steps[self.hierarchy_id]*args.num_processes)
         self.update_i += 1
+
+        if self.hierarchy_id in [0]:
+            if (self.num_trained_frames-self.last_shuffle_at)>2000000:
+                self.last_shuffle_at = self.num_trained_frames
+                self.env.reset_task()
 
         '''prepare rollouts for new round of interaction'''
         self.rollouts.after_update()

@@ -98,6 +98,7 @@ class OverCooked(gym.Env):
         self.goal_position.append(np.array([self.max_x, self.max_y]))
 
         self.goal_ram = np.zeros(self.goal_num)
+        self.realgoal_level_1 = 1
 
     def canvas_clear(self):
         # canvas
@@ -482,7 +483,7 @@ class OverCooked(gym.Env):
         self.leg_count = np.zeros(self.leg_num*4+1)
 
         if self.args.reward_level == 1:
-            self.single_goal = np.random.randint(0,self.goal_num)
+            self.single_goal = self.realgoal_level_1
             self.goal_label = np.zeros(4)
             self.goal_label[0] = self.single_goal+1
         elif self.args.reward_level == 0:
@@ -508,7 +509,6 @@ class OverCooked(gym.Env):
 
         self.canvas_clear()
 
-        np.random.shuffle(self.realgoal)
         self.setgoal()
 
         if self.args.reward_level == 2:
@@ -517,6 +517,12 @@ class OverCooked(gym.Env):
         obs = self.obs()
 
         return obs
+
+    def reset_task(self):
+        if self.args.reward_level == 2:
+            np.random.shuffle(self.realgoal)
+        if self.args.reward_level == 1:
+            self.realgoal_level_1 = np.random.randint(0,self.goal_num)
 
     def reset_after_goal(self):
         self.action_mem = np.zeros(self.leg_num)

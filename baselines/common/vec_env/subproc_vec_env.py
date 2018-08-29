@@ -19,6 +19,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
         elif cmd == 'reset':
             ob = env.reset()
             remote.send(ob)
+        elif cmd == 'reset_task':
+            env.reset_task()
         elif cmd == 'render':
             remote.send(env.render(mode='rgb_array'))
         elif cmd == 'close':
