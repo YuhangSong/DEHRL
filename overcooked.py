@@ -153,7 +153,7 @@ class OverCooked(gym.Env):
         cv2.rectangle(self.img, (show_position[0], show_position[1]),
                       (int(show_position[0]+self.screen_width/9), int(show_position[1]+self.screen_height/9)),
                       (255,255,255), -1)
-        if goal_num<len(self.realgoal):
+        if goal_num<(self.realgoal.shape[0]):
             self.draw_goals(self.realgoal[goal_num],show_position,self.img)
 
 
@@ -474,7 +474,6 @@ class OverCooked(gym.Env):
         self.goal_id = 0
         self.eposide_length = 0
         self.action_mem = np.zeros(self.leg_num)
-        self.realgoal = np.arange(1,5)
         self.cur_goal = np.zeros(self.goal_num)
         self.goal_ram = np.zeros(self.goal_num)
         self.leg_move_count = 0
@@ -520,7 +519,11 @@ class OverCooked(gym.Env):
 
     def reset_task(self):
         if self.args.reward_level == 2:
-            np.random.shuffle(self.realgoal)
+            print('old goal :{}'.format(self.realgoal))
+            self.realgoal_old = np.copy(self.realgoal)
+            self.realgoal[0]=self.realgoal_old[-1]
+            self.realgoal[1:]=self.realgoal_old[:-1]
+            print('new goal :{}'.format(self.realgoal))
         if self.args.reward_level == 1:
             self.realgoal_level_1 = np.random.randint(0,self.goal_num)
 

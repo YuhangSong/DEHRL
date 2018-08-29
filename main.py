@@ -738,7 +738,7 @@ class HierarchyLayer(object):
         self.update_i += 1
 
         if self.hierarchy_id in [0]:
-            if (self.num_trained_frames-self.last_shuffle_at)>2000000:
+            if (self.num_trained_frames-self.last_shuffle_at)>1000000:
                 self.last_shuffle_at = self.num_trained_frames
                 self.envs.reset_task()
 
