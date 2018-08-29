@@ -282,6 +282,7 @@ class HierarchyLayer(object):
 
         if self.hierarchy_id in [0]:
             self.last_shuffle_at = 0
+            self.envs.reset_task()
 
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
@@ -739,7 +740,7 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             if (self.num_trained_frames-self.last_shuffle_at)>2000000:
                 self.last_shuffle_at = self.num_trained_frames
-                self.env.reset_task()
+                self.envs.reset_task()
 
         '''prepare rollouts for new round of interaction'''
         self.rollouts.after_update()
