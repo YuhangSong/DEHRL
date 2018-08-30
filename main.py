@@ -947,7 +947,7 @@ class HierarchyLayer(object):
         if self.predicted_next_observations_to_downer_layer is not None:
             img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:].permute(1,2,0)
             for action_i in range(self.envs.action_space.n):
-                img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
+                img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:].clamp(-255.0,255.0)+255.0)/2.0).permute(1,2,0)],1)
             img = img.cpu().numpy()
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]

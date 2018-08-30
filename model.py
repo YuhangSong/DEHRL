@@ -325,7 +325,7 @@ class TransitionModel(nn.Module):
 
         if not self.mutual_information:
 
-            predicted_state = self.deconv(before_deconv)*255.0
+            predicted_state = self.deconv(before_deconv)*255.0*1.5
 
             return predicted_state, predicted_reward_bounty
 
