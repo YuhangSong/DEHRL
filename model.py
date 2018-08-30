@@ -249,6 +249,11 @@ class TransitionModel(nn.Module):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('leaky_relu'))
 
+        self.tanh_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('tanh'))
+
         self.conv = nn.Sequential(
             # self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
             self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
@@ -265,20 +270,22 @@ class TransitionModel(nn.Module):
 
             Flatten(),
 
-            self.leakrelu_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
+            self.linear_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
             # fc donot normalize
             # fc linear
         )
 
         self.reward_bounty_linear = nn.Sequential(
             self.linear_init_(nn.Linear(self.linear_size, 1)),
+            # output do not normalize
+            # linear output
         )
 
         if not self.mutual_information:
 
             self.input_action_space = input_action_space
             self.input_action_linear = nn.Sequential(
-                self.leakrelu_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
+                self.linear_init_(nn.Linear(self.input_action_space.n, self.linear_size)),
                 # fc donot normalize
                 # fc linear
             )
@@ -298,9 +305,9 @@ class TransitionModel(nn.Module):
                 nn.BatchNorm2d(16),
                 nn.LeakyReLU(),
 
-                self.leakrelu_init_(nn.ConvTranspose2d(16, self.output_observation_shape[0], 8, stride=4)),
+                self.tanh_init_(nn.ConvTranspose2d(16, self.output_observation_shape[0], 8, stride=4)),
                 # output do not normalize
-                nn.Sigmoid(),
+                nn.Tanh(),
             )
 
         else:

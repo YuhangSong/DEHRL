@@ -290,7 +290,7 @@ class PPO(object):
                         '''compute mse loss'''
                         mse_loss_transition = F.mse_loss(
                             input = predicted_next_observations_batch,
-                            target = next_observations_batch,
+                            target = (next_observations_batch-observations_batch[:,-1:]),
                             reduction='elementwise_mean',
                         )/255.0
 

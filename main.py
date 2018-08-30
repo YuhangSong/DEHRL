@@ -459,7 +459,7 @@ class HierarchyLayer(object):
                 self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
                 self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:]).squeeze()
 
-                self.actions_to_step = [self.action.squeeze(1).cpu().numpy(), self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer]
+                self.actions_to_step = [self.action.squeeze(1).cpu().numpy(), [self.predicted_next_observations_to_downer_layer,self.rollouts.observations[self.step_i][:,-1:]], self.predicted_reward_bounty_to_downer_layer]
 
             else:
                 self.actions_to_step = self.action.squeeze(1).cpu().numpy()
@@ -476,8 +476,8 @@ class HierarchyLayer(object):
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
 
             if not args.mutual_information:
-                obs_rb = self.obs
-                prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
+                obs_rb = self.obs.astype(float)-self.predicted_next_observations_by_upper_layer[1].cpu().numpy()
+                prediction_rb = self.predicted_next_observations_by_upper_layer[0].cpu().numpy()
 
             else:
                 self.upper_layer.transition_model.eval()
@@ -945,9 +945,9 @@ class HierarchyLayer(object):
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:,:,:].permute(1,2,0)
+            img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:].permute(1,2,0)
             for action_i in range(self.envs.action_space.n):
-                img = torch.cat([img,self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:].permute(1,2,0)],1)
+                img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
             img = img.cpu().numpy()
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
