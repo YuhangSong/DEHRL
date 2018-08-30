@@ -508,7 +508,7 @@ class HierarchyLayer(object):
                             )
                             mass_center_1 = np.asarray(
                                 ndimage.measurements.center_of_mass(
-                                    prediction_rb[action_i,process_i][0].astype(np.uint8)
+                                    ((prediction_rb[action_i,process_i][0]+255.0)/2.0).astype(np.uint8)
                                 )
                             )
                             difference_mass_center = np.linalg.norm(mass_center_0-mass_center_1)
