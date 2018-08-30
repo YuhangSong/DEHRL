@@ -503,7 +503,7 @@ class HierarchyLayer(object):
                         if args.distance in ['mass_center','l1_mass_center']:
                             mass_center_0 = np.asarray(
                                 ndimage.measurements.center_of_mass(
-                                    obs_rb[process_i][0].astype(np.uint8)
+                                    ((obs_rb[process_i][0]+255.0)/2.0).astype(np.uint8)
                                 )
                             )
                             mass_center_1 = np.asarray(
