@@ -493,6 +493,7 @@ class HierarchyLayer(object):
                     difference_list = []
                     for action_i in range(prediction_rb.shape[0]):
 
+                        '''compute difference'''
                         if args.distance in ['l1','l1_mass_center']:
                             difference_l1 = np.mean(
                                 np.abs(
@@ -513,18 +514,7 @@ class HierarchyLayer(object):
                             )
                             difference_mass_center = np.linalg.norm(mass_center_0-mass_center_1)
 
-                        if args.distance in ['match']:
-                            raise DeprecationWarning
-                            # p0_kp, des0 = sift.detectAndCompute(obs_rb[process_i][0].astype(np.uint8),None)
-                            # p1_kp, des1 = sift.detectAndCompute(prediction_rb[action_i,process_i][0].astype(np.uint8),None)
-                            #
-                            # difference = 0.0
-                            # if des1 is not None:
-                            #     '''it is possible that des1 is None, since the prediction is not ready yet'''
-                            #     matches = flann.knnMatch(des0,des1,k=2)
-                            #     for m,n in matches:
-                            #         difference += m.distance
-
+                        '''assign difference'''
                         if args.distance in ['l1']:
                             difference = difference_l1
                         elif args.distance in ['mass_center']:
@@ -536,10 +526,12 @@ class HierarchyLayer(object):
                         else:
                             raise NotImplementedError
 
+                        '''record difference'''
                         if action_i==action_rb[process_i]:
                             continue
-                        difference_list += [difference]
+                        difference_list += [difference*args.reward_bounty]
 
+                    '''compute reward bounty'''
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
 
                 else:
@@ -567,8 +559,6 @@ class HierarchyLayer(object):
                     self.reward_bounty = delta * positive_active + positive_active - 1
                 else:
                     raise Exception('No Supported')
-
-            self.reward_bounty = self.reward_bounty*args.reward_bounty
 
             '''mask reward bounty, since the final state is start state,
             and the estimation from transition model is not accurate'''
