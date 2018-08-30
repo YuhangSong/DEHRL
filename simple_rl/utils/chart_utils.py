@@ -70,7 +70,8 @@ def load_data(experiment_dir, experiment_agents):
 
         # Put the reward instances into a list of floats.
         for instance in all_reward.readlines():
-            all_episodes_for_instance = [float(r) for r in instance.split(",")[:-1] if len(r) > 0]
+            all_episodes_for_instance = [(float(r)/200.0) for r in instance.split(",")[:-1] if len(r) > 0]
+            print(all_episodes_for_instance)
             if len(all_episodes_for_instance) > 0:
                 all_instances.append(all_episodes_for_instance)
 
@@ -101,7 +102,7 @@ def average_data(data, cumulative=False):
             avged = all_instances_sum / num_instances
         except TypeError:
             raise ValueError("(simple_rl) Plotting Error: an algorithm was run with inconsistent parameters (likely inconsistent number of Episodes/Instances. Try clearing old data).")
-        
+
         if cumulative:
             # If we're summing over episodes.
             temp = []
@@ -184,7 +185,7 @@ def plot(results, experiment_dir, agents, plot_file_name="", conf_intervals=[], 
         conf_intervals (list of floats) [optional]: confidence intervals to display with the chart.
         use_cost (bool) [optional]: If true, plots are in terms of cost. Otherwise, plots are in terms of reward.
         cumulative (bool) [optional]: If true, plots are cumulative cost/reward.
-        episodic (bool): If true, labels the x-axis "Episode Number". Otherwise, "Step Number". 
+        episodic (bool): If true, labels the x-axis "Episode Number". Otherwise, "Step Number".
         open_plot (bool)
         track_disc_reward (bool): If true, plots discounted reward.
 
@@ -222,13 +223,13 @@ def plot(results, experiment_dir, agents, plot_file_name="", conf_intervals=[], 
         # Add figure for this algorithm.
         agent_color_index = i if agent_name not in agent_colors else agent_colors[agent_name]
         agent_marker_index = agent_color_index
-        
+
         # Grab new color/marker if we've gone over.
         if agent_color_index >= len(colors):
             agent_color_index = agent_color_index % len(colors)
         if agent_marker_index >= len(markers):
             agent_marker_index = agent_marker_index % len(markers)
-        
+
         series_color = colors[agent_color_index]
         series_marker = markers[agent_marker_index]
         y_axis = results[i]
@@ -246,7 +247,7 @@ def plot(results, experiment_dir, agents, plot_file_name="", conf_intervals=[], 
         pyplot.plot(x_axis, y_axis, color=series_color, marker=series_marker, markevery=marker_every, label=agent_name)
         pyplot.legend()
     print()
-    
+
     # Configure plot naming information.
     unit = "Cost" if use_cost else "Reward"
     plot_label = "Cumulative" if cumulative else "Average"
@@ -281,7 +282,7 @@ def plot(results, experiment_dir, agents, plot_file_name="", conf_intervals=[], 
 
     # Save the plot.
     pyplot.savefig(plot_file_name, format="pdf")
-    
+
     if open_plot:
         # Open it.
         open_prefix = "gnome-" if sys.platform == "linux" or sys.platform == "linux2" else ""
@@ -299,7 +300,7 @@ def make_plots(experiment_dir, experiment_agents, plot_file_name="", cumulative=
         plot_file_name (str)
         cumulative (bool): If true, plots show cumulative trr
         use_cost (bool): If true, plots are in terms of cost. Otherwise, plots are in terms of reward.
-        episodic (bool): If true, labels the x-axis "Episode Number". Otherwise, "Step Number". 
+        episodic (bool): If true, labels the x-axis "Episode Number". Otherwise, "Step Number".
         track_disc_reward (bool): If true, plots discounted reward (changes plot title, too).
 
     Summary:
@@ -461,7 +462,7 @@ def main():
     Summary:
         For manual plotting.
     '''
-    
+
     # Parse args.
     args = parse_args()
 

@@ -94,7 +94,7 @@ class Experiment(object):
             parameters
 
         Summary:
-            Writes enough detail about @agents, @mdp, and @parameters to the file results/<exp_name>/params.txt 
+            Writes enough detail about @agents, @mdp, and @parameters to the file results/<exp_name>/params.txt
             so that the function simple_rl.run_experiments.reproduce_from_exp_file can rerun the experiment.
         '''
         out_file = open(os.path.join(self.exp_directory, Experiment.FULL_EXP_FILE_NAME), "w")
@@ -160,12 +160,20 @@ class Experiment(object):
             agent_name_ls = [agent_name for agent_name in self.agents.keys()]
         else:
             agent_name_ls = [a.get_name() for a in self.agents]
-            
+
         if self.experiment_name_prefix != "":
             plot_file_name = self.experiment_name_prefix + str(self.mdp)
         else:
             plot_file_name = ""
 
+        # print(self.exp_directory)
+        # print(agent_name_ls)
+        # print(self.is_episodic)
+        # print(plot_file_name)
+        # print(self.cumulative_plot)
+        # print(self.track_disc_reward)
+        # print(open_plot)
+        # print(s)
         chart_utils.make_plots(self.exp_directory,
                                 agent_name_ls,
                                 episodic=self.is_episodic,
@@ -181,7 +189,7 @@ class Experiment(object):
 
     def get_agent_avg_cumulative_rew(self, agent):
         result_file = open(os.path.join(self.exp_directory, str(agent)) + ".csv", "r")
-        
+
         total = 0
         num_lines = 0
         for line in result_file.readlines():
