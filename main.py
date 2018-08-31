@@ -284,6 +284,15 @@ class HierarchyLayer(object):
             self.last_shuffle_at = 0
             self.envs.reset_task()
 
+    def reset_actor_critic(self):
+        self.actor_critic = Policy(
+            obs_shape = obs_shape,
+            input_action_space = self.action_space,
+            output_action_space = self.envs.action_space,
+            recurrent_policy = args.recurrent_policy,
+            num_subpolicy = args.num_subpolicy[self.hierarchy_id],
+        ).cuda()
+
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
         self.agent.set_upper_layer(self.upper_layer)
@@ -738,26 +747,27 @@ class HierarchyLayer(object):
         self.update_i += 1
 
         if self.hierarchy_id in [0]:
-            if (self.num_trained_frames-self.last_shuffle_at)>4000000:
+            if (self.num_trained_frames-self.last_shuffle_at)>5000000:
                 self.last_shuffle_at = self.num_trained_frames
                 self.envs.reset_task()
+                self.upper_layer.upper_layer.reset_actor_critic()
 
         '''prepare rollouts for new round of interaction'''
         self.rollouts.after_update()
 
         '''save checkpoint'''
-        if (self.update_i % args.save_interval == 0 and args.save_dir != "") or (self.update_i in [1,2]):
-            try:
-                np.save(
-                    args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
-                    np.array([self.num_trained_frames]),
-                )
-                self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
-                if self.transition_model is not None:
-                    self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
-                print("[H-{:1}] Save checkpoint successed.".format(self.hierarchy_id))
-            except Exception as e:
-                print("[H-{:1}] Save checkpoint failed, due to {}.".format(self.hierarchy_id,e))
+        # if (self.update_i % args.save_interval == 0 and args.save_dir != "") or (self.update_i in [1,2]):
+        #     try:
+        #         np.save(
+        #             args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
+        #             np.array([self.num_trained_frames]),
+        #         )
+        #         self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
+        #         if self.transition_model is not None:
+        #             self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
+        #         print("[H-{:1}] Save checkpoint successed.".format(self.hierarchy_id))
+        #     except Exception as e:
+        #         print("[H-{:1}] Save checkpoint failed, due to {}.".format(self.hierarchy_id,e))
 
         '''print info'''
         if self.update_i % args.log_interval == 0:
