@@ -284,6 +284,15 @@ class HierarchyLayer(object):
             self.last_shuffle_at = 0
             self.envs.reset_task()
 
+    def reset_actor_critic(self):
+        self.actor_critic = Policy(
+            obs_shape = obs_shape,
+            input_action_space = self.action_space,
+            output_action_space = self.envs.action_space,
+            recurrent_policy = args.recurrent_policy,
+            num_subpolicy = args.num_subpolicy[self.hierarchy_id],
+        ).cuda()
+
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
         self.agent.set_upper_layer(self.upper_layer)
@@ -738,26 +747,28 @@ class HierarchyLayer(object):
         self.update_i += 1
 
         if self.hierarchy_id in [0]:
-            if (self.num_trained_frames-self.last_shuffle_at)>4000000:
-                self.last_shuffle_at = self.num_trained_frames
-                self.envs.reset_task()
+            if (self.num_trained_frames-self.last_shuffle_at)>5000000:
+                # self.last_shuffle_at = self.num_trained_frames
+                # self.envs.reset_task()
+                # self.upper_layer.upper_layer.reset_actor_critic()
+                print(s)
 
         '''prepare rollouts for new round of interaction'''
         self.rollouts.after_update()
 
         '''save checkpoint'''
-        if (self.update_i % args.save_interval == 0 and args.save_dir != "") or (self.update_i in [1,2]):
-            try:
-                np.save(
-                    args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
-                    np.array([self.num_trained_frames]),
-                )
-                self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
-                if self.transition_model is not None:
-                    self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
-                print("[H-{:1}] Save checkpoint successed.".format(self.hierarchy_id))
-            except Exception as e:
-                print("[H-{:1}] Save checkpoint failed, due to {}.".format(self.hierarchy_id,e))
+        # if (self.update_i % args.save_interval == 0 and args.save_dir != "") or (self.update_i in [1,2]):
+        #     try:
+        #         np.save(
+        #             args.save_dir+'/hierarchy_{}_num_trained_frames.npy'.format(self.hierarchy_id),
+        #             np.array([self.num_trained_frames]),
+        #         )
+        #         self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
+        #         if self.transition_model is not None:
+        #             self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
+        #         print("[H-{:1}] Save checkpoint successed.".format(self.hierarchy_id))
+        #     except Exception as e:
+        #         print("[H-{:1}] Save checkpoint failed, due to {}.".format(self.hierarchy_id,e))
 
         '''print info'''
         if self.update_i % args.log_interval == 0:
@@ -783,58 +794,58 @@ class HierarchyLayer(object):
             print(print_string)
 
         '''visualize results'''
-        if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
-            '''we use tensorboard since its better when comparing plots'''
-            self.summary = tf.Summary()
-            if args.env_name in ['OverCooked']:
-                action_count = np.zeros(4)
-                for info_index in range(len(self.info)):
-                    action_count += self.info[info_index]['action_count']
-                if args.see_leg_fre:
-                    leg_count = np.zeros(17)
-                    for leg_index in range(len(self.info)):
-                        leg_count += self.info[leg_index]['leg_count']
-
-            if args.env_name in ['OverCooked']:
-                if self.hierarchy_id in [0]:
-                    for index_action in range(4):
-                        self.summary.value.add(
-                            tag = 'hierarchy_{}/action_{}'.format(
-                                0,
-                                index_action,
-                            ),
-                            simple_value = action_count[index_action],
-                        )
-                    if args.see_leg_fre:
-                        for index_leg in range(17):
-                            self.summary.value.add(
-                                tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
-                                    0,
-                                    index_leg,
-                                ),
-                                simple_value = leg_count[index_leg],
-                            )
-
-            for episode_reward_type in self.episode_reward.keys():
-                self.summary.value.add(
-                    tag = 'hierarchy_{}/final_reward_{}'.format(
-                        self.hierarchy_id,
-                        episode_reward_type,
-                    ),
-                    simple_value = self.final_reward[episode_reward_type],
-                )
-
-            for epoch_loss_type in epoch_loss.keys():
-                self.summary.value.add(
-                    tag = 'hierarchy_{}/epoch_loss_{}'.format(
-                        self.hierarchy_id,
-                        epoch_loss_type,
-                    ),
-                    simple_value = epoch_loss[epoch_loss_type],
-                )
-
-            summary_writer.add_summary(self.summary, self.num_trained_frames)
-            summary_writer.flush()
+        # if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
+        #     '''we use tensorboard since its better when comparing plots'''
+        #     self.summary = tf.Summary()
+        #     if args.env_name in ['OverCooked']:
+        #         action_count = np.zeros(4)
+        #         for info_index in range(len(self.info)):
+        #             action_count += self.info[info_index]['action_count']
+        #         if args.see_leg_fre:
+        #             leg_count = np.zeros(17)
+        #             for leg_index in range(len(self.info)):
+        #                 leg_count += self.info[leg_index]['leg_count']
+        #
+        #     if args.env_name in ['OverCooked']:
+        #         if self.hierarchy_id in [0]:
+        #             for index_action in range(4):
+        #                 self.summary.value.add(
+        #                     tag = 'hierarchy_{}/action_{}'.format(
+        #                         0,
+        #                         index_action,
+        #                     ),
+        #                     simple_value = action_count[index_action],
+        #                 )
+        #             if args.see_leg_fre:
+        #                 for index_leg in range(17):
+        #                     self.summary.value.add(
+        #                         tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
+        #                             0,
+        #                             index_leg,
+        #                         ),
+        #                         simple_value = leg_count[index_leg],
+        #                     )
+        #
+        #     for episode_reward_type in self.episode_reward.keys():
+        #         self.summary.value.add(
+        #             tag = 'hierarchy_{}/final_reward_{}'.format(
+        #                 self.hierarchy_id,
+        #                 episode_reward_type,
+        #             ),
+        #             simple_value = self.final_reward[episode_reward_type],
+        #         )
+        #
+        #     for epoch_loss_type in epoch_loss.keys():
+        #         self.summary.value.add(
+        #             tag = 'hierarchy_{}/epoch_loss_{}'.format(
+        #                 self.hierarchy_id,
+        #                 epoch_loss_type,
+        #             ),
+        #             simple_value = epoch_loss[epoch_loss_type],
+        #         )
+        #
+        #     summary_writer.add_summary(self.summary, self.num_trained_frames)
+        #     summary_writer.flush()
 
         '''update system status'''
         self.refresh_update_type()
@@ -900,6 +911,18 @@ class HierarchyLayer(object):
                 self.episode_reward_raw_all += self.final_reward['raw']
                 self.episode_count += 1
                 self.final_reward['raw_all'] = self.episode_reward_raw_all / self.episode_count
+
+            if self.hierarchy_id in [0]:
+                self.summary = tf.Summary()
+                self.summary.value.add(
+                    tag = 'hierarchy_{}/final_reward_{}'.format(
+                        self.hierarchy_id,
+                        'norm',
+                    ),
+                    simple_value = self.final_reward['norm'],
+                )
+                summary_writer.add_summary(self.summary, self.num_trained_frames)
+                summary_writer.flush()
 
             if self.log_behavior:
                 self.summary_behavior_at_done()
