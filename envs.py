@@ -41,6 +41,23 @@ class SleepAfterDone(gym.Wrapper):
             self.reward, done, self.info = type(self.reward)(0), True, self.info
         return self.obs, self.reward, done, self.info
 
+    def get_sleeping(self, env_index=None):
+        return self.sleeping
+
+class SingleThread(gym.Wrapper):
+    def __init__(self, env):
+        """make the env return things in a multi-thread fashion
+        """
+        gym.Wrapper.__init__(self, env)
+
+    def reset(self, **kwargs):
+        obs = self.env.reset(**kwargs)
+        return np.stack([obs])
+
+    def step(self, ac):
+        obs, reward, done, info = self.env.step(ac)
+        return np.stack([obs]), np.stack([reward]), np.stack([done]), np.stack([info])
+
 class DelayDone(gym.Wrapper):
     def __init__(self, env):
         """make the env sleep after returning done,
@@ -88,6 +105,7 @@ def make_env(rank, args):
             env = minecraft.MineCraft(
                 args = args,
             )
+            env.set_render(False)
 
         else:
             '''envs from openai gym'''
@@ -118,6 +136,9 @@ def make_env(rank, args):
 
         env = DelayDone(env)
         env = SleepAfterDone(env)
+
+        if args.num_processes in [1]:
+            env=SingleThread(env)
 
         return env
 
