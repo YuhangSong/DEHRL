@@ -2,7 +2,7 @@ from minecraft_supportings import *
 
 class MineCraft(pyglet.window.Window,gym.Env):
 
-    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=10):
+    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=100):
 
         self.args = args
         self.obs_size = obs_size
@@ -434,7 +434,10 @@ class MineCraft(pyglet.window.Window,gym.Env):
 
     def get_obs(self):
         glReadPixels(0, 0, self.width, self.height, self.obs_type_to_gl_type[self.obs_type], GL_UNSIGNED_BYTE, self.buffer)
-        return np.expand_dims(np.array(Image.frombytes(mode=self.obs_type_to_pil_mode[self.obs_type], size=(self.obs_size, self.obs_size), data=self.buffer).transpose(Image.FLIP_TOP_BOTTOM)),2)
+        obs = np.array(Image.frombytes(mode=self.obs_type_to_pil_mode[self.obs_type], size=(self.obs_size, self.obs_size), data=self.buffer).transpose(Image.FLIP_TOP_BOTTOM))
+        if self.obs_type in ['gray']:
+            obs=np.expand_dims(obs,2)
+        return obs
 
     def reset_minecraft(self):
         """ Reset all settings in MineCraft.
@@ -563,7 +566,7 @@ def main():
     minecraft_global_setup()
 
     env = MineCraft()
-    env.set_render(True)
+    env.set_render(False)
 
     obs = env.reset()
     action = cv2.waitKey(0)
@@ -575,6 +578,7 @@ def main():
             break
 
         obs, reward, done, info = env.step(action)
+        print(obs.shape)
         if done:
             env.reset()
         action = cv2.waitKey(0)

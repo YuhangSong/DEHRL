@@ -48,12 +48,19 @@ print('Log to {}'.format(args.save_dir))
 
 torch.set_num_threads(1)
 
+if args.env_name in ['MineCraft']:
+    import minecraft
+    minecraft.minecraft_global_setup()
+
 summary_writer = tf.summary.FileWriter(args.save_dir)
 
 bottom_envs = [make_env(i, args=args)
             for i in range(args.num_processes)]
 
-bottom_envs = SubprocVecEnv(bottom_envs)
+if args.num_processes > 1:
+    bottom_envs = SubprocVecEnv(bottom_envs)
+else:
+    bottom_envs = bottom_envs[0]()
 
 if len(bottom_envs.observation_space.shape) == 1:
     if args.env_name in ['OverCooked']:
@@ -601,7 +608,10 @@ class HierarchyLayer(object):
 
         self.generate_actions_to_step()
 
-        env_0_sleeping = self.envs.get_sleeping(env_index=0)
+        if type(self.envs).__name__ in ['SingleThread']:
+            env_0_sleeping = self.envs.env.get_sleeping(env_index=0)
+        elif type(self.envs).__name__ in ['HierarchyLayer','SubprocVecEnv']:
+            env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
         '''Obser reward and next obs'''
         fetched = self.envs.step(self.actions_to_step)
@@ -903,17 +913,17 @@ class HierarchyLayer(object):
             except Exception as e:
                 img = macro_action_img
 
-        bottom_action_img = utils.actions_onehot_visualize(
-            actions_onehot = np.expand_dims(
-                utils.action_to_onehot(
-                    action = self.action.squeeze().cpu().numpy()[0],
-                    action_space = bottom_envs.action_space,
-                ),
-                axis = 0,
-            ),
-            figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/bottom_envs.action_space.n*1))
-        )
-        img = np.concatenate((img, bottom_action_img),0)
+        # bottom_action_img = utils.actions_onehot_visualize(
+        #     actions_onehot = np.expand_dims(
+        #         utils.action_to_onehot(
+        #             action = self.action.squeeze(1).cpu().numpy()[0],
+        #             action_space = bottom_envs.action_space,
+        #         ),
+        #         axis = 0,
+        #     ),
+        #     figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/bottom_envs.action_space.n*1))
+        # )
+        # img = np.concatenate((img, bottom_action_img),0)
 
         state_img = utils.gray_to_rgb(self.obs[0,0])
         state_img = cv2.putText(
@@ -970,7 +980,10 @@ class HierarchyLayer(object):
         summary_writer.flush()
 
     def get_sleeping(self, env_index):
-        return self.envs.get_sleeping(env_index)
+        if type(self.envs).__name__ in ['SingleThread']:
+            return self.envs.env.get_sleeping(env_index)
+        elif type(self.envs).__name__ in ['HierarchyLayer']:
+            return self.envs.get_sleeping(env_index)
 
 def main():
 
