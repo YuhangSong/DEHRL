@@ -464,8 +464,7 @@ class HierarchyLayer(object):
                         input_action = self.action_onehot_batch,
                     )
                 self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
-                self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:]).squeeze()
-
+                self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:]).squeeze(2)
                 self.actions_to_step = [self.action.squeeze(1).cpu().numpy(), [self.predicted_next_observations_to_downer_layer,self.rollouts.observations[self.step_i][:,-1:]], self.predicted_reward_bounty_to_downer_layer]
 
             else:

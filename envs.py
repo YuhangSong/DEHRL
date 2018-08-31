@@ -55,7 +55,7 @@ class SingleThread(gym.Wrapper):
         return np.stack([obs])
 
     def step(self, ac):
-        obs, reward, done, info = self.env.step(ac)
+        obs, reward, done, info = self.env.step(ac[0])
         return np.stack([obs]), np.stack([reward]), np.stack([done]), np.stack([info])
 
 class DelayDone(gym.Wrapper):
