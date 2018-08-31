@@ -51,6 +51,14 @@ class MineCraft(pyglet.window.Window,gym.Env):
             4: key.Q,
             5: key.E,
         }
+        self.key_map_to_action = {
+            key.A: 0,
+            key.W: 1,
+            key.S: 2,
+            key.D: 3,
+            key.Q: 4,
+            key.E: 5,
+        }
         self.action_space = spaces.Discrete(len(self.action_to_key_map.keys()))
         self.observation_space = spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, self.obs_type_to_num_channel[self.obs_type]),dtype=np.uint8)
 
@@ -501,7 +509,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
         self.eposide_length += 1
 
         '''step forward and get obs'''
-        self.on_key_press(action,0)
+        self.on_key_press(self.action_to_key_map[action],0)
         self.update(self.step_interval)
         self.on_draw()
         obs = self.get_obs()
@@ -569,7 +577,7 @@ def main():
     env.set_render(False)
 
     obs = env.reset()
-    action = cv2.waitKey(0)
+    action = env.key_map_to_action[cv2.waitKey(0)]
 
     while True:
 
@@ -581,7 +589,7 @@ def main():
         print(obs.shape)
         if done:
             env.reset()
-        action = cv2.waitKey(0)
+        action = env.key_map_to_action[cv2.waitKey(0)]
 
     cv2.destroyAllWindows()
 
