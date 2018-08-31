@@ -280,10 +280,6 @@ class HierarchyLayer(object):
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
         self.reward_bounty = torch.zeros(args.num_processes).cuda()
 
-        if self.hierarchy_id in [0]:
-            self.last_shuffle_at = 0
-            self.envs.reset_task()
-
     def reset_actor_critic(self):
         self.actor_critic = Policy(
             obs_shape = obs_shape,
@@ -793,58 +789,58 @@ class HierarchyLayer(object):
             print(print_string)
 
         '''visualize results'''
-        if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
-            '''we use tensorboard since its better when comparing plots'''
-            self.summary = tf.Summary()
-            if args.env_name in ['OverCooked']:
-                action_count = np.zeros(4)
-                for info_index in range(len(self.info)):
-                    action_count += self.info[info_index]['action_count']
-                if args.see_leg_fre:
-                    leg_count = np.zeros(17)
-                    for leg_index in range(len(self.info)):
-                        leg_count += self.info[leg_index]['leg_count']
-
-            if args.env_name in ['OverCooked']:
-                if self.hierarchy_id in [0]:
-                    for index_action in range(4):
-                        self.summary.value.add(
-                            tag = 'hierarchy_{}/action_{}'.format(
-                                0,
-                                index_action,
-                            ),
-                            simple_value = action_count[index_action],
-                        )
-                    if args.see_leg_fre:
-                        for index_leg in range(17):
-                            self.summary.value.add(
-                                tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
-                                    0,
-                                    index_leg,
-                                ),
-                                simple_value = leg_count[index_leg],
-                            )
-
-            for episode_reward_type in self.episode_reward.keys():
-                self.summary.value.add(
-                    tag = 'hierarchy_{}/final_reward_{}'.format(
-                        self.hierarchy_id,
-                        episode_reward_type,
-                    ),
-                    simple_value = self.final_reward[episode_reward_type],
-                )
-
-            for epoch_loss_type in epoch_loss.keys():
-                self.summary.value.add(
-                    tag = 'hierarchy_{}/epoch_loss_{}'.format(
-                        self.hierarchy_id,
-                        epoch_loss_type,
-                    ),
-                    simple_value = epoch_loss[epoch_loss_type],
-                )
-
-            summary_writer.add_summary(self.summary, self.num_trained_frames)
-            summary_writer.flush()
+        # if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
+        #     '''we use tensorboard since its better when comparing plots'''
+        #     self.summary = tf.Summary()
+        #     if args.env_name in ['OverCooked']:
+        #         action_count = np.zeros(4)
+        #         for info_index in range(len(self.info)):
+        #             action_count += self.info[info_index]['action_count']
+        #         if args.see_leg_fre:
+        #             leg_count = np.zeros(17)
+        #             for leg_index in range(len(self.info)):
+        #                 leg_count += self.info[leg_index]['leg_count']
+        #
+        #     if args.env_name in ['OverCooked']:
+        #         if self.hierarchy_id in [0]:
+        #             for index_action in range(4):
+        #                 self.summary.value.add(
+        #                     tag = 'hierarchy_{}/action_{}'.format(
+        #                         0,
+        #                         index_action,
+        #                     ),
+        #                     simple_value = action_count[index_action],
+        #                 )
+        #             if args.see_leg_fre:
+        #                 for index_leg in range(17):
+        #                     self.summary.value.add(
+        #                         tag = 'hierarchy_{}/leg_{}_in_one_eposide'.format(
+        #                             0,
+        #                             index_leg,
+        #                         ),
+        #                         simple_value = leg_count[index_leg],
+        #                     )
+        #
+        #     for episode_reward_type in self.episode_reward.keys():
+        #         self.summary.value.add(
+        #             tag = 'hierarchy_{}/final_reward_{}'.format(
+        #                 self.hierarchy_id,
+        #                 episode_reward_type,
+        #             ),
+        #             simple_value = self.final_reward[episode_reward_type],
+        #         )
+        #
+        #     for epoch_loss_type in epoch_loss.keys():
+        #         self.summary.value.add(
+        #             tag = 'hierarchy_{}/epoch_loss_{}'.format(
+        #                 self.hierarchy_id,
+        #                 epoch_loss_type,
+        #             ),
+        #             simple_value = epoch_loss[epoch_loss_type],
+        #         )
+        #
+        #     summary_writer.add_summary(self.summary, self.num_trained_frames)
+        #     summary_writer.flush()
 
         '''update system status'''
         self.refresh_update_type()
@@ -905,6 +901,17 @@ class HierarchyLayer(object):
             for episode_reward_type in self.episode_reward.keys():
                 self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
                 self.episode_reward[episode_reward_type] = 0.0
+
+            self.summary = tf.Summary()
+            self.summary.value.add(
+                tag = 'hierarchy_{}/final_reward_{}'.format(
+                    self.hierarchy_id,
+                    'norm',
+                ),
+                simple_value = self.final_reward['norm'],
+            )
+            summary_writer.add_summary(self.summary, self.num_trained_frames)
+            summary_writer.flush()
 
             if self.hierarchy_id in [0]:
                 self.episode_reward_raw_all += self.final_reward['raw']
@@ -1021,6 +1028,10 @@ def main():
         hierarchy_layer[hierarchy_i].set_upper_layer(hierarchy_layer[hierarchy_i+1])
 
     hierarchy_layer[-1].reset()
+
+    hierarchy_layer[0].last_shuffle_at = 0
+    hierarchy_layer[0].envs.reset_task()
+    hierarchy_layer[0].upper_layer.upper_layer.reset_actor_critic()
 
     while True:
 
