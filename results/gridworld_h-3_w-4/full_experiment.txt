@@ -1,0 +1,33 @@
+MDP:<class 'simple_rl.tasks.grid_world.GridWorldMDPClass.GridWorldMDP'>
+		width=4=<class 'int'>
+		height=3=<class 'int'>
+		init_loc=(1, 1)=<class 'tuple'>
+		rand_init=False=<class 'bool'>
+		goal_locs=[(4, 3)]=<class 'list'>
+		lava_locs=[(4, 2)]=<class 'list'>
+		walls=[(2, 2)]=<class 'list'>
+		is_goal_terminal=True=<class 'bool'>
+		gamma=0.95=<class 'float'>
+		slip_prob=0.05=<class 'float'>
+		step_cost=0.0=<class 'float'>
+		lava_cost=0.01=<class 'float'>
+
+AGENT:0-<class 'simple_rl.agents.QLearningAgentClass.QLearningAgent'>
+		alpha=0.1=<class 'float'>
+		gamma=0.99=<class 'float'>
+		epsilon=0.1=<class 'float'>
+		anneal=False=<class 'bool'>
+		explore=uniform=<class 'str'>
+
+AGENT:1-<class 'simple_rl.agents.RandomAgentClass.RandomAgent'>
+
+
+MISC
+		instances=5=<class 'int'>
+		episodes=50=<class 'int'>
+		steps=10=<class 'int'>
+		track_disc_reward=False=<class 'bool'>
+
+
+FUNC
+	run_agents_on_mdp
