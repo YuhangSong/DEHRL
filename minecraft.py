@@ -51,14 +51,10 @@ class MineCraft(pyglet.window.Window,gym.Env):
             4: key.Q,
             5: key.E,
         }
-        self.key_map_to_action = {
-            key.A: 0,
-            key.W: 1,
-            key.S: 2,
-            key.D: 3,
-            key.Q: 4,
-            key.E: 5,
-        }
+        self.key_map_to_action = {}
+        for key in self.action_to_key_map.keys():
+            self.key_map_to_action[self.action_to_key_map[key]]=key
+            
         self.action_space = spaces.Discrete(len(self.action_to_key_map.keys()))
         self.observation_space = spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, self.obs_type_to_num_channel[self.obs_type]),dtype=np.uint8)
 
