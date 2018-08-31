@@ -54,6 +54,9 @@ class MineCraft(pyglet.window.Window,gym.Env):
         self.action_space = spaces.Discrete(len(self.action_to_key_map.keys()))
         self.observation_space = spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, self.obs_type_to_num_channel[self.obs_type]),dtype=np.uint8)
 
+    def seed(self,seed):
+        print("# WARNING: Deterministic game")
+
     def set_exclusive_mouse(self, exclusive):
         """ If `exclusive` is True, the game will capture the mouse, if False
         the game will ignore the mouse.
@@ -560,9 +563,9 @@ def main():
     minecraft_global_setup()
 
     env = MineCraft()
-    env.set_render(True)
+    env.set_render(False)
 
-    env.reset()
+    obs = env.reset()
     action = cv2.waitKey(0)
 
     while True:
@@ -572,6 +575,8 @@ def main():
             break
 
         obs, reward, done, info = env.step(action)
+        print(obs)
+        print(obs.shape)
         if done:
             env.reset()
         action = cv2.waitKey(0)

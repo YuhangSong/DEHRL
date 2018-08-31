@@ -82,6 +82,13 @@ def make_env(rank, args):
                 args = args,
             )
 
+        elif args.env_name in ['MineCraft']:
+            '''OverCooked game we wrote'''
+            import minecraft
+            env = minecraft.MineCraft(
+                args = args,
+            )
+
         else:
             '''envs from openai gym'''
             env = gym.make(args.env_name)
