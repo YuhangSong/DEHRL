@@ -18,7 +18,7 @@ from gym import error, spaces
 TICKS_PER_SEC = 60
 # Size of sectors used to ease block loading.
 SECTOR_SIZE = 16
-WALKING_SPEED = 5
+WALKING_SPEED = 2
 FLYING_SPEED = 15
 GRAVITY = 20.0
 MAX_JUMP_HEIGHT = 1.0 # About the height of a block.
@@ -163,43 +163,43 @@ class Model(object):
                     for dy in range(-2, 3):
                         self.add_block((x, y + dy, z), STONE, immediate=False)
 
-        # generate the hills randomly
-
-        # import random
-        # random.seed(1)
-        a_s = [-3,-5,8]
-        b_s = [-1,5,-8]
-        h_s = [3,5,2]
-        s_s = [6,7,8]
-
-        o = n - 10
-        for i in range(2):
-
-            # a = random.randint(-o, o)  # x position of the hill
-            # b = random.randint(-o, o)  # z position of the hill
-            # c = -1  # base of the hill
-            # h = random.randint(1, 6)  # height of the hill
-            # s = random.randint(4, 8)  # 2 * s is the side length of the hill
-            # d = 1  # how quickly to taper off the hills
-            # t = random.choice([GRASS, SAND, BRICK])
-
-            a = a_s[i%3]  # x position of the hill
-            b = b_s[i%3]  # z position of the hill
-            c = -1  # base of the hill
-            h = h_s[i%3]  # height of the hill
-            s = s_s[i%3]  # 2 * s is the side length of the hill
-            d = 1  # how quickly to taper off the hills
-            t = [GRASS, SAND, BRICK][i%3]
-
-            for y in range(c, c + h):
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), t, immediate=False)
-                s -= d  # decrement side lenth so hills taper off
+        # # generate the hills
+        #
+        # # import random
+        # # random.seed(1)
+        # a_s = [-3,-5,8]
+        # b_s = [-1,5,-8]
+        # h_s = [3,5,2]
+        # s_s = [6,7,8]
+        #
+        # o = n - 10
+        # for i in range(2):
+        #
+        #     # a = random.randint(-o, o)  # x position of the hill
+        #     # b = random.randint(-o, o)  # z position of the hill
+        #     # c = -1  # base of the hill
+        #     # h = random.randint(1, 6)  # height of the hill
+        #     # s = random.randint(4, 8)  # 2 * s is the side length of the hill
+        #     # d = 1  # how quickly to taper off the hills
+        #     # t = random.choice([GRASS, SAND, BRICK])
+        #
+        #     a = a_s[i%3]  # x position of the hill
+        #     b = b_s[i%3]  # z position of the hill
+        #     c = -1  # base of the hill
+        #     h = h_s[i%3]  # height of the hill
+        #     s = s_s[i%3]  # 2 * s is the side length of the hill
+        #     d = 1  # how quickly to taper off the hills
+        #     t = [GRASS, SAND, BRICK][i%3]
+        #
+        #     for y in range(c, c + h):
+        #         for x in range(a - s, a + s + 1):
+        #             for z in range(b - s, b + s + 1):
+        #                 if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
+        #                     continue
+        #                 if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
+        #                     continue
+        #                 self.add_block((x, y, z), t, immediate=False)
+        #         s -= d  # decrement side lenth so hills taper off
 
     def hit_test(self, position, vector, max_distance=8):
         """ Line of sight search from current position. If a block is

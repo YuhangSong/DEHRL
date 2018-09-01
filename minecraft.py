@@ -50,6 +50,10 @@ class MineCraft(pyglet.window.Window,gym.Env):
             3: key.D,
             4: key.Q,
             5: key.E,
+            6: key.T,
+            7: key.F,
+            8: key.G,
+            9: key.H,
         }
         self.key_map_to_action = {}
         for key_i in self.action_to_key_map.keys():
@@ -269,13 +273,21 @@ class MineCraft(pyglet.window.Window,gym.Env):
             The movement of the mouse.
 
         """
-        print('on_mouse_motion')
         if self.exclusive:
             m = 0.15
             x, y = self.rotation
             x, y = x + dx * m, y + dy * m
             y = max(-90, min(90, y))
             self.rotation = (x, y)
+
+    def move_view(self, dx, dy):
+        """ Called when the player moves the view.
+        """
+        m = 1.5
+        x, y = self.rotation
+        x, y = x + dx * m, y + dy * m
+        y = max(-90, min(90, y))
+        self.rotation = (x, y)
 
     def on_key_press(self, symbol, modifiers):
         """ Called when the player presses a key. See pyglet docs for key
@@ -311,6 +323,14 @@ class MineCraft(pyglet.window.Window,gym.Env):
                 texture = self.model.world[block]
                 if texture != STONE:
                     self.model.remove_block(block)
+        elif symbol == key.H:
+            self.move_view(1,0)
+        elif symbol == key.F:
+            self.move_view(-1,0)
+        elif symbol == key.T:
+            self.move_view(0,1)
+        elif symbol == key.G:
+            self.move_view(0,-1)
         elif symbol == key.SPACE:
             if self.dy == 0:
                 self.dy = JUMP_SPEED
@@ -471,7 +491,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
         #
         # The vertical plane rotation ranges from -90 (looking straight down) to
         # 90 (looking straight up). The horizontal rotation range is unbounded.
-        self.rotation = (0, 0)
+        self.rotation = (0, -15)
 
         # Which sector the player is currently in.
         self.sector = None
@@ -569,14 +589,14 @@ def main():
     minecraft_global_setup()
 
     env = MineCraft()
-    env.set_render(False)
+    env.set_render(True)
 
     obs = env.reset()
     action = env.key_map_to_action[cv2.waitKey(0)]
 
     while True:
 
-        if action==ord('f'):
+        if action==ord('j'):
             cv2.destroyAllWindows()
             break
 
