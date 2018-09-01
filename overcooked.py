@@ -739,6 +739,8 @@ if __name__ == '__main__':
     difference_mass_center = 0
     for i_episode in range(20):
         observation = env.reset()
+        print(observation)
+        print(observation.shape)
         last_mass_ceter = np.asarray(
             ndimage.measurements.center_of_mass(
                 observation.astype(np.uint8)
