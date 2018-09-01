@@ -77,7 +77,7 @@ class OverCooked(gym.Env):
             raise NotImplementedError
 
         # self.realgoal = np.arange(1,5)
-        self.realgoal = np.array([2,3,4,1])
+        self.realgoal = np.array([1,2,3,4])
         self.cur_goal = np.zeros(self.goal_num)
         self.viewer = None
         self.leg_id = 0
