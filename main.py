@@ -214,7 +214,7 @@ class HierarchyLayer(object):
             self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
 
         '''load checkpoint'''
-        self.num_trained_frames = 0
+        self.num_trained_frames = 5000000
 
         load_model = input('[H-{:1}] load policy model? (y/n)'.format(self.hierarchy_id))
         if load_model in ['y']:
@@ -747,7 +747,7 @@ class HierarchyLayer(object):
         self.update_i += 1
 
         if self.hierarchy_id in [0]:
-            if (self.num_trained_frames-self.last_shuffle_at)>5000000:
+            if (self.num_trained_frames-self.last_shuffle_at)>5000000*2:
                 # self.last_shuffle_at = self.num_trained_frames
                 # self.envs.reset_task()
                 # self.upper_layer.upper_layer.reset_actor_critic()
