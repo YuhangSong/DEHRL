@@ -2,7 +2,7 @@ from minecraft_supportings import *
 
 class MineCraft(pyglet.window.Window,gym.Env):
 
-    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=100):
+    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=200):
 
         self.args = args
         self.obs_size = obs_size
@@ -501,6 +501,8 @@ class MineCraft(pyglet.window.Window,gym.Env):
 
         # The current block the user can place. Hit num keys to cycle.
         self.block = self.inventory[0]
+
+        self.model.reset()
 
     def reset(self):
         self.eposide_length = 0
