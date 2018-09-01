@@ -857,13 +857,11 @@ class HierarchyLayer(object):
 
     def step_summary_from_env_0(self):
 
-        if self.hierarchy_id > 0:
-            '''for log behavior, hierarchy_id=0 is very long, ignore logging it'''
-            if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
-                '''log behavior every x minutes'''
-                if self.episode_reward['len']==0:
-                    self.last_time_log_behavior = time.time()
-                    self.log_behavior = True
+        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
+            '''log behavior every x minutes'''
+            if self.episode_reward['len']==0:
+                self.last_time_log_behavior = time.time()
+                self.log_behavior = True
 
         if self.log_behavior:
             self.summary_behavior_at_step()
@@ -912,18 +910,6 @@ class HierarchyLayer(object):
             except Exception as e:
                 img = macro_action_img
 
-        # bottom_action_img = utils.actions_onehot_visualize(
-        #     actions_onehot = np.expand_dims(
-        #         utils.action_to_onehot(
-        #             action = self.action.squeeze(1).cpu().numpy()[0],
-        #             action_space = bottom_envs.action_space,
-        #         ),
-        #         axis = 0,
-        #     ),
-        #     figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/bottom_envs.action_space.n*1))
-        # )
-        # img = np.concatenate((img, bottom_action_img),0)
-
         state_img = utils.gray_to_rgb(self.obs[0,0])
         state_img = cv2.putText(
             state_img,
@@ -960,23 +946,31 @@ class HierarchyLayer(object):
             self.num_trained_frames,
         ))
 
-        for episode_visilize_stack_name in self.episode_visilize_stack.keys():
-            self.episode_visilize_stack[episode_visilize_stack_name] = np.stack(
-                self.episode_visilize_stack[episode_visilize_stack_name]
-            )
-            image_summary_op = tf.summary.image(
-                'H-{}_F-{}_{}'.format(
-                    self.hierarchy_id,
-                    self.num_trained_frames,
-                    episode_visilize_stack_name,
-                ),
-                self.episode_visilize_stack[episode_visilize_stack_name],
-                max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
-            )
-            self.episode_visilize_stack[episode_visilize_stack_name] = None
-            image_summary = sess.run(image_summary_op)
-            summary_writer.add_summary(image_summary, self.num_trained_frames)
-        summary_writer.flush()
+        '''log as video'''
+        if self.hierarchy_id == 0:
+            '''hierarchy_id=0 has very long episode, log it with video'''
+            raise Exception('IceClear, you can log anythings in {}'.format(self.episode_visilize_stack))
+
+        '''log on tensorboard'''
+        if self.hierarchy_id > 0:
+            '''hierarchy_id=0 has very long episode, do not log it on tensorboard'''
+            for episode_visilize_stack_name in self.episode_visilize_stack.keys():
+                self.episode_visilize_stack[episode_visilize_stack_name] = np.stack(
+                    self.episode_visilize_stack[episode_visilize_stack_name]
+                )
+                image_summary_op = tf.summary.image(
+                    'H-{}_F-{}_{}'.format(
+                        self.hierarchy_id,
+                        self.num_trained_frames,
+                        episode_visilize_stack_name,
+                    ),
+                    self.episode_visilize_stack[episode_visilize_stack_name],
+                    max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
+                )
+                self.episode_visilize_stack[episode_visilize_stack_name] = None
+                image_summary = sess.run(image_summary_op)
+                summary_writer.add_summary(image_summary, self.num_trained_frames)
+            summary_writer.flush()
 
     def get_sleeping(self, env_index):
         if type(self.envs).__name__ in ['SingleThread']:
