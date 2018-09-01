@@ -572,8 +572,7 @@ def main():
     env.set_render(False)
 
     obs = env.reset()
-    print(env.key_map_to_action)
-    action = env.key_map_to_action[97]
+    action = env.key_map_to_action[cv2.waitKey(0)]
 
     while True:
 
@@ -585,7 +584,7 @@ def main():
         # print(obs.shape)
         if done:
             env.reset()
-        action = env.key_map_to_action[97]
+        action = env.key_map_to_action[cv2.waitKey(0)]
 
     cv2.destroyAllWindows()
 
