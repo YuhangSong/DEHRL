@@ -950,7 +950,23 @@ class HierarchyLayer(object):
             '''log as video'''
             if self.hierarchy_id == 0:
                 '''hierarchy_id=0 has very long episode, log it with video'''
-                raise Exception('IceClear, you can log anything in {}'.format(self.episode_visilize_stack))
+                self.video_index = 0
+                video_dir = '../results/obs_videos/'
+                try:
+                    os.makedirs(video_dir)
+                except Exception as e:
+                    pass
+                pic_shape = self.episode_visilize_stack['observation'].shape
+                fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                fps = 10
+                videoWriter = cv2.VideoWriter(video_dir+'video_'+str(self.video_index)+'.avi',fourcc,fps,(pic_shape[2],pic_shape[1]))#最后一个是保存图片的尺寸
+                for frame_i in range(pic_shape[0]):
+                    cur_frame = self.episode_visilize_stack['observation'][frame_i]
+                    print(cur_frame.shape)
+                    videoWriter.write(cur_frame)
+                print('save video successed: {}'.format(str(self.video_index)))
+                self.video_index += 1
+                # raise Exception('IceClear, you can log anything in {}'.format(self.episode_visilize_stack))
 
             '''log on tensorboard'''
             if self.hierarchy_id > 0:
