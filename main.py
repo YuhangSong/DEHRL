@@ -46,6 +46,9 @@ except Exception as e:
 
 print('Log to {}'.format(args.save_dir))
 
+log_fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+log_fps = 10
+
 torch.set_num_threads(1)
 
 if args.env_name in ['MineCraft']:
@@ -950,23 +953,22 @@ class HierarchyLayer(object):
             '''log as video'''
             if self.hierarchy_id == 0:
                 '''hierarchy_id=0 has very long episode, log it with video'''
-                self.video_index = 0
-                video_dir = '../results/obs_videos/'
-                try:
-                    os.makedirs(video_dir)
-                except Exception as e:
-                    pass
-                pic_shape = self.episode_visilize_stack['observation'].shape
-                fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-                fps = 10
-                videoWriter = cv2.VideoWriter(video_dir+'video_'+str(self.video_index)+'.avi',fourcc,fps,(pic_shape[2],pic_shape[1]))#最后一个是保存图片的尺寸
-                for frame_i in range(pic_shape[0]):
-                    cur_frame = self.episode_visilize_stack['observation'][frame_i]
-                    print(cur_frame.shape)
+
+                videoWriter = cv2.VideoWriter(
+                    '{}/H-{}_F-{}_{}.avi'.format(
+                        args.save_dir,
+                        self.hierarchy_id,
+                        self.num_trained_frames,
+                        episode_visilize_stack_name,
+                    ),
+                    log_fourcc,
+                    log_fps,
+                    (self.episode_visilize_stack[episode_visilize_stack_name].shape[2],self.episode_visilize_stack[episode_visilize_stack_name].shape[1]),
+                )
+                for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
+                    cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
                     videoWriter.write(cur_frame)
-                print('save video successed: {}'.format(str(self.video_index)))
-                self.video_index += 1
-                # raise Exception('IceClear, you can log anything in {}'.format(self.episode_visilize_stack))
+                videoWriter.release()
 
             '''log on tensorboard'''
             if self.hierarchy_id > 0:
