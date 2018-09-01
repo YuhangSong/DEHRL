@@ -121,6 +121,10 @@ class Model(object):
 
     def __init__(self):
 
+        self.reset()
+
+    def reset(self):
+
         # A Batch is a collection of vertex lists for batched rendering.
         self.batch = pyglet.graphics.Batch()
 
