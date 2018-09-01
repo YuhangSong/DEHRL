@@ -949,7 +949,7 @@ class HierarchyLayer(object):
         '''log as video'''
         if self.hierarchy_id == 0:
             '''hierarchy_id=0 has very long episode, log it with video'''
-            raise Exception('IceClear, you can log anythings in {}'.format(self.episode_visilize_stack))
+            raise Exception('IceClear, you can log anything in {}'.format(self.episode_visilize_stack))
 
         '''log on tensorboard'''
         if self.hierarchy_id > 0:
