@@ -57,6 +57,8 @@ class MineCraft(pyglet.window.Window,gym.Env):
 
         self.action_space = spaces.Discrete(len(self.action_to_key_map.keys()))
         self.observation_space = spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, self.obs_type_to_num_channel[self.obs_type]),dtype=np.uint8)
+        # Instance of the model that handles the world.
+        self.model = Model()
 
     def seed(self,seed):
         print("# WARNING: Deterministic game")
@@ -480,9 +482,6 @@ class MineCraft(pyglet.window.Window,gym.Env):
         # The current block the user can place. Hit num keys to cycle.
         self.block = self.inventory[0]
 
-        # Instance of the model that handles the world.
-        self.model = Model()
-
     def reset(self):
         self.eposide_length = 0
 
@@ -573,7 +572,8 @@ def main():
     env.set_render(False)
 
     obs = env.reset()
-    action = env.key_map_to_action[cv2.waitKey(0)]
+    print(env.key_map_to_action)
+    action = env.key_map_to_action[97]
 
     while True:
 
@@ -582,10 +582,10 @@ def main():
             break
 
         obs, reward, done, info = env.step(action)
-        print(obs.shape)
+        # print(obs.shape)
         if done:
             env.reset()
-        action = env.key_map_to_action[cv2.waitKey(0)]
+        action = env.key_map_to_action[97]
 
     cv2.destroyAllWindows()
 
