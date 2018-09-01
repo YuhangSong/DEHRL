@@ -941,23 +941,20 @@ class HierarchyLayer(object):
 
     def summary_behavior_at_done(self):
 
-        print('[H-{:1}] Log behavior done at {}.'.format(
-            self.hierarchy_id,
-            self.num_trained_frames,
-        ))
+        for episode_visilize_stack_name in self.episode_visilize_stack.keys():
 
-        '''log as video'''
-        if self.hierarchy_id == 0:
-            '''hierarchy_id=0 has very long episode, log it with video'''
-            raise Exception('IceClear, you can log anything in {}'.format(self.episode_visilize_stack))
+            self.episode_visilize_stack[episode_visilize_stack_name] = np.stack(
+                self.episode_visilize_stack[episode_visilize_stack_name]
+            )
 
-        '''log on tensorboard'''
-        if self.hierarchy_id > 0:
-            '''hierarchy_id=0 has very long episode, do not log it on tensorboard'''
-            for episode_visilize_stack_name in self.episode_visilize_stack.keys():
-                self.episode_visilize_stack[episode_visilize_stack_name] = np.stack(
-                    self.episode_visilize_stack[episode_visilize_stack_name]
-                )
+            '''log as video'''
+            if self.hierarchy_id == 0:
+                '''hierarchy_id=0 has very long episode, log it with video'''
+                raise Exception('IceClear, you can log anything in {}'.format(self.episode_visilize_stack))
+
+            '''log on tensorboard'''
+            if self.hierarchy_id > 0:
+                '''hierarchy_id=0 has very long episode, do not log it on tensorboard'''
                 image_summary_op = tf.summary.image(
                     'H-{}_F-{}_{}'.format(
                         self.hierarchy_id,
@@ -967,10 +964,18 @@ class HierarchyLayer(object):
                     self.episode_visilize_stack[episode_visilize_stack_name],
                     max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
                 )
-                self.episode_visilize_stack[episode_visilize_stack_name] = None
                 image_summary = sess.run(image_summary_op)
                 summary_writer.add_summary(image_summary, self.num_trained_frames)
-            summary_writer.flush()
+
+            self.episode_visilize_stack[episode_visilize_stack_name] = None
+
+        summary_writer.flush()
+
+        print('[H-{:1}] Log behavior done at {}.'.format(
+            self.hierarchy_id,
+            self.num_trained_frames,
+        ))
+
 
     def get_sleeping(self, env_index):
         if type(self.envs).__name__ in ['SingleThread']:
