@@ -13,6 +13,11 @@ import numpy as np
 import cv2
 import gym
 from gym import error, spaces
+import json
+import os
+from time import gmtime, strftime
+if sys.version_info[0] >= 3:
+    xrange = range
 
 '''global configure for MineCraft'''
 TICKS_PER_SEC = 60
@@ -117,10 +122,59 @@ def sectorize(position):
     x, y, z = x // SECTOR_SIZE, y // SECTOR_SIZE, z // SECTOR_SIZE
     return (x, 0, z)
 
+class saveModule(object):
+    def __init__(self):
+        # "tarnslate" the block texture tuples into readable words for saving
+        self.coordDictSave = { str(GRASS):'GRASS', str(SAND):'SAND', str(BRICK):'BRICK', str(STONE):'STONE' }
+        # "tarnslate" the words back into tuples for loading
+        self.coordDictLoad = { 'GRASS':GRASS, 'SAND':SAND, 'BRICK':BRICK, 'STONE':STONE }
+
+    def printStuff(self, txt):
+        print(strftime("%d-%m-%Y %H:%M:%S|", gmtime()) + str(txt) )
+
+    def loadWorld(self, model, saveGameFile):
+
+        if not os.path.exists(saveGameFile):
+            raise Exception('No such world.')
+
+        self.printStuff('start loading...')
+        fh = open(saveGameFile, 'r')
+        worldMod = fh.read()
+        fh.close()
+
+        worldMod = worldMod.split('\n')
+
+        for blockLine in worldMod:
+            # remove the last empty line
+            if blockLine != '':
+                coords, blockType = blockLine.split('=>')
+                # convert the json list into tuple; json ONLY get lists but we need tuples
+                # translate the readable word back into the texture coords
+                model.add_block( tuple(json.loads(coords)), self.coordDictLoad[blockType], False )
+
+        self.printStuff('loading completed')
+
+    def saveWorld(self, model, saveGameFile):
+        self.printStuff('start saving...')
+        fh = open(saveGameFile, 'w')
+
+        # build a string to save it in one action
+        worldString = ''
+
+        for block in model.world:
+            # convert the block coords into json
+            # convert with the translation dictionary the block type into a readable word
+            worldString += json.dumps(block) + '=>' + self.coordDictSave[ str(model.world[block]) ] + '\n'
+
+        fh.write(worldString)
+        fh.close()
+        self.printStuff('saving completed')
+
 class Model(object):
 
-    def __init__(self):
+    def __init__(self,saveGameFile=None):
 
+        self.saveGameFile=saveGameFile
         self.reset()
 
     def reset(self):
@@ -148,62 +202,36 @@ class Model(object):
         # _show_block() and _hide_block() calls
         self.queue = deque()
 
+        # a module to save and load the world
+        self.saveModule = saveModule()
+
         self._initialize()
 
     def _initialize(self):
         """ Initialize the world by placing all the blocks.
-
         """
-        n = 20  # 1/2 width and height of world
-        s = 1  # step size
-        y = 0  # initial y height
-        for x in range(-n, n + 1, s):
-            for z in range(-n, n + 1, s):
-                # create a layer stone an grass everywhere.
-                self.add_block((x, y - 2, z), GRASS, immediate=False)
-                self.add_block((x, y - 3, z), STONE, immediate=False)
-                if x in (-n, n) or z in (-n, n):
-                    # create outer walls.
-                    for dy in range(-2, 3):
-                        self.add_block((x, y + dy, z), STONE, immediate=False)
 
-        # # generate the hills
-        #
-        # # import random
-        # # random.seed(1)
-        # a_s = [-3,-5,8]
-        # b_s = [-1,5,-8]
-        # h_s = [3,5,2]
-        # s_s = [6,7,8]
-        #
-        # o = n - 10
-        # for i in range(2):
-        #
-        #     # a = random.randint(-o, o)  # x position of the hill
-        #     # b = random.randint(-o, o)  # z position of the hill
-        #     # c = -1  # base of the hill
-        #     # h = random.randint(1, 6)  # height of the hill
-        #     # s = random.randint(4, 8)  # 2 * s is the side length of the hill
-        #     # d = 1  # how quickly to taper off the hills
-        #     # t = random.choice([GRASS, SAND, BRICK])
-        #
-        #     a = a_s[i%3]  # x position of the hill
-        #     b = b_s[i%3]  # z position of the hill
-        #     c = -1  # base of the hill
-        #     h = h_s[i%3]  # height of the hill
-        #     s = s_s[i%3]  # 2 * s is the side length of the hill
-        #     d = 1  # how quickly to taper off the hills
-        #     t = [GRASS, SAND, BRICK][i%3]
-        #
-        #     for y in range(c, c + h):
-        #         for x in range(a - s, a + s + 1):
-        #             for z in range(b - s, b + s + 1):
-        #                 if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-        #                     continue
-        #                 if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-        #                     continue
-        #                 self.add_block((x, y, z), t, immediate=False)
-        #         s -= d  # decrement side lenth so hills taper off
+        if self.saveGameFile is None:
+            n = 20  # 1/2 width and height of world
+            s = 1  # step size
+            y = 0  # initial y height
+            for x in range(-n, n + 1, s):
+                for z in range(-n, n + 1, s):
+                    # create a layer stone an grass everywhere.
+                    self.add_block((x, y - 2, z), GRASS, immediate=False)
+                    self.add_block((x, y - 3, z), STONE, immediate=False)
+                    if x in (-n, n) or z in (-n, n):
+                        # create outer walls.
+                        for dy in range(-2, 3):
+                            self.add_block((x, y + dy, z), STONE, immediate=False)
+        else:
+            self.loadWorld(self.saveGameFile)
+
+    def loadWorld(self, saveGameFile):
+        self.saveModule.loadWorld(self,saveGameFile)
+
+    def saveWorld(self, saveGameFile):
+        self.saveModule.saveWorld(self,saveGameFile)
 
     def hit_test(self, position, vector, max_distance=8):
         """ Line of sight search from current position. If a block is

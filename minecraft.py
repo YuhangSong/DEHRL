@@ -2,7 +2,7 @@ from minecraft_supportings import *
 
 class MineCraft(pyglet.window.Window,gym.Env):
 
-    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=1000):
+    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=1000,saveGameFile=None):
 
         self.args = args
         self.obs_size = obs_size
@@ -68,7 +68,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
         self.action_space = spaces.Discrete(len(self.action_to_key_map.keys()))
         self.observation_space = spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, self.obs_type_to_num_channel[self.obs_type]),dtype=np.uint8)
         # Instance of the model that handles the world.
-        self.model = Model()
+        self.model = Model(saveGameFile=saveGameFile)
 
     def seed(self,seed):
         print("# WARNING: Deterministic game")
@@ -557,6 +557,12 @@ class MineCraft(pyglet.window.Window,gym.Env):
     def set_render(self, is_render):
         self.is_render = is_render
 
+    def loadWorld(self, saveGameFile):
+        self.model.loadWorld(saveGameFile)
+
+    def saveWorld(self, saveGameFile):
+        self.model.saveWorld(saveGameFile)
+
 def setup_fog():
     """ Configure the OpenGL fog properties.
 
@@ -595,25 +601,29 @@ def minecraft_global_setup():
 
 def main():
 
+    # env = MineCraft(saveGameFile='./savegame.sav')
     env = MineCraft()
     env.set_render(True)
 
     minecraft_global_setup()
 
     obs = env.reset()
-    action = env.key_map_to_action[cv2.waitKey(0)]
+    input_key = cv2.waitKey(0)
+    action = env.key_map_to_action[input_key]
 
     while True:
 
-        if action==ord('j'):
-            cv2.destroyAllWindows()
-            break
-
         obs, reward, done, info = env.step(action)
-        # print(obs.shape)
         if done:
             env.reset()
-        action = env.key_map_to_action[cv2.waitKey(0)]
+        input_key = cv2.waitKey(0)
+        if input_key==key.J:
+            break
+        if input_key==key.K:
+            '''press k to save MineCraft'''
+            env.saveWorld('./savegame.sav')
+            break
+        action = env.key_map_to_action[input_key]
 
     cv2.destroyAllWindows()
 
