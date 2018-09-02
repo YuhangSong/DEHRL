@@ -1015,6 +1015,15 @@ class HierarchyLayer(object):
 
             self.episode_save_stack[episode_save_stack_name] = None
 
+        if self.hierarchy_id in [0]:
+            self.envs.unwrapped.saveWorld(
+                saveGameFile = '{}/H-{}_F-{}_savegame.sav'.format(
+                    args.save_dir,
+                    self.hierarchy_id,
+                    self.num_trained_frames,
+                )
+            )
+
         print('[H-{:1}] Log behavior done at {}.'.format(
             self.hierarchy_id,
             self.num_trained_frames,
