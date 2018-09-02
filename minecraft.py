@@ -43,6 +43,11 @@ class MineCraft(pyglet.window.Window,gym.Env):
         self.episode_length_limit = episode_length_limit
         if self.episode_length_limit<0:
             raise Exception('episode_length_limit < 0 means episode is only terminated by done signal, please check this.')
+        '''if you want add a action:
+            1, define the key here
+            2, define the action's effect in step()
+            3, test the action by running this file
+        '''
         self.action_to_key_map = {
             0: key.A,
             1: key.W,
