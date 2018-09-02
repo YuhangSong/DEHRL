@@ -580,7 +580,7 @@ def minecraft_global_setup():
 
     """
     # Set the color of "clear", i.e. the sky, in rgba.
-    glClearColor(0.5, 0.69, 1.0, 1)
+    glClearColor(0.0, 0.0, 0.0, 1)
     # Enable culling (not rendering) of back-facing facets -- facets that aren't
     # visible to you.
     glEnable(GL_CULL_FACE)
