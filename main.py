@@ -254,6 +254,7 @@ class HierarchyLayer(object):
         self.last_time_log_behavior = 0.0
         self.log_behavior = False
         self.episode_visilize_stack = {}
+        self.episode_save_stack = {}
 
         self.predicted_next_observations_to_downer_layer = None
 
@@ -942,6 +943,13 @@ class HierarchyLayer(object):
             except Exception as e:
                 self.episode_visilize_stack['state_prediction'] = [img]
 
+        if self.hierarchy_id in [0]:
+            '''record actions'''
+            try:
+                self.episode_save_stack['actions'] += [self.action[0,0].item()]
+            except Exception as e:
+                self.episode_save_stack['actions'] = [self.action[0,0].item()]
+
     def summary_behavior_at_done(self):
 
         for episode_visilize_stack_name in self.episode_visilize_stack.keys():
@@ -988,6 +996,24 @@ class HierarchyLayer(object):
             self.episode_visilize_stack[episode_visilize_stack_name] = None
 
         summary_writer.flush()
+
+        for episode_save_stack_name in self.episode_save_stack.keys():
+
+            self.episode_save_stack[episode_save_stack_name] = np.stack(
+                self.episode_save_stack[episode_save_stack_name]
+            )
+
+            np.save(
+                '{}/H-{}_F-{}_{}.npy'.format(
+                    args.save_dir,
+                    self.hierarchy_id,
+                    self.num_trained_frames,
+                    episode_save_stack_name,
+                ),
+                self.episode_save_stack[episode_save_stack_name],
+            )
+
+            self.episode_save_stack[episode_save_stack_name] = None
 
         print('[H-{:1}] Log behavior done at {}.'.format(
             self.hierarchy_id,
