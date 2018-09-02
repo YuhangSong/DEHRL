@@ -54,6 +54,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
             7: key.F,
             8: key.G,
             9: key.H,
+            10: key.SPACE,
         }
         self.key_map_to_action = {}
         for key_i in self.action_to_key_map.keys():
@@ -283,7 +284,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
     def move_view(self, dx, dy):
         """ Called when the player moves the view.
         """
-        m = 1.5
+        m = 5.0
         x, y = self.rotation
         x, y = x + dx * m, y + dy * m
         y = max(-90, min(90, y))
@@ -334,6 +335,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
         elif symbol == key.SPACE:
             if self.dy == 0:
                 self.dy = JUMP_SPEED
+            # self.step(self.key_map_to_action[key.W])
         elif symbol == key.ESCAPE:
             self.set_exclusive_mouse(False)
         elif symbol == key.TAB:
