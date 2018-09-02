@@ -51,10 +51,6 @@ log_fps = 10
 
 torch.set_num_threads(1)
 
-if args.env_name in ['MineCraft']:
-    import minecraft
-    minecraft.minecraft_global_setup()
-
 summary_writer = tf.summary.FileWriter(args.save_dir)
 
 bottom_envs = [make_env(i, args=args)
@@ -64,6 +60,10 @@ if args.num_processes > 1:
     bottom_envs = SubprocVecEnv(bottom_envs)
 else:
     bottom_envs = bottom_envs[0]()
+
+if args.env_name in ['MineCraft']:
+    import minecraft
+    minecraft.minecraft_global_setup()
 
 if len(bottom_envs.observation_space.shape) == 1:
     if args.env_name in ['OverCooked']:
