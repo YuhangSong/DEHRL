@@ -447,7 +447,8 @@ def setup():
 
 def main():
     window = Window(width=800, height=600, caption='Pyglet', resizable=True)
-    window.loadWorld('./savegame.sav')
+    window.loadWorld('/home/yuhangsong/Downloads/H-0_F-3921792_savegame.sav')
+    # window.loadWorld('./random_policy_savegame_2.sav')
     # Hide the mouse cursor and prevent the mouse from leaving the window.
     window.set_exclusive_mouse(True)
     setup()

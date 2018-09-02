@@ -604,26 +604,40 @@ def main():
     # env = MineCraft(saveGameFile='./savegame.sav')
     env = MineCraft()
     env.set_render(True)
+    random_play = False
 
     minecraft_global_setup()
 
     obs = env.reset()
-    input_key = cv2.waitKey(0)
-    action = env.key_map_to_action[input_key]
+
+    if random_play:
+        action = np.random.randint(0,env.action_space.n)
+    else:
+        input_key = cv2.waitKey(0)
+        action = env.key_map_to_action[input_key]
 
     while True:
 
         obs, reward, done, info = env.step(action)
         if done:
-            env.reset()
-        input_key = cv2.waitKey(0)
-        if input_key==key.J:
-            break
-        if input_key==key.K:
-            '''press k to save MineCraft'''
-            env.saveWorld('./savegame.sav')
-            break
-        action = env.key_map_to_action[input_key]
+            if random_play:
+                env.saveWorld('./random_policy_savegame_3.sav')
+                break
+            else:
+                env.reset()
+
+        if random_play:
+            action = np.random.randint(0,env.action_space.n)
+        else:
+            input_key = cv2.waitKey(0)
+            if input_key==key.J:
+                break
+            if input_key==key.K:
+                '''press k to save MineCraft'''
+                env.saveWorld('./savegame.sav')
+                break
+            action = env.key_map_to_action[input_key]
+
 
     cv2.destroyAllWindows()
 
