@@ -595,10 +595,10 @@ def minecraft_global_setup():
 
 def main():
 
-    minecraft_global_setup()
-
     env = MineCraft()
     env.set_render(True)
+
+    minecraft_global_setup()
 
     obs = env.reset()
     action = env.key_map_to_action[cv2.waitKey(0)]
