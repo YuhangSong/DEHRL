@@ -25,7 +25,7 @@ class Window(pyglet.window.Window):
         self.exclusive = False
 
         # When flying gravity has no effect and speed is increased.
-        self.flying = False
+        self.flying = True
 
         # Strafing is moving lateral to the direction you are facing,
         # e.g. moving to the left or right while continuing to face forward.
@@ -37,7 +37,7 @@ class Window(pyglet.window.Window):
 
         # Current (x, y, z) position in the world, specified with floats. Note
         # that, perhaps unlike in math class, the y-axis is the vertical axis.
-        self.position = (0, 0, 0)
+        self.position = (10, 10,10)
 
         # First element is rotation of the player in the x-z plane (ground
         # plane) measured from the z-axis down. The second is the rotation
@@ -45,7 +45,7 @@ class Window(pyglet.window.Window):
         #
         # The vertical plane rotation ranges from -90 (looking straight down) to
         # 90 (looking straight up). The horizontal rotation range is unbounded.
-        self.rotation = (0, 0)
+        self.rotation = (-44, -15)
 
         # Which sector the player is currently in.
         self.sector = None
@@ -446,14 +446,14 @@ def setup():
 
 
 def main():
-    window = Window(width=800, height=600, caption='Pyglet', resizable=True)
-    window.loadWorld('/home/yuhangsong/Downloads/H-0_F-3921792_savegame.sav')
-    # window.loadWorld('./random_policy_savegame_2.sav')
+    window = Window(width=1000, height=1000, caption='Pyglet', resizable=True)
+
+    # window.loadWorld('/home/yuhangsong/Dropbox/Yuhang Song/EHRL_Data/level_2/H-0_F-5166464_savegame.sav')
+    window.loadWorld('./random_policy_savegame_6.sav')
     # Hide the mouse cursor and prevent the mouse from leaving the window.
     window.set_exclusive_mouse(True)
     setup()
     pyglet.app.run()
-
 
 if __name__ == '__main__':
     main()

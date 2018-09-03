@@ -604,7 +604,7 @@ def main():
     # env = MineCraft(saveGameFile='./savegame.sav')
     env = MineCraft()
     env.set_render(True)
-    random_play = False
+    random_play = True
 
     minecraft_global_setup()
 
@@ -621,7 +621,7 @@ def main():
         obs, reward, done, info = env.step(action)
         if done:
             if random_play:
-                env.saveWorld('./random_policy_savegame_3.sav')
+                env.saveWorld('./random_policy_savegame_6.sav')
                 break
             else:
                 env.reset()
