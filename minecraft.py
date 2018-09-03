@@ -2,7 +2,7 @@ from minecraft_supportings import *
 
 class MineCraft(pyglet.window.Window,gym.Env):
 
-    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=1000,saveGameFile=None):
+    def __init__(self, args=None, obs_size=84, obs_type='gray', episode_length_limit=16384,saveGameFile=None):
 
         self.args = args
         self.obs_size = obs_size
