@@ -60,6 +60,8 @@ class MineCraft(pyglet.window.Window,gym.Env):
             8: key.G,
             9: key.H,
             10: key.SPACE,
+            11: key.Z,
+            12: key.X,
         }
         self.key_map_to_action = {}
         for key_i in self.action_to_key_map.keys():
@@ -341,6 +343,16 @@ class MineCraft(pyglet.window.Window,gym.Env):
             if self.dy == 0:
                 self.dy = JUMP_SPEED
             # self.step(self.key_map_to_action[key.W])
+        elif symbol == key.Z:
+            vector = self.get_sight_vector()
+            block, previous = self.model.hit_test(self.position, vector)
+            if previous:
+                self.model.add_block(previous, self.grass)
+        elif symbol == key.X:
+            vector = self.get_sight_vector()
+            block, previous = self.model.hit_test(self.position, vector)
+            if previous:
+                self.model.add_block(previous, self.sand)
         elif symbol == key.ESCAPE:
             self.set_exclusive_mouse(False)
         elif symbol == key.TAB:
@@ -508,6 +520,8 @@ class MineCraft(pyglet.window.Window,gym.Env):
 
         # The current block the user can place. Hit num keys to cycle.
         self.block = self.inventory[0]
+        self.grass = self.inventory[1]
+        self.sand = self.inventory[2]
 
         self.model.reset()
 
