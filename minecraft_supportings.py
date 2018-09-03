@@ -38,9 +38,13 @@ JUMP_SPEED = math.sqrt(2 * GRAVITY * MAX_JUMP_HEIGHT)
 TERMINAL_VELOCITY = 50
 PLAYER_HEIGHT = 2
 
-def key_count(count, cur_key, key_list):
-    if cur_key in key_list:
-        count += 1
+def key_count(count, cur_key, key_list, position, position_dic):
+    key = str(round(position[0],3))+str(round(position[1],3))+str(round(position[2],3))
+    # print(key)
+    if key not in position_dic:
+        if cur_key in key_list:
+            count += 1
+            position_dic[key] = 1
     return count
 
 def cube_vertices(x, y, z, n):

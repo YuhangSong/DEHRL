@@ -71,6 +71,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
         self.model = Model(saveGameFile=saveGameFile)
         self.key_count = 0
         self.key_list = [4,5]
+        self.position_dic = {}
 
     def seed(self,seed):
         print("# WARNING: Deterministic game")
@@ -516,6 +517,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
     def reset(self):
         self.eposide_length = 0
         self.key_count = 0
+        self.position_dic = {}
 
         self.reset_minecraft()
 
@@ -536,7 +538,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
         self.eposide_length += 1
 
         '''step forward and get obs'''
-        self.key_count = key_count(self.key_count, action, self.key_list)
+        self.key_count = key_count(self.key_count, action, self.key_list, self.position, self.position_dic)
         # print(self.key_count)
         self.on_key_press(self.action_to_key_map[action],0)
         self.update(self.step_interval)
