@@ -604,7 +604,7 @@ def main():
     # env = MineCraft(saveGameFile='./savegame.sav')
     env = MineCraft()
     env.set_render(True)
-    random_play = True
+    random_play = False
 
     minecraft_global_setup()
 
@@ -634,7 +634,8 @@ def main():
                 break
             if input_key==key.K:
                 '''press k to save MineCraft'''
-                env.saveWorld('./savegame.sav')
+                # env.saveWorld('./savegame.sav')
+                env.saveWorld('./none_action_savegame.sav')
                 break
             action = env.key_map_to_action[input_key]
 

@@ -144,15 +144,21 @@ class saveModule(object):
 
         worldMod = worldMod.split('\n')
 
+        block_count = {
+            'GRASS':0, 'SAND':0, 'BRICK':0, 'STONE':0
+        }
         for blockLine in worldMod:
             # remove the last empty line
             if blockLine != '':
                 coords, blockType = blockLine.split('=>')
                 # convert the json list into tuple; json ONLY get lists but we need tuples
                 # translate the readable word back into the texture coords
+                block_count[blockType]+=1
                 model.add_block( tuple(json.loads(coords)), self.coordDictLoad[blockType], False )
 
-        self.printStuff('loading completed')
+        self.printStuff('loading completed: {}'.format(block_count))
+
+        return block_count
 
     def saveWorld(self, model, saveGameFile):
         self.printStuff('start saving...')
@@ -210,11 +216,10 @@ class Model(object):
     def _initialize(self):
         """ Initialize the world by placing all the blocks.
         """
-
+        n = 20  # 1/2 width and height of world
+        s = 1  # step size
+        y = 0  # initial y height
         if self.saveGameFile is None:
-            n = 20  # 1/2 width and height of world
-            s = 1  # step size
-            y = 0  # initial y height
             for x in range(-n, n + 1, s):
                 for z in range(-n, n + 1, s):
                     # create a layer stone an grass everywhere.
@@ -225,10 +230,16 @@ class Model(object):
                         for dy in range(-2, 3):
                             self.add_block((x, y + dy, z), STONE, immediate=False)
         else:
-            self.loadWorld(self.saveGameFile)
+            block_count = self.loadWorld(self.saveGameFile)
+            Valid_Break = 1521-block_count['GRASS']
+            Valid_Build = block_count['BRICK']
+            print('# WARNING: Following number may be inaccurate if you set another world.')
+            print('Valid Break {}; Valid Build: {}; Valid Operation: {}'.format(
+                Valid_Break, Valid_Build, Valid_Break+Valid_Build
+            ))
 
     def loadWorld(self, saveGameFile):
-        self.saveModule.loadWorld(self,saveGameFile)
+        return self.saveModule.loadWorld(self,saveGameFile)
 
     def saveWorld(self, saveGameFile):
         self.saveModule.saveWorld(self,saveGameFile)
