@@ -53,13 +53,15 @@ class MineCraft(pyglet.window.Window,gym.Env):
             1: key.W,
             2: key.S,
             3: key.D,
-            4: key.Q,
+            4: key.Z,
             5: key.E,
             6: key.T,
             7: key.F,
             8: key.G,
             9: key.H,
             10: key.SPACE,
+            11: key.X,
+            12: key.C,
         }
         self.key_map_to_action = {}
         for key_i in self.action_to_key_map.keys():
@@ -295,6 +297,12 @@ class MineCraft(pyglet.window.Window,gym.Env):
         y = max(-90, min(90, y))
         self.rotation = (x, y)
 
+    def place_a_block(self):
+        vector = self.get_sight_vector()
+        block, previous = self.model.hit_test(self.position, vector)
+        if previous:
+            self.model.add_block(previous, self.block)
+
     def on_key_press(self, symbol, modifiers):
         """ Called when the player presses a key. See pyglet docs for key
         mappings.
@@ -317,11 +325,15 @@ class MineCraft(pyglet.window.Window,gym.Env):
             self.strafe[1] = -1
         elif symbol == key.D:
             self.strafe[1] = 1
-        elif symbol == key.Q:
-            vector = self.get_sight_vector()
-            block, previous = self.model.hit_test(self.position, vector)
-            if previous:
-                self.model.add_block(previous, self.block)
+        elif symbol == key.Z:
+            self.on_key_press(key._1,0)
+            self.place_a_block()
+        elif symbol == key.X:
+            self.on_key_press(key._2,0)
+            self.place_a_block()
+        elif symbol == key.C:
+            self.on_key_press(key._3,0)
+            self.place_a_block()
         elif symbol == key.E:
             vector = self.get_sight_vector()
             block, previous = self.model.hit_test(self.position, vector)
@@ -517,7 +529,7 @@ class MineCraft(pyglet.window.Window,gym.Env):
         self.reset_minecraft()
 
         '''MineCraft has to step forward for one step to generate obs'''
-        for i in range(1):
+        for i in range(2):
             self.update(self.step_interval)
             self.on_draw()
         obs = self.get_obs()
