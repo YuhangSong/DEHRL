@@ -1015,7 +1015,7 @@ class HierarchyLayer(object):
 
             self.episode_save_stack[episode_save_stack_name] = None
 
-        if self.hierarchy_id in [0]:
+        if self.hierarchy_id in [0] and self.args.env_name in ['MineCraft']:
             self.envs.unwrapped.saveWorld(
                 saveGameFile = '{}/H-{}_F-{}_savegame.sav'.format(
                     args.save_dir,
