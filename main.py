@@ -341,15 +341,15 @@ class HierarchyLayer(object):
         so that we can get insight on with is happening'''
 
         if args.test_action:
-            # if self.hierarchy_id in [0]:
-            #     self.action[0,0] = int(
-            #         input(
-            #             '[Macro Action {}, actual action {}], Act: '.format(
-            #                 utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
-            #                 self.action[0,0].item(),
-            #             )
-            #         )
-            #     )
+            if self.hierarchy_id in [0]:
+                self.action[0,0] = int(
+                    input(
+                        '[Macro Action {}, actual action {}], Act: '.format(
+                            utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
+                            self.action[0,0].item(),
+                        )
+                    )
+                )
             # if self.hierarchy_id in [1]:
             #     self.action[0,0] = int(
             #         input(
@@ -623,7 +623,7 @@ class HierarchyLayer(object):
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
-        if self.hierarchy_id in [2]:
+        if self.hierarchy_id in [0]:
             if args.test_action:
                 win_dic['Obs'] = viz.images(
                     self.obs[0],
@@ -840,7 +840,7 @@ class HierarchyLayer(object):
     def reset(self):
         '''as a environment, it has reset method'''
         self.obs = self.envs.reset()
-        if self.hierarchy_id in [2]:
+        if self.hierarchy_id in [0]:
             if args.test_action:
                 win_dic['Obs'] = viz.images(
                     self.obs[0],
