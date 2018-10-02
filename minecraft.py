@@ -60,8 +60,8 @@ class MineCraft(pyglet.window.Window,gym.Env):
             8: key.G,
             9: key.H,
             10: key.SPACE,
-            11: key.X,
-            12: key.C,
+            # 11: key.X,
+            # 12: key.C,
         }
         self.key_map_to_action = {}
         for key_i in self.action_to_key_map.keys():
