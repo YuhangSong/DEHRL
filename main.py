@@ -580,8 +580,11 @@ class HierarchyLayer(object):
                 self.reward_final = self.reward
 
             else:
-                '''other levels only receives reward_bounty'''
-                self.reward_final = self.reward_bounty
+                if self.args.env_name in ['OverCooked','MineCraft']:
+                    '''other levels only receives reward_bounty'''
+                    self.reward_final = self.reward_bounty
+                elif 'NoFrameskip' in self.args.env_name:
+                    self.reward_final = self.reward.cuda() + self.reward_bounty
 
         else:
             self.reward_final = self.reward
