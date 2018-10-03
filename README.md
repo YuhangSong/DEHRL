@@ -48,17 +48,17 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 
 ### Level 2
 
-Goal-type: any (logic verified, running)
+Goal-type: any (works, done)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp delta_model --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal any --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_r_0
 ```
 
-Goal-type: fix (logic verified, running)
+Goal-type: fix (works, done)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp delta_model --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal fix --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_r_0
 ```
 
-Goal-type: random (works, running)
+Goal-type: random (works, done)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp delta_model --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal random --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_r_0
 ```
@@ -82,24 +82,31 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 
 ## Atari
 
-Game: MontezumaRevengeNoFrameskip-v4 (running)
+### Game: MontezumaRevengeNoFrameskip-v4 (running)
 
-2 levels
+2 levels (best, also last run, no enemy, get down and close the the key)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp delta_model --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_r_0
 ```
 
-3 levels
+3 levels (best run: have enemy, try to get down for one time)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp delta_model --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_r_0
 ```
 
-4 levels
+4 levels (a few very lone episode where agent can get to the bottom and move around, but why there is not a enemy down at the bottom)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp delta_model --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 4 --num-subpolicy 5 5 5 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_r_0
 ```
 
-2 levels with longer interval and more num-subpolicy
+#### Extrinsic reward is added to intrinsic reward at every level, called combine reward in aux info.
+
+2 levels (running w5-0)
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp delta_model --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 16 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp try_atar_2 --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_combine_reward_r_0
+```
+
+2 levels with longer interval and more num-subpolicy (running w5-1)
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp try_atar_2 --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 16 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_combine_reward_r_0
 ```

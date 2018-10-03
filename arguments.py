@@ -7,8 +7,6 @@ def get_args():
     parser = argparse.ArgumentParser(description='RL')
 
     '''basic save and log'''
-    parser.add_argument('--save-dir', default='../results/',
-                        help='directory to save agent logs')
     parser.add_argument('--exp', type=str,
                         help='exp')
 
@@ -143,8 +141,7 @@ def get_args():
 
     args.transition_model_epoch = args.actor_critic_epoch
 
-    '''basic save path'''
-    args.save_dir = os.path.join(args.save_dir, args.exp)
+    args.save_dir = ''
 
     '''environment details'''
     args.save_dir = os.path.join(args.save_dir, 'o_t-{}'.format(args.obs_type))
@@ -196,5 +193,9 @@ def get_args():
             args.save_dir = os.path.join(args.save_dir, 'e_a_c_c-{}'.format(args.encourage_ac_connection_coefficient))
 
     args.save_dir = os.path.join(args.save_dir, 'a-{}'.format(args.aux))
+
+    args.save_dir = args.save_dir.replace('/','--')
+    args.save_dir = os.path.join(args.exp, args.save_dir)
+    args.save_dir = os.path.join('../results', args.save_dir)
 
     return args
