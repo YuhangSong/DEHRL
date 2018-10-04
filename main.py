@@ -980,11 +980,9 @@ class HierarchyLayer(object):
             for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
                 cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
                 if cur_frame.shape[2] in [1]:
-                    # print(cur_frame.shape)
-                    cur_frame = np.concatenate((cur_frame,cur_frame,cur_frame),2)
-                    # print(cur_frame.shape)
-                    # print(sss)
-                videoWriter.write(cur_frame)
+                    '''gray frame is converted to rgb'''
+                    cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
+                videoWriter.write(cur_frame.astype(np.uint8))
             videoWriter.release()
 
             '''since we log everything with video,
