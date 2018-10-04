@@ -82,7 +82,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 
 ## Atari
 
-### Game: MontezumaRevengeNoFrameskip-v4 (running)
+### Game: MontezumaRevengeNoFrameskip-v4
 
 2 levels (best, also last run, no enemy, get down and close the the key)
 ```bash
@@ -102,11 +102,12 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 #### Extrinsic reward is added to intrinsic reward at every level, called combine reward in aux info.
 
 2 levels (running w5-0)
+First see the agent jump over the monster: [link](https://www.dropbox.com/s/smhjguxx0reeocl/level-2%20H-0_F-21738496_observation.avi?dl=0)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp try_atar_2 --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_combine_reward_r_0
 ```
 
-2 levels with longer interval and more num-subpolicy (running w5-1)
+2 levels with longer interval and more num-subpolicy (running w5-1, seems to be better then above run from the episode length)
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp try_atar_2 --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 16 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --encourage-ac-connection none --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux delta_model_combine_reward_r_0
 ```

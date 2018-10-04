@@ -961,40 +961,48 @@ class HierarchyLayer(object):
                 self.episode_visilize_stack[episode_visilize_stack_name]
             )
 
-            '''log as video'''
-            if self.hierarchy_id == 0:
-                '''hierarchy_id=0 has very long episode, log it with video'''
+            '''log everything with video'''
+            # '''log as video'''
+            # if self.hierarchy_id == 0:
+            #     '''hierarchy_id=0 has very long episode, log it with video'''
+            # print(self.episode_visilize_stack[episode_visilize_stack_name].shape)
+            videoWriter = cv2.VideoWriter(
+                '{}/H-{}_F-{}_{}.avi'.format(
+                    args.save_dir,
+                    self.hierarchy_id,
+                    self.num_trained_frames,
+                    episode_visilize_stack_name,
+                ),
+                log_fourcc,
+                log_fps,
+                (self.episode_visilize_stack[episode_visilize_stack_name].shape[2],self.episode_visilize_stack[episode_visilize_stack_name].shape[1]),
+            )
+            for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
+                cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
+                if cur_frame.shape[2] in [1]:
+                    # print(cur_frame.shape)
+                    cur_frame = np.concatenate((cur_frame,cur_frame,cur_frame),2)
+                    # print(cur_frame.shape)
+                    # print(sss)
+                videoWriter.write(cur_frame)
+            videoWriter.release()
 
-                videoWriter = cv2.VideoWriter(
-                    '{}/H-{}_F-{}_{}.avi'.format(
-                        args.save_dir,
-                        self.hierarchy_id,
-                        self.num_trained_frames,
-                        episode_visilize_stack_name,
-                    ),
-                    log_fourcc,
-                    log_fps,
-                    (self.episode_visilize_stack[episode_visilize_stack_name].shape[2],self.episode_visilize_stack[episode_visilize_stack_name].shape[1]),
-                )
-                for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
-                    cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
-                    videoWriter.write(cur_frame)
-                videoWriter.release()
-
-            '''log on tensorboard'''
-            if self.hierarchy_id > 0:
-                '''hierarchy_id=0 has very long episode, do not log it on tensorboard'''
-                image_summary_op = tf.summary.image(
-                    'H-{}_F-{}_{}'.format(
-                        self.hierarchy_id,
-                        self.num_trained_frames,
-                        episode_visilize_stack_name,
-                    ),
-                    self.episode_visilize_stack[episode_visilize_stack_name],
-                    max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
-                )
-                image_summary = sess.run(image_summary_op)
-                summary_writer.add_summary(image_summary, self.num_trained_frames)
+            '''since we log everything with video,
+            no need for tensorboard logging'''
+            # '''log on tensorboard'''
+            # if self.hierarchy_id > 0:
+            #     '''hierarchy_id=0 has very long episode, do not log it on tensorboard'''
+            #     image_summary_op = tf.summary.image(
+            #         'H-{}_F-{}_{}'.format(
+            #             self.hierarchy_id,
+            #             self.num_trained_frames,
+            #             episode_visilize_stack_name,
+            #         ),
+            #         self.episode_visilize_stack[episode_visilize_stack_name],
+            #         max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
+            #     )
+            #     image_summary = sess.run(image_summary_op)
+            #     summary_writer.add_summary(image_summary, self.num_trained_frames)
 
             self.episode_visilize_stack[episode_visilize_stack_name] = None
 
