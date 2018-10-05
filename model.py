@@ -33,6 +33,7 @@ class Policy(nn.Module):
             raise NotImplementedError
         self.state_size = self.base.state_size
 
+
         '''build actor model'''
         self.output_action_space = output_action_space
         if self.output_action_space.__class__.__name__ == "Discrete":
@@ -52,7 +53,6 @@ class Policy(nn.Module):
             self.critic_linear = nn.ModuleList(self.critic_linear)
         else:
             self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
-
         self.input_action_space = input_action_space
 
 
@@ -145,9 +145,9 @@ class CNNBase(nn.Module):
             self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
             nn.LeakyReLU(),
             Flatten(),
-            self.leakrelu_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
-            nn.LeakyReLU()
         )
+
+        self.linear1 = nn.Linear(16 * 7 * 7, self.linear_size)
 
         if use_gru:
             self.gru = nn.GRUCell(self.linear_size, self.linear_size)
@@ -160,7 +160,10 @@ class CNNBase(nn.Module):
           nn.init.orthogonal_,
           lambda x: nn.init.constant_(x, 0))
 
+        self.linear1.weight.data.mul_(nn.init.calculate_gain('leaky_relu'))
+
         self.train()
+
 
     @property
     def state_size(self):
@@ -176,6 +179,8 @@ class CNNBase(nn.Module):
     def forward(self, inputs, states, masks):
         inputs = inputs[:,-1:]
         x = self.main(inputs / 255.0)
+        x = self.linear1(x)
+        x = F.leaky_relu(x)
 
         if hasattr(self, 'gru'):
             if inputs.size(0) == states.size(0):
@@ -253,7 +258,6 @@ class TransitionModel(nn.Module):
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('tanh'))
-
         self.conv = nn.Sequential(
             # self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
             self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
@@ -269,11 +273,12 @@ class TransitionModel(nn.Module):
             nn.LeakyReLU(inplace=True),
 
             Flatten(),
-
-            self.linear_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
             # fc donot normalize
             # fc linear
         )
+
+        self.linear = nn.Linear(16 * 7 * 7, self.linear_size)
+        self.linear.weight.data.mul_(nn.init.calculate_gain('leaky_relu'))
 
         self.reward_bounty_linear = nn.Sequential(
             self.linear_init_(nn.Linear(self.linear_size, 1)),
@@ -290,8 +295,10 @@ class TransitionModel(nn.Module):
                 # fc linear
             )
 
+            # self.leakrelu_init_(nn.Linear(self.linear_size, 16 * 7 * 7)),
+            self.linear2 = nn.Linear(self.linear_size, 16 * 7 * 7)
+            self.linear2.weight.data.mul_(nn.init.calculate_gain('leaky_relu'))
             self.deconv = nn.Sequential(
-                self.leakrelu_init_(nn.Linear(self.linear_size, 16 * 7 * 7)),
                 # project donot normalize
                 nn.LeakyReLU(),
 
@@ -309,9 +316,7 @@ class TransitionModel(nn.Module):
                 # output do not normalize
                 nn.Tanh(),
             )
-
         else:
-
             self.label_linear = nn.Sequential(
                 self.linear_init_(nn.Linear(self.linear_size, num_subpolicy)),
             )
@@ -319,13 +324,14 @@ class TransitionModel(nn.Module):
 
     def forward(self, inputs, input_action=None):
         inputs = inputs[:,-1:]
-        before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
+        before_deconv = self.conv(inputs/255.0)
+        before_deconv = self.linear(before_deconv)*self.input_action_linear(input_action)
 
         predicted_reward_bounty = self.reward_bounty_linear(before_deconv)
 
         if not self.mutual_information:
-
-            predicted_state = self.deconv(before_deconv)*255.0
+            predicted_state = self.linear2(before_deconv)
+            predicted_state = self.deconv(predicted_state)*255.0
 
             return predicted_state, predicted_reward_bounty
 

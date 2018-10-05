@@ -106,7 +106,7 @@ sess = tf.Session()
 
 if args.test_action:
      from visdom import Visdom
-     viz = Visdom(port=6008)
+     viz = Visdom()
      win = None
      win_dic = {}
      win_dic['Obs'] = None
