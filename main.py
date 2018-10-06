@@ -110,11 +110,13 @@ if args.test_action:
      win = None
      win_dic = {}
      win_dic['Obs'] = None
+     win_dic['mass_center'] = None
 
 if args.act_deterministically:
     print('==========================================================================')
     print("================ Note that I am acting deterministically =================")
     print('==========================================================================')
+
 
 if args.distance in ['match']:
     sift = cv2.xfeatures2d.SIFT_create()
@@ -623,6 +625,21 @@ class HierarchyLayer(object):
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
             self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
+            if args.test_action:
+                mass_center_to_show = ndimage.measurements.center_of_mass(
+                    ((np.clip(self.reset_image-self.obs[0],0,255)))[0,:,:].astype(np.uint8)
+                )
+                mass_center_to_show = np.asarray([mass_center_to_show[0],mass_center_to_show[1]])
+                mass_center_to_show = mass_center_to_show[np.newaxis,:]
+                try:
+                    self.mass_stack = np.vstack((self.mass_stack,mass_center_to_show))
+                except Exception as e:
+                    self.mass_stack = mass_center_to_show
+                win_dic['mass_center'] = viz.scatter(
+                    self.mass_stack,
+                    win=win_dic['mass_center'],
+                    opts=dict(title=' ')
+                )
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
@@ -845,6 +862,8 @@ class HierarchyLayer(object):
         self.obs = self.envs.reset()
         if self.hierarchy_id in [0]:
             if args.test_action:
+                self.reset_image = self.obs[0]
+                self.mass_stack = []
                 win_dic['Obs'] = viz.images(
                     self.obs[0],
                     win=win_dic['Obs'],
