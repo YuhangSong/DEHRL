@@ -145,36 +145,38 @@ def get_args():
 
     args.save_dir = ''
 
+    '''In the following, if the line is commended, it means the property is depreciated or treated as default'''
+
     '''environment details'''
-    args.save_dir = os.path.join(args.save_dir, 'o_t-{}'.format(args.obs_type))
+    # args.save_dir = os.path.join(args.save_dir, 'o_t-{}'.format(args.obs_type))
     args.save_dir = os.path.join(args.save_dir, 'e_n-{}'.format(args.env_name))
     if args.env_name in ['OverCooked']:
         args.save_dir = os.path.join(args.save_dir, 'r_l-{}'.format(args.reward_level))
-        args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
-        args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
-        args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
-        args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
-        args.save_dir = os.path.join(args.save_dir, 'n_o-{}'.format(args.new_overcooked))
+        # args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
+        # args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
+        # args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
+        # args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
+        # args.save_dir = os.path.join(args.save_dir, 'n_o-{}'.format(args.new_overcooked))
 
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
     args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_subpolicy)))
     args.save_dir = os.path.join(args.save_dir, 'h_i-{}'.format(utils.list_to_str(args.hierarchy_interval)))
-    args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_steps)))
+    # args.save_dir = os.path.join(args.save_dir, 'n_s-{}'.format(utils.list_to_str(args.num_steps)))
 
     '''reward bounty details'''
     args.save_dir = os.path.join(args.save_dir, 'r_b-{}'.format(args.reward_bounty))
 
     '''actor_critic training details'''
-    args.save_dir = os.path.join(args.save_dir, 'a_c_m_b_s-{}'.format(args.actor_critic_mini_batch_size))
-    args.save_dir = os.path.join(args.save_dir, 'a_c_e-{}'.format(args.actor_critic_epoch))
+    # args.save_dir = os.path.join(args.save_dir, 'a_c_m_b_s-{}'.format(args.actor_critic_mini_batch_size))
+    # args.save_dir = os.path.join(args.save_dir, 'a_c_e-{}'.format(args.actor_critic_epoch))
     if args.reward_bounty > 0.0:
         '''distance'''
         args.save_dir = os.path.join(args.save_dir, 'd-{}'.format(args.distance))
         '''transition_model training details'''
-        args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
+        # args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
-        args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
+        # args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
         '''mutual information'''
         args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
         '''clip reward bounty'''
@@ -187,14 +189,14 @@ def get_args():
     if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
         '''for encourage_ac_connection'''
 
-        if args.use_fake_reward_bounty:
-            '''if use_fake_reward_bounty, encourage_ac_connection can only be applied on actor_critic, or not applied'''
-            assert args.encourage_ac_connection in ['none','actor_critic']
+        # if args.use_fake_reward_bounty:
+        #     '''if use_fake_reward_bounty, encourage_ac_connection can only be applied on actor_critic, or not applied'''
+        #     assert args.encourage_ac_connection in ['none','actor_critic']
 
-        args.save_dir = os.path.join(args.save_dir, 'e_a_c-{}'.format(args.encourage_ac_connection))
-        if args.encourage_ac_connection not in ['none']:
-            args.save_dir = os.path.join(args.save_dir, 'e_a_c_t-{}'.format(args.encourage_ac_connection_type))
-            args.save_dir = os.path.join(args.save_dir, 'e_a_c_c-{}'.format(args.encourage_ac_connection_coefficient))
+        # args.save_dir = os.path.join(args.save_dir, 'e_a_c-{}'.format(args.encourage_ac_connection))
+        # if args.encourage_ac_connection not in ['none']:
+        #     args.save_dir = os.path.join(args.save_dir, 'e_a_c_t-{}'.format(args.encourage_ac_connection_type))
+        #     args.save_dir = os.path.join(args.save_dir, 'e_a_c_c-{}'.format(args.encourage_ac_connection_coefficient))
 
     args.save_dir = os.path.join(args.save_dir, 'a-{}'.format(args.aux))
 

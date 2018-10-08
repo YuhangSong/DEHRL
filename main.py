@@ -300,12 +300,12 @@ class HierarchyLayer(object):
             input_cpu_actions = inputs['actions_to_step']
             self.predicted_next_observations_by_upper_layer = inputs['predicted_next_observations_to_downer_layer']
             self.mask_of_predicted_observation_by_upper_layer = inputs['mask_of_predicted_observation_to_downer_layer']
-            self.observation_predicted_from = inputs['observation_predicted_from']
+            self.observation_predicted_from_by_upper_layer = inputs['observation_predicted_from_to_downer_layer']
             self.predicted_reward_bounty_by_upper_layer     = inputs['predicted_reward_bounty_to_downer_layer']
         else:
             input_cpu_actions = inputs['actions_to_step']
             self.predicted_next_observations_by_upper_layer = None
-            self.observation_predicted_from = None
+            self.observation_predicted_from_by_upper_layer = None
             self.predicted_reward_bounty_by_upper_layer = None
 
         '''convert: input_cpu_actions >> input_actions_onehot_global[self.hierarchy_id]'''
@@ -478,7 +478,7 @@ class HierarchyLayer(object):
                 'actions_to_step': self.action.squeeze(1).cpu().numpy(),
                 'predicted_next_observations_to_downer_layer': self.predicted_next_observations_to_downer_layer,
                 'mask_of_predicted_observation_to_downer_layer': self.mask_of_predicted_observation_to_downer_layer,
-                'observation_predicted_from': self.rollouts.observations[self.step_i][:,-1:],
+                'observation_predicted_from_to_downer_layer': self.rollouts.observations[self.step_i][:,-1:],
                 'predicted_reward_bounty_to_downer_layer': self.predicted_reward_bounty_to_downer_layer,
             }
 
@@ -497,7 +497,7 @@ class HierarchyLayer(object):
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
 
             if not args.mutual_information:
-                obs_rb = self.obs.astype(float)-self.observation_predicted_from.cpu().numpy()
+                obs_rb = self.obs.astype(float)-self.observation_predicted_from_by_upper_layer.cpu().numpy()
                 prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
 
             else:
@@ -1085,7 +1085,7 @@ def main():
         calling one_step is enough'''
         hierarchy_layer[-1].predicted_next_observations_by_upper_layer = None
         hierarchy_layer[-1].mask_of_predicted_observation_by_upper_layer = None
-        hierarchy_layer[-1].observation_predicted_from = None
+        hierarchy_layer[-1].observation_predicted_from_by_upper_layer = None
         hierarchy_layer[-1].predicted_reward_bounty_by_upper_layer = None
         hierarchy_layer[-1].is_final_step_by_upper_layer = False
         hierarchy_layer[-1].one_step()
