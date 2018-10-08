@@ -16,40 +16,6 @@ class PPO(object):
         self.one = torch.FloatTensor([1]).cuda()
         self.mone = self.one * -1
 
-        self.actor_critic_gradients_reward = False
-        self.actor_critic_preserve_prediction = False
-        self.transition_model_gradients_reward = False
-        self.transition_model_preserve_prediction = False
-
-        if self.this_layer.hierarchy_id != (self.this_layer.args.num_hierarchy-1):
-
-            if self.this_layer.args.encourage_ac_connection in ['actor_critic','both']:
-
-                if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
-                    self.actor_critic_gradients_reward = True
-
-                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
-                    self.actor_critic_preserve_prediction = True
-
-            if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
-
-                if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
-                    self.transition_model_gradients_reward = True
-
-                if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
-                    self.transition_model_preserve_prediction = True
-
-        if self.actor_critic_preserve_prediction:
-
-            self.action_onehot_travel_batch = torch.zeros(self.this_layer.args.actor_critic_mini_batch_size*self.this_layer.action_space.n,self.this_layer.action_space.n).cuda()
-            batch_i = 0
-            for action_i in range(self.this_layer.action_space.n):
-                for mini_batch_i in range(self.this_layer.args.actor_critic_mini_batch_size):
-                    self.action_onehot_travel_batch[batch_i][action_i] = 1.0
-                    batch_i += 1
-
-            self.batch_index_travel = np.array(range(self.this_layer.args.actor_critic_mini_batch_size*self.this_layer.action_space.n))
-
     def set_upper_layer(self, upper_layer):
         '''this method will be called if we have a transition_model to generate reward bounty'''
         self.upper_layer = upper_layer
@@ -59,8 +25,7 @@ class PPO(object):
     def init_transition_model(self):
         '''build essential things for training transition_model'''
         self.optimizer_transition_model = optim.Adam(self.upper_layer.transition_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
-        if self.this_layer.args.mutual_information:
-            self.NLLLoss = nn.NLLLoss()
+        self.NLLLoss = nn.NLLLoss()
 
     def get_grad_norm(self, inputs, outputs):
 
@@ -115,22 +80,6 @@ class PPO(object):
 
                     input_actions_index = input_actions_batch.nonzero()[:,1]
 
-                    if self.actor_critic_gradients_reward:
-
-                        input_actions_batch = torch.autograd.Variable(input_actions_batch, requires_grad=True)
-
-                    if self.actor_critic_preserve_prediction:
-
-                        '''repeat inputs so that every action has a simple'''
-                        observations_batch = observations_batch.repeat(self.this_layer.action_space.n,1,1,1)
-                        states_batch       = states_batch      .repeat(self.this_layer.action_space.n,1)
-                        masks_batch        = masks_batch       .repeat(self.this_layer.action_space.n,1)
-                        actions_batch      = actions_batch     .repeat(self.this_layer.action_space.n,1)
-
-                        '''after repeat, it will be s0, s0, s1, s1, s2, s2...'''
-
-                        input_actions_batch = self.action_onehot_travel_batch
-
                     # Reshape to do in a single forward pass for all steps
                     values, action_log_probs, dist_entropy, _, dist_features = self.this_layer.actor_critic.evaluate_actions(
                         inputs       = observations_batch,
@@ -139,31 +88,6 @@ class PPO(object):
                         action       = actions_batch,
                         input_action = input_actions_batch,
                     )
-
-                    if self.actor_critic_preserve_prediction:
-
-                        input_actions_index_for_acted_actions = (input_actions_index*self.this_layer.args.actor_critic_mini_batch_size+torch.LongTensor(range(self.this_layer.args.actor_critic_mini_batch_size)).long().cuda())
-
-                        self.input_actions_index_for_preserved_actions = torch.LongTensor(
-                            np.delete(
-                                arr = self.batch_index_travel,
-                                obj = input_actions_index_for_acted_actions.cpu().numpy(),
-                                axis = 0,
-                            )
-                        ).cuda()
-
-                        def select_preserved(x):
-                            return torch.index_select(x, 0, self.input_actions_index_for_preserved_actions).detach()
-
-                        self.preserve_values           = select_preserved(values)
-                        self.preserve_dist_features = select_preserved(dist_features)
-
-                        def select_acted(x):
-                            return torch.index_select(x, 0, input_actions_index_for_acted_actions)
-
-                        values           = select_acted(values)
-                        action_log_probs = select_acted(action_log_probs)
-                        dist_entropy     = select_acted(dist_entropy)
 
                     ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
                     surr1 = ratio * adv_targ
@@ -177,77 +101,18 @@ class PPO(object):
                     epoch_loss['value_{}'.format(input_actions_index[0])] = value_loss[0,0].item()
                     value_loss = value_loss.mean()
 
-                    if self.actor_critic_gradients_reward:
-                        dist_entropy_before_mean = dist_entropy
-
                     dist_entropy = dist_entropy * self.this_layer.args.entropy_coef
                     epoch_loss['dist_entropy_{}'.format(input_actions_index[0])] = dist_entropy[0].item()
                     dist_entropy = dist_entropy.mean()
 
                     final_loss = value_loss + action_loss - dist_entropy
 
-                    final_loss.backward(
-                        retain_graph = (self.this_layer.args.encourage_ac_connection in ['actor_critic','both']),
-                    )
-
-                    if self.actor_critic_gradients_reward:
-
-                        gradients_norm = self.get_grad_norm(
-                            inputs = input_actions_batch,
-                            outputs = dist_entropy_before_mean,
-                        )
-                        gradients_reward = (gradients_norm+1.0).log()*self.this_layer.args.encourage_ac_connection_coefficient
-                        print(gradients_reward.size())
-                        print(s)
-                        # DEBUG:
-                        epoch_loss['gradients_reward_{}'.format(input_actions_index[0])] = gradients_reward[0].item()
-                        gradients_reward = gradients_reward.mean()
-                        gradients_reward.backward(self.mone)
+                    final_loss.backward()
 
                     nn.utils.clip_grad_norm_(self.this_layer.actor_critic.parameters(),
                                              self.this_layer.args.max_grad_norm)
 
                     self.optimizer_actor_critic.step()
-
-                    if self.actor_critic_preserve_prediction:
-
-                        self.optimizer_actor_critic.zero_grad()
-
-                        def select_preserved(x):
-                            return torch.index_select(x  , 0, self.input_actions_index_for_preserved_actions)
-
-                        observations_batch = select_preserved(observations_batch)
-                        states_batch = select_preserved(states_batch)
-                        masks_batch = select_preserved(masks_batch)
-                        actions_batch = select_preserved(actions_batch)
-                        input_actions_batch = select_preserved(input_actions_batch)
-
-                        values, action_log_probs, dist_entropy, _, dist_features = self.this_layer.actor_critic.evaluate_actions(
-                            inputs       = observations_batch,
-                            states       = states_batch,
-                            masks        = masks_batch,
-                            action       = actions_batch,
-                            input_action = input_actions_batch,
-                        )
-
-                        preserve_prediction_values = F.mse_loss(
-                            input = values,
-                            target = self.preserve_values,
-                        )
-                        epoch_loss['preserve_prediction_values'] += preserve_prediction_values.item()
-
-                        preserve_prediction_dist_features = F.mse_loss(
-                            input = dist_features,
-                            target = self.preserve_dist_features,
-                        )
-                        epoch_loss['preserve_prediction_dist_features'] += preserve_prediction_dist_features.item()
-
-                        preserve_prediction_loss = (preserve_prediction_values+preserve_prediction_dist_features)*self.this_layer.args.encourage_ac_connection_coefficient
-                        epoch_loss['preserve_prediction'] += preserve_prediction_loss.item()
-
-                        preserve_prediction_loss.backward()
-
-                        self.optimizer_actor_critic.step()
 
         '''train transition_model'''
         if update_type in ['transition_model','both']:
@@ -288,22 +153,33 @@ class PPO(object):
                             input_action = action_onehot_batch,
                         )
                         '''compute mse loss'''
-                        mse_loss_transition = F.mse_loss(
+                        loss_transition = F.mse_loss(
                             input = predicted_next_observations_batch,
                             target = (next_observations_batch-observations_batch[:,-1:]),
                             reduction='elementwise_mean',
                         )/255.0
 
+                        if self.this_layer.args.inverse_mask:
+                            predicted_action_log_probs = self.upper_layer.transition_model.inverse_mask_model(
+                                inputs = (next_observations_batch-observations_batch[:,-1:]),
+                            )
+                            '''compute nll loss'''
+                            loss_inverse_mask_model = self.NLLLoss(predicted_action_log_probs, action_onehot_batch.nonzero()[:,1])
+                            loss_transition_final = loss_transition + loss_inverse_mask_model
+
+                        else:
+                            loss_transition_final = loss_transition
+
                     else:
                         predicted_action_log_probs, reward_bounty = self.upper_layer.transition_model(
                             inputs = next_observations_batch,
                         )
-                        '''compute mse loss'''
-                        nll_loss = self.NLLLoss(predicted_action_log_probs, action_onehot_batch.nonzero()[:,1])
+                        '''compute nll loss'''
+                        loss_mutual_information = self.NLLLoss(predicted_action_log_probs, action_onehot_batch.nonzero()[:,1])
 
                     if self.this_layer.update_i not in [0]:
                         '''for the first epoch, reward bounty is not accurate'''
-                        mse_loss_reward_bounty = F.mse_loss(
+                        loss_reward_bounty = F.mse_loss(
                             input = reward_bounty,
                             target = reward_bounty_raw_batch,
                             reduction='elementwise_mean',
@@ -311,64 +187,53 @@ class PPO(object):
 
                     if not self.this_layer.args.mutual_information:
                         if self.this_layer.update_i not in [0]:
-                            mse_loss = mse_loss_transition + mse_loss_reward_bounty
+                            loss_final = loss_transition_final + loss_reward_bounty
                         else:
-                            mse_loss = mse_loss_transition
+                            loss_final = loss_transition_final
                     else:
                         if self.this_layer.update_i not in [0]:
-                            mse_loss = nll_loss + mse_loss_reward_bounty
+                            loss_final = loss_mutual_information + loss_reward_bounty
                         else:
-                            mse_loss = nll_loss
+                            loss_final = loss_mutual_information
 
                     '''backward'''
-                    mse_loss.backward(
-                        retain_graph = (self.this_layer.args.encourage_ac_connection in ['transition_model','both']),
-                    )
-
-                    if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
-
-                        if self.this_layer.args.encourage_ac_connection_type in ['preserve_prediction']:
-                            raise Exception('Not implemented yet.')
-
-                        elif self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
-                            gradients_norm = self.get_grad_norm(
-                                inputs = action_onehot_batch,
-                                outputs = predicted_next_observations_batch,
-                            )
-                            gradients_reward = (gradients_norm+1.0).log().mean()*self.this_layer.args.encourage_ac_connection_coefficient
-                            gradients_reward.backward(self.mone)
+                    loss_final.backward()
 
                     self.optimizer_transition_model.step()
 
                 if self.this_layer.update_i in [0,1]:
                     print_str = ''
-                    print_str += '[H-{}] {}-th time train transition_model, epoch {}, ml {}'.format(
+                    print_str += '[H-{}] {}-th time train transition_model, epoch {}, lf {}'.format(
                         self.this_layer.hierarchy_id,
                         self.this_layer.update_i,
                         e,
-                        mse_loss.item(),
+                        loss_final.item(),
                     )
                     if self.this_layer.update_i not in [0]:
-                        print_str += ', mlrb {}'.format(
-                            mse_loss_reward_bounty.item(),
+                        print_str += ', lrb {}'.format(
+                            loss_reward_bounty.item(),
                         )
                     if not self.this_layer.args.mutual_information:
-                        print_str += ', mlt {}'.format(
-                            mse_loss_transition.item(),
+                        print_str += ', lt {}'.format(
+                            loss_transition.item(),
                         )
+                        if self.this_layer.args.inverse_mask:
+                            print_str += ', limm {}'.format(
+                                loss_inverse_mask_model.item(),
+                            )
                     else:
-                        print_str += ', nl {}'.format(
-                            nll_loss.item(),
+                        print_str += ', lmi {}'.format(
+                            loss_mutual_information.item(),
                         )
                     print(print_str)
 
             if not self.this_layer.args.mutual_information:
-                epoch_loss['mse_loss_transition'] = mse_loss.item()
+                epoch_loss['loss_transition'] = loss_transition.item()
+                if self.this_layer.args.inverse_mask:
+                    epoch_loss['loss_inverse_mask_model'] = loss_inverse_mask_model.item()
             else:
-                epoch_loss['nll_loss'] = nll_loss.item()
-            epoch_loss['mse_loss_reward_bounty'] = mse_loss.item()
-
-            if self.this_layer.args.encourage_ac_connection_type in ['gradients_reward']:
-                epoch_loss['gradients_reward'] = gradients_reward.item()
+                epoch_loss['loss_mutual_information'] = loss_mutual_information.item()
+            if self.this_layer.update_i not in [0]:
+                epoch_loss['loss_reward_bounty'] = loss_reward_bounty.item()
 
         return epoch_loss

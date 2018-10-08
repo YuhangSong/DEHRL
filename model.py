@@ -223,8 +223,71 @@ class MLPBase(nn.Module):
 
         return x, states
 
+class InverseMaskModel(nn.Module):
+    def __init__(self, predicted_action_space, linear_size=256):
+        super(InverseMaskModel, self).__init__()
+
+        self.predicted_action_space = predicted_action_space
+        self.linear_size = linear_size
+
+        self.linear_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.relu_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        self.leakrelu_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('leaky_relu'))
+
+        self.tanh_init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('tanh'))
+
+        self.conv = nn.Sequential(
+            self.leakrelu_init_(nn.Conv2d(1, 8, 8, stride=4)),
+            # input do not normalize
+            nn.LeakyReLU(inplace=True),
+
+            self.leakrelu_init_(nn.Conv2d(8, 16, 4, stride=2)),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(inplace=True),
+
+            self.leakrelu_init_(nn.Conv2d(16, 8, 3, stride=1)),
+            nn.BatchNorm2d(8),
+            nn.LeakyReLU(inplace=True),
+
+            Flatten(),
+
+            self.linear_init_(nn.Linear(8 * 7 * 7, self.linear_size)),
+            # fc donot normalize
+            # fc linear
+        )
+
+        self.label_linear = nn.Sequential(
+            self.linear_init_(nn.Linear(self.linear_size, self.predicted_action_space)),
+        )
+
+
+    def forward(self, inputs):
+        inputs = inputs[:,-1:]
+        conved = self.conv(inputs/255.0)
+
+        predicted_action_log_probs = F.log_softmax(self.label_linear(conved), dim=1)
+
+        return predicted_action_log_probs
+
+    def save_model(self, save_path):
+        torch.save(self.state_dict(), save_path)
+
+
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256, inverse_mask=False):
         super(TransitionModel, self).__init__()
         '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
@@ -234,6 +297,7 @@ class TransitionModel(nn.Module):
 
         self.linear_size = linear_size
         self.num_subpolicy = num_subpolicy
+        self.inverse_mask = inverse_mask
 
         self.linear_init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -314,6 +378,12 @@ class TransitionModel(nn.Module):
 
             self.label_linear = nn.Sequential(
                 self.linear_init_(nn.Linear(self.linear_size, num_subpolicy)),
+            )
+
+        if self.inverse_mask:
+            self.inverse_mask_model = InverseMaskModel(
+                predicted_action_space=self.input_action_space.n,
+                linear_size=256,
             )
 
 
