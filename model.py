@@ -250,21 +250,21 @@ class InverseMaskModel(nn.Module):
             nn.init.calculate_gain('tanh'))
 
         self.conv = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(1, 8, 8, stride=4)),
+            self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
             # input do not normalize
             nn.LeakyReLU(inplace=True),
 
-            self.leakrelu_init_(nn.Conv2d(8, 16, 4, stride=2)),
-            nn.BatchNorm2d(16),
+            self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
+            # nn.BatchNorm2d(32),
             nn.LeakyReLU(inplace=True),
 
-            self.leakrelu_init_(nn.Conv2d(16, 8, 3, stride=1)),
-            nn.BatchNorm2d(8),
+            self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
+            # nn.BatchNorm2d(16),
             nn.LeakyReLU(inplace=True),
 
             Flatten(),
 
-            self.linear_init_(nn.Linear(8 * 7 * 7, self.linear_size)),
+            self.linear_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
             # fc donot normalize
             # fc linear
         )
@@ -276,7 +276,7 @@ class InverseMaskModel(nn.Module):
 
     def forward(self, inputs):
         inputs = inputs[:,-1:]
-        conved = self.conv(inputs/255.0)
+        conved = self.conv((inputs/255.0+1.0)*0.5)
 
         predicted_action_log_probs = F.log_softmax(self.label_linear(conved), dim=1)
 
