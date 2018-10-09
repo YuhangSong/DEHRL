@@ -454,23 +454,31 @@ class HierarchyLayer(object):
                     inputs = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1),
                     input_action = self.action_onehot_batch,
                 )
+
+            '''generate inverse mask'''
             if self.args.inverse_mask:
                 predicted_next_observations_to_downer_layer_for_grad = torch.autograd.Variable(
                     self.predicted_next_observations_to_downer_layer,
                     requires_grad=True,
                 )
-                predicted_action_log_probs = self.transition_model.inverse_mask_model(
+                predicted_action_probs = self.transition_model.inverse_mask_model(
                     inputs = predicted_next_observations_to_downer_layer_for_grad,
+                ).exp()
+                predicted_action_probs = torch.masked_select(
+                    predicted_action_probs,
+                    self.action_onehot_batch.byte(),
                 )
                 self.mask_of_predicted_observation_to_downer_layer = torch.autograd.grad(
-                    outputs = predicted_action_log_probs,
+                    outputs = predicted_action_probs,
                     inputs = predicted_next_observations_to_downer_layer_for_grad,
-                    grad_outputs = torch.ones(predicted_action_log_probs.size()).cuda(),
+                    grad_outputs = torch.ones(predicted_action_probs.size()).cuda(),
                     retain_graph = None,
                     create_graph = False,
                     only_inputs = True,
                     allow_unused = False,
                 )[0]
+                self.mask_of_predicted_observation_to_downer_layer = self.mask_of_predicted_observation_to_downer_layer.abs()
+
             self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
             self.mask_of_predicted_observation_to_downer_layer = self.mask_of_predicted_observation_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.mask_of_predicted_observation_to_downer_layer.size()[1:])
             self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:]).squeeze(2)
