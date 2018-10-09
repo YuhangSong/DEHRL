@@ -625,10 +625,7 @@ class HierarchyLayer(object):
 
         self.generate_actions_to_step()
 
-        if type(self.envs).__name__ in ['SingleThread']:
-            env_0_sleeping = self.envs.env.get_sleeping(env_index=0)
-        elif type(self.envs).__name__ in ['HierarchyLayer','SubprocVecEnv']:
-            env_0_sleeping = self.envs.get_sleeping(env_index=0)
+        env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
         '''Obser reward and next obs'''
         fetched = self.envs.step(self.actions_to_step)
@@ -664,8 +661,12 @@ class HierarchyLayer(object):
 
         self.log_for_specify_action()
 
-        if not env_0_sleeping:
+        if env_0_sleeping in [False]:
             self.step_summary_from_env_0()
+        elif env_0_sleeping in [True]:
+            pass
+        else:
+            raise NotImplementedError
 
         '''If done then clean the history of observations'''
         if self.current_obs.dim() == 4:
@@ -1052,12 +1053,8 @@ class HierarchyLayer(object):
             self.num_trained_frames,
         ))
 
-
     def get_sleeping(self, env_index):
-        if type(self.envs).__name__ in ['SingleThread']:
-            return self.envs.env.get_sleeping(env_index)
-        elif type(self.envs).__name__ in ['HierarchyLayer']:
-            return self.envs.get_sleeping(env_index)
+        return self.envs.get_sleeping(env_index)
 
 def main():
 

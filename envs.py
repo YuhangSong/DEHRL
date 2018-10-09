@@ -25,23 +25,30 @@ class SleepAfterDone(gym.Wrapper):
         keep sleeping untill be reset() is called
         """
         gym.Wrapper.__init__(self, env)
-        self.sleeping = True
+        self.going_to_sleep = None
+        self.sleeping = None
 
     def reset(self, **kwargs):
+
+        self.going_to_sleep = False
         self.sleeping = False
+
         self.obs = self.env.reset(**kwargs)
         return self.obs
 
     def step(self, ac):
+        if self.going_to_sleep:
+            self.sleeping = True
+            self.going_to_sleep = False
         if not self.sleeping:
             self.obs, self.reward, done, self.info = self.env.step(ac)
             if done:
-                self.sleeping = True
+                self.going_to_sleep = True
         else:
             self.reward, done, self.info = type(self.reward)(0), True, self.info
         return self.obs, self.reward, done, self.info
 
-    def get_sleeping(self, env_index=None):
+    def get_sleeping(self):
         return self.sleeping
 
 class SingleThread(gym.Wrapper):
@@ -57,6 +64,8 @@ class SingleThread(gym.Wrapper):
     def step(self, ac):
         obs, reward, done, info = self.env.step(ac[0])
         return np.stack([obs]), np.stack([reward]), np.stack([done]), np.stack([info])
+    def get_sleeping(self, env_index=0):
+        return self.env.get_sleeping()
 
 class DelayDone(gym.Wrapper):
     def __init__(self, env):
@@ -79,6 +88,8 @@ class DelayDone(gym.Wrapper):
                 self.going_to_done = True
 
         else:
+            '''this is an additional step, no reward is provided'''
+            self.reward = type(self.reward)(0)
             self.done = True
             self.going_to_done = False
 

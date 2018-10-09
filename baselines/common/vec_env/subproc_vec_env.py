@@ -27,7 +27,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
         elif cmd == 'get_spaces':
             remote.send((env.observation_space, env.action_space))
         elif cmd == 'get_sleeping':
-            remote.send(env.sleeping)
+            remote.send(env.get_sleeping())
         else:
             raise NotImplementedError
 
