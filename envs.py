@@ -60,8 +60,7 @@ class SingleThread(gym.Wrapper):
 
 class DelayDone(gym.Wrapper):
     def __init__(self, env):
-        """make the env sleep after returning done,
-        keep sleeping untill be reset() is called
+        """make done delay for one step
         """
         gym.Wrapper.__init__(self, env)
         self.going_to_done = False
@@ -135,7 +134,7 @@ def make_env(rank, args):
             env = WrapPyTorch(env)
 
         env = DelayDone(env)
-        env = SleepAfterDone(env)
+        # env = SleepAfterDone(env)
 
         if args.num_processes in [1]:
             env=SingleThread(env)

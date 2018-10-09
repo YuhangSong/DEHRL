@@ -11,10 +11,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
         cmd, data = remote.recv()
         if cmd == 'step':
             ob, reward, done, info = env.step(data)
-            '''we have add a control to sleep after done,
-            do not reset automatically'''
-            # if done:
-            #     ob = env.reset()
+            if done:
+                ob = env.reset()
             remote.send((ob, reward, done, info))
         elif cmd == 'reset':
             ob = env.reset()

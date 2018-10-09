@@ -117,6 +117,7 @@ if args.act_deterministically:
     print('==========================================================================')
 
 if args.distance in ['match']:
+    print('# WARNING: Currently, match is not working')
     sift = cv2.xfeatures2d.SIFT_create()
     FLANN_INDEX_KDTREE = 1
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
@@ -136,9 +137,15 @@ class HierarchyLayer(object):
         self.hierarchy_id = hierarchy_id
         self.args = args
 
-        '''as an env, it should have action_space and observation space'''
+        '''
+        as an env, it should have action_space and observation space
+        '''
+        '''action_space is determined by manual setttings'''
         self.action_space = gym.spaces.Discrete((input_actions_onehot_global[self.hierarchy_id]).size()[1])
+        '''observation_space is the same as its env'''
         self.observation_space = self.envs.observation_space
+
+        '''setting hierarchy_interval for layers other than top layer'''
         if self.hierarchy_id not in [args.num_hierarchy-1]:
             self.hierarchy_interval = args.hierarchy_interval[self.hierarchy_id]
         else:
@@ -625,10 +632,10 @@ class HierarchyLayer(object):
 
         self.generate_actions_to_step()
 
-        if type(self.envs).__name__ in ['SingleThread']:
-            env_0_sleeping = self.envs.env.get_sleeping(env_index=0)
-        elif type(self.envs).__name__ in ['HierarchyLayer','SubprocVecEnv']:
-            env_0_sleeping = self.envs.get_sleeping(env_index=0)
+        # if type(self.envs).__name__ in ['SingleThread']:
+        #     env_0_sleeping = self.envs.env.get_sleeping(env_index=0)
+        # elif type(self.envs).__name__ in ['HierarchyLayer','SubprocVecEnv']:
+        #     env_0_sleeping = self.envs.get_sleeping(env_index=0)
 
         '''Obser reward and next obs'''
         fetched = self.envs.step(self.actions_to_step)
@@ -647,10 +654,10 @@ class HierarchyLayer(object):
 
         self.masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in self.done]).cuda()
 
-        if self.hierarchy_id in [(args.num_hierarchy-1)]:
-            '''top hierarchy layer is responsible for reseting env if all env has done'''
-            if self.masks.sum() == 0.0:
-                self.obs = self.reset()
+        # if self.hierarchy_id in [(args.num_hierarchy-1)]:
+        #     '''top hierarchy layer is responsible for reseting env if all env has done'''
+        #     if self.masks.sum() == 0.0:
+        #         self.obs = self.reset()
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
@@ -664,8 +671,8 @@ class HierarchyLayer(object):
 
         self.log_for_specify_action()
 
-        if not env_0_sleeping:
-            self.step_summary_from_env_0()
+        # if not env_0_sleeping:
+        self.step_summary_from_env_0()
 
         '''If done then clean the history of observations'''
         if self.current_obs.dim() == 4:
@@ -853,6 +860,9 @@ class HierarchyLayer(object):
 
     def reset(self):
         '''as a environment, it has reset method'''
+        print('[H-{}] Calling reset'.format(
+            self.hierarchy_id,
+        ))
         self.obs = self.envs.reset()
         if self.hierarchy_id in [0]:
             if args.test_action:
@@ -929,16 +939,16 @@ class HierarchyLayer(object):
                 img = macro_action_img
 
         state_img = utils.gray_to_rgb(self.obs[0,0])
-        state_img = cv2.putText(
-            state_img,
-            'Reward: {}'.format(
-                self.reward_raw_OR_reward[0],
-            ),
-            (30,10),
-            cv2.FONT_HERSHEY_COMPLEX,
-            0.2,
-            (0,0,255),
-        )
+        # state_img = cv2.putText(
+        #     state_img,
+        #     'Reward: {}'.format(
+        #         self.reward_raw_OR_reward[0],
+        #     ),
+        #     (30,10),
+        #     cv2.FONT_HERSHEY_COMPLEX,
+        #     0.2,
+        #     (0,0,255),
+        # )
         img = np.concatenate((img, state_img),0)
 
         try:
@@ -960,12 +970,12 @@ class HierarchyLayer(object):
             except Exception as e:
                 self.episode_visilize_stack['state_prediction'] = [img]
 
-        if self.hierarchy_id in [0]:
-            '''record actions'''
-            try:
-                self.episode_save_stack['actions'] += [self.action[0,0].item()]
-            except Exception as e:
-                self.episode_save_stack['actions'] = [self.action[0,0].item()]
+        # if self.hierarchy_id in [0]:
+        #     '''record actions'''
+        #     try:
+        #         self.episode_save_stack['actions'] += [self.action[0,0].item()]
+        #     except Exception as e:
+        #         self.episode_save_stack['actions'] = [self.action[0,0].item()]
 
     def summary_behavior_at_done(self):
 
@@ -991,6 +1001,11 @@ class HierarchyLayer(object):
                 log_fps,
                 (self.episode_visilize_stack[episode_visilize_stack_name].shape[2],self.episode_visilize_stack[episode_visilize_stack_name].shape[1]),
             )
+            print('[H-{}] Stack {}, Lenth {}'.format(
+                self.hierarchy_id,
+                episode_visilize_stack_name,
+                self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
+            ))
             for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
                 cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
                 if cur_frame.shape[2] in [1]:
