@@ -78,6 +78,11 @@ class DelayDone(gym.Wrapper):
                 self.going_to_done = True
 
         else:
+
+            '''this is an additional step added on the original env,
+            so it should not reture any reward'''
+            self.reward = 0.0
+
             self.done = True
             self.going_to_done = False
 

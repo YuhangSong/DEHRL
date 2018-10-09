@@ -167,6 +167,8 @@ class HierarchyLayer(object):
         ).cuda()
 
         if args.reward_bounty > 0.0 and self.hierarchy_id not in [0]:
+
+            '''build transition_model'''
             from model import TransitionModel
             self.transition_model = TransitionModel(
                 input_observation_shape = obs_shape if not args.mutual_information else self.envs.observation_space.shape,
@@ -176,30 +178,35 @@ class HierarchyLayer(object):
                 mutual_information = args.mutual_information,
                 inverse_mask = self.args.inverse_mask,
             ).cuda()
+
+            '''for computing all possible future states'''
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0
             for action_i in range(self.envs.action_space.n):
                 for process_i in range(args.num_processes):
                     self.action_onehot_batch[batch_i][action_i] = 1.0
                     batch_i += 1
+
         else:
             self.transition_model = None
 
-        if args.algo == 'a2c':
-            self.agent = algo.A2C_ACKTR(
-                self.actor_critic, args.value_loss_coef, args.entropy_coef,
-                lr=args.lr,
-                eps=args.eps,
-                alpha=args.alpha,
-                max_grad_norm=args.max_grad_norm,
-            )
-        elif args.algo == 'ppo':
+        if args.algo == 'ppo':
             self.agent = algo.PPO()
-        elif args.algo == 'acktr':
-            self.agent = algo.A2C_ACKTR(
-                self.actor_critic, args.value_loss_coef, args.entropy_coef,
-                acktr=True,
-            )
+        else:
+            print('# WARNING: Other algorithms are not supported yet.')
+            if args.algo == 'a2c':
+                self.agent = algo.A2C_ACKTR(
+                    self.actor_critic, args.value_loss_coef, args.entropy_coef,
+                    lr=args.lr,
+                    eps=args.eps,
+                    alpha=args.alpha,
+                    max_grad_norm=args.max_grad_norm,
+                )
+            elif args.algo == 'acktr':
+                self.agent = algo.A2C_ACKTR(
+                    self.actor_critic, args.value_loss_coef, args.entropy_coef,
+                    acktr=True,
+                )
 
         self.rollouts = RolloutStorage(
             num_steps = args.num_steps[self.hierarchy_id],
@@ -216,12 +223,13 @@ class HierarchyLayer(object):
         self.episode_reward = {}
         self.final_reward = {}
 
-        self.episode_reward['norm'] = 0.0
-        self.episode_reward['bounty'] = 0.0
-        self.episode_reward['bounty_clip'] = 0.0
-        self.episode_reward['len'] = 0.0
-
         if self.hierarchy_id in [0]:
+            '''since we do not sleep any more, layers other than 0 will not by receiving done
+            singal properly'''
+            self.episode_reward['norm'] = 0.0
+            self.episode_reward['bounty'] = 0.0
+            self.episode_reward['bounty_clip'] = 0.0
+            self.episode_reward['len'] = 0.0
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
             self.episode_reward_raw_all = 0.0
@@ -612,7 +620,6 @@ class HierarchyLayer(object):
                 '''mask it and stop reward function'''
                 self.masks = self.masks * 0.0
 
-
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
 
@@ -895,14 +902,15 @@ class HierarchyLayer(object):
             self.summary_behavior_at_step()
 
         '''summarize reward'''
-        self.episode_reward['norm'] += self.reward[0].item()
-        self.episode_reward['bounty'] += self.reward_bounty[0].item()
-        self.episode_reward['bounty_clip'] += self.bounty_clip[0].item()
         if self.hierarchy_id in [0]:
+            self.episode_reward['norm'] += self.reward[0].item()
+            self.episode_reward['bounty'] += self.reward_bounty[0].item()
+            self.episode_reward['bounty_clip'] += self.bounty_clip[0].item()
+
             '''for hierarchy_id=0, summarize reward_raw'''
             self.episode_reward['raw'] += self.reward_raw[0].item()
 
-        self.episode_reward['len'] += 1
+            self.episode_reward['len'] += 1
 
         if self.done[0]:
             for episode_reward_type in self.episode_reward.keys():
@@ -1067,12 +1075,11 @@ class HierarchyLayer(object):
             self.num_trained_frames,
         ))
 
-
-    def get_sleeping(self, env_index):
-        if type(self.envs).__name__ in ['SingleThread']:
-            return self.envs.env.get_sleeping(env_index)
-        elif type(self.envs).__name__ in ['HierarchyLayer']:
-            return self.envs.get_sleeping(env_index)
+    # def get_sleeping(self, env_index):
+    #     if type(self.envs).__name__ in ['SingleThread']:
+    #         return self.envs.env.get_sleeping(env_index)
+    #     elif type(self.envs).__name__ in ['HierarchyLayer']:
+    #         return self.envs.get_sleeping(env_index)
 
 def main():
 
