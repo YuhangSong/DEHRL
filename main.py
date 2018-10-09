@@ -625,8 +625,6 @@ class HierarchyLayer(object):
 
         self.generate_actions_to_step()
 
-        env_0_sleeping = self.envs.get_sleeping(env_index=0)
-
         '''Obser reward and next obs'''
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
@@ -661,6 +659,7 @@ class HierarchyLayer(object):
 
         self.log_for_specify_action()
 
+        env_0_sleeping = self.envs.get_sleeping(env_index=0)
         if env_0_sleeping in [False]:
             self.step_summary_from_env_0()
         elif env_0_sleeping in [True]:
