@@ -214,6 +214,10 @@ class HierarchyLayer(object):
         self.episode_reward['bounty_clip'] = 0.0
         self.episode_reward['len'] = 0.0
 
+        if self.args.inverse_mask:
+            self.inverse_mask_model_accurency_on_predicted_states = 0.0
+            self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
+
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
@@ -464,6 +468,8 @@ class HierarchyLayer(object):
                 predicted_action_probs = self.transition_model.inverse_mask_model(
                     inputs = predicted_next_observations_to_downer_layer_for_grad,
                 ).exp()
+                self.inverse_mask_model_accurency_on_predicted_states += (predicted_action_probs-self.action_onehot_batch).abs().sum(1).mean().item()
+                self.inverse_mask_model_accurency_on_predicted_states_count += 1.0
                 predicted_action_probs = torch.masked_select(
                     predicted_action_probs,
                     self.action_onehot_batch.byte(),
@@ -845,6 +851,17 @@ class HierarchyLayer(object):
                     ),
                     simple_value = epoch_loss[epoch_loss_type],
                 )
+
+            if self.args.inverse_mask and (self.inverse_mask_model_accurency_on_predicted_states_count>0.0):
+                self.summary.value.add(
+                    tag = 'hierarchy_{}/{}'.format(
+                        self.hierarchy_id,
+                        'inverse_mask_model_accurency_on_predicted_states',
+                    ),
+                    simple_value = self.inverse_mask_model_accurency_on_predicted_states/self.inverse_mask_model_accurency_on_predicted_states_count,
+                )
+                self.inverse_mask_model_accurency_on_predicted_states = 0.0
+                self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
 
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
