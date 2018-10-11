@@ -165,7 +165,7 @@ class OverCooked(gym.Env):
             self.img[0:self.screen_width,0:self.screen_height,:] = self.background
         else:
             # canvas
-            self.img = np.ones((int(self.screen_width + self.screen_width / 4.5), int(self.screen_height), 3), np.uint8) * 255
+            self.img = np.ones((int(self.screen_width + self.screen_width / 4), int(self.screen_height), 3), np.uint8) * 255
 
             # goals
             cv2.circle(self.img, (int(self.screen_width / 20), int(self.screen_height / 20)), int(self.screen_height / 20),
@@ -467,6 +467,15 @@ class OverCooked(gym.Env):
 
             self.show_next_goal(self.goal_id)
 
+        if self.args.add_skull:
+            self.last_skull_index = self.cur_skull_index
+            cv2.circle(self.img, (int(self.screen_width/20+self.last_skull_index*self.skull_interval), int(self.screen_height+self.screen_height/5)), int(self.screen_height/20),
+                       (255, 255, 255), -1)
+            self.cur_skull_index += 1
+            if self.screen_width/20+self.last_skull_index*self.skull_interval>self.screen_width*19/20:
+                self.cur_skull_index = 0
+            cv2.circle(self.img, (int(self.screen_width/20+self.cur_skull_index*self.skull_interval), int(self.screen_height+self.screen_height/5)), int(self.screen_height/20),
+                       (255, 0, 0), -1)
 
 
         # if reset_body:
@@ -553,6 +562,10 @@ class OverCooked(gym.Env):
         self.goal_ram = np.zeros(self.goal_num)
         self.leg_move_count = 0
         self.color_area = []
+        if self.args.add_skull:
+            self.cur_skull_index = 0
+            self.last_skull_index = 0
+            self.skull_interval = self.screen_height/10
         # self.action_count = np.zeros(4)
         self.leg_count = np.zeros(self.leg_num*4+1)
 

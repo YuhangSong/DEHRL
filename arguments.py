@@ -128,6 +128,8 @@ def get_args():
                         help='run overcooked to debug the game')
     parser.add_argument('--see-leg-fre', action='store_true',
                         help='see the frequency of each leg through tensorboard')
+    parser.add_argument('--add-skull', action='store_true',
+                        help='add skull at the bottom')
 
     args = parser.parse_args()
 
