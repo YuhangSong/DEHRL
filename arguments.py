@@ -155,7 +155,7 @@ def get_args():
         # args.save_dir = os.path.join(args.save_dir, 'u_f_r_b-{}'.format(args.use_fake_reward_bounty))
         # args.save_dir = os.path.join(args.save_dir, 'r_lg-{}'.format(args.reset_leg))
         # args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
-        # args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
+        args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
         # args.save_dir = os.path.join(args.save_dir, 'n_o-{}'.format(args.new_overcooked))
 
     '''policy details'''
