@@ -160,11 +160,17 @@ class PPO(object):
                         )/255.0
 
                         if self.this_layer.args.inverse_mask:
-                            predicted_action_log_probs = self.upper_layer.transition_model.inverse_mask_model(
-                                inputs = (next_observations_batch-observations_batch[:,-1:]),
+
+                            delta_states = torch.autograd.Variable(
+                                (next_observations_batch-observations_batch[:,-1:]),
+                                requires_grad=True,
                             )
-                            '''compute nll loss'''
+                            '''compute loss_inverse_mask_model'''
+                            predicted_action_log_probs = self.upper_layer.transition_model.inverse_mask_model(
+                                inputs = delta_states,
+                            )
                             loss_inverse_mask_model = self.NLLLoss(predicted_action_log_probs, action_onehot_batch.nonzero()[:,1])
+
                             loss_transition_final = loss_transition + loss_inverse_mask_model
 
                         else:
@@ -197,7 +203,27 @@ class PPO(object):
                             loss_final = loss_mutual_information
 
                     '''backward'''
-                    loss_final.backward()
+                    loss_final.backward(
+                        retain_graph=self.this_layer.args.inverse_mask,
+                    )
+
+                    if self.this_layer.args.inverse_mask:
+                        '''computer loss_mask_normalization'''
+                        predicted_action_probs = torch.masked_select(
+                            predicted_action_log_probs,
+                            action_onehot_batch.byte(),
+                        ).exp()
+                        mask_of_predicted_observation = torch.autograd.grad(
+                            outputs = predicted_action_probs,
+                            inputs = delta_states,
+                            grad_outputs = torch.ones(predicted_action_probs.size()).cuda(),
+                            create_graph=True,
+                            retain_graph=True,
+                            only_inputs=True,
+                            allow_unused = False,
+                        )[0]
+                        loss_mask_normalization = mask_of_predicted_observation.pow(2).mean()
+                        loss_mask_normalization.backward()
 
                     self.optimizer_transition_model.step()
 
@@ -221,6 +247,9 @@ class PPO(object):
                             print_str += ', limm {}'.format(
                                 loss_inverse_mask_model.item(),
                             )
+                            print_str += ', lmn {}'.format(
+                                loss_mask_normalization.item(),
+                            )
                     else:
                         print_str += ', lmi {}'.format(
                             loss_mutual_information.item(),
@@ -231,6 +260,7 @@ class PPO(object):
                 epoch_loss['loss_transition'] = loss_transition.item()
                 if self.this_layer.args.inverse_mask:
                     epoch_loss['loss_inverse_mask_model'] = loss_inverse_mask_model.item()
+                    epoch_loss['loss_mask_normalization'] = loss_mask_normalization.item()
             else:
                 epoch_loss['loss_mutual_information'] = loss_mutual_information.item()
             if self.this_layer.update_i not in [0]:
