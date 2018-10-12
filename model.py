@@ -249,38 +249,123 @@ class InverseMaskModel(nn.Module):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('tanh'))
 
-        self.conv = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
+        self.conv_now = nn.Sequential(
+            self.leakrelu_init_(nn.Conv2d(1, 8, 8, stride=4)),
             # input do not normalize
             nn.LeakyReLU(inplace=True),
 
-            self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
-            # nn.BatchNorm2d(32),
-            nn.LeakyReLU(inplace=True),
-
-            self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
+            self.leakrelu_init_(nn.Conv2d(8, 16, 4, stride=2)),
             # nn.BatchNorm2d(16),
             nn.LeakyReLU(inplace=True),
 
-            Flatten(),
-
-            self.linear_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
-            # fc donot normalize
-            # fc linear
+            self.leakrelu_init_(nn.Conv2d(16, 8, 3, stride=1)),
+            # nn.BatchNorm2d(8),
+            nn.LeakyReLU(inplace=True),
         )
 
-        self.label_linear = nn.Sequential(
-            self.linear_init_(nn.Linear(self.linear_size, self.predicted_action_space)),
+        self.conv_last = nn.Sequential(
+            self.leakrelu_init_(nn.Conv2d(1, 8, 8, stride=4)),
+            # input do not normalize
+            nn.LeakyReLU(inplace=True),
+
+            self.leakrelu_init_(nn.Conv2d(8, 16, 4, stride=2)),
+            # nn.BatchNorm2d(16),
+            nn.LeakyReLU(inplace=True),
+
+            self.leakrelu_init_(nn.Conv2d(16, 8, 3, stride=1)),
+            # nn.BatchNorm2d(8),
+            nn.LeakyReLU(inplace=True),
         )
 
+        self.mlp_e = nn.Sequential(
+            self.relu_init_(nn.Linear(8+8, 256)),
+            nn.ReLU(inplace=True),
+            self.relu_init_(nn.Linear(256, 128)),
+            nn.ReLU(inplace=True),
+            self.linear_init_(nn.Linear(128, self.predicted_action_space)),
+        )
 
-    def forward(self, inputs):
-        inputs = inputs[:,-1:]
-        conved = self.conv((inputs/255.0+1.0)*0.5)
+        self.mlp_alpha = nn.Sequential(
+            self.relu_init_(nn.Linear(8, 64)),
+            nn.ReLU(inplace=True),
+            self.relu_init_(nn.Linear(64, 64)),
+            nn.ReLU(inplace=True),
+            self.linear_init_(nn.Linear(64, 1)),
+        )
+        # 8 * 7 * 7
 
-        predicted_action_log_probs = F.log_softmax(self.label_linear(conved), dim=1)
+    def get_alpha(self, conved_now_states):
+        alpha_bar = []
+        for i in range(7):
+            for j in range(7):
+                alpha_bar += [self.mlp_alpha(conved_now_states[:,:,i,j])]
+        alpha = F.softmax(torch.cat(alpha_bar, 1), dim=1)
+        return alpha
 
-        return predicted_action_log_probs
+    def get_e(self, conved_last_states, conved_now_states):
+        e = []
+        for i in range(7):
+            for j in range(7):
+                e += [
+                    torch.unsqueeze(
+                        self.mlp_e(
+                            torch.cat(
+                                [
+                                    (conved_now_states[:,:,i,j]-conved_last_states[:,:,i,j]),
+                                    (conved_now_states[:,:,i,j]                            )
+                                ],
+                                1,
+                            )
+                        ),
+                        dim = 1
+                    )
+                ]
+        e = torch.cat(e, dim=1)
+        return e
+
+    def get_predicted_action_log_probs(self, e, alpha):
+        predicted_action_log_probs = F.log_softmax(
+            (e * torch.cat(
+                [alpha.unsqueeze(2)]*self.predicted_action_space,
+                dim = 2,
+            )).sum(
+                dim = 1,
+                keepdim = False,
+            ),
+            dim=1,
+        )
+
+    def forward(self, last_states, now_states):
+
+        conved_last_states = self.conv_last(last_states/255.0)
+        conved_now_states  = self.conv_now (now_states /255.0)
+
+        alpha = self.get_alpha(
+            conved_now_states=conved_now_states,
+        )
+
+        e = self.get_e(
+            conved_last_states = conved_last_states,
+            conved_now_states  = conved_now_states ,
+        )
+
+        predicted_action_log_probs = self.get_predicted_action_log_probs(
+            e = e,
+            alpha = alpha,
+        )
+
+        predicted_action_log_probs_each = F.log_softmax(e,dim=2)
+
+        loss_ent = (alpha*alpha.log()).sum(1).mean(0)
+
+        return predicted_action_log_probs, loss_ent, predicted_action_log_probs_each
+
+    def get_mask(self, now_states):
+        conved_now_states  = self.conv_now (now_states /255.0)
+        alpha = self.get_alpha(
+            conved_now_states=conved_now_states,
+        )
+        return alpha
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)
@@ -319,8 +404,7 @@ class TransitionModel(nn.Module):
             nn.init.calculate_gain('tanh'))
 
         self.conv = nn.Sequential(
-            # self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 32, 8, stride=4)),
-            self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
+            self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 16, 8, stride=4)),
             # input do not normalize
             nn.LeakyReLU(inplace=True),
 
@@ -382,13 +466,12 @@ class TransitionModel(nn.Module):
 
         if self.inverse_mask:
             self.inverse_mask_model = InverseMaskModel(
-                predicted_action_space=self.input_action_space.n,
+                predicted_action_space = self.input_action_space.n,
                 linear_size=256,
             )
 
 
     def forward(self, inputs, input_action=None):
-        inputs = inputs[:,-1:]
         before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
 
         predicted_reward_bounty = self.reward_bounty_linear(before_deconv)
