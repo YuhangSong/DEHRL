@@ -127,6 +127,8 @@ class PPO(object):
                 if not self.this_layer.checkpoint_loaded:
                     epoch = 800
 
+            self.upper_layer.transition_model.train()
+
             for e in range(epoch):
 
                 data_generator = self.upper_layer.rollouts.transition_model_feed_forward_generator(
@@ -141,12 +143,7 @@ class PPO(object):
 
                     self.optimizer_transition_model.zero_grad()
 
-                    if self.this_layer.args.encourage_ac_connection in ['transition_model','both']:
-                        action_onehot_batch = torch.autograd.Variable(action_onehot_batch, requires_grad=True)
-
                     '''forward'''
-                    self.upper_layer.transition_model.train()
-
                     if not self.this_layer.args.mutual_information:
                         predicted_next_observations_batch, reward_bounty = self.upper_layer.transition_model(
                             inputs = observations_batch,
@@ -159,31 +156,7 @@ class PPO(object):
                             reduction='elementwise_mean',
                         )/255.0
 
-                        if self.this_layer.args.inverse_mask:
-
-                            action_lable_batch = action_onehot_batch.nonzero()[:,1]
-
-                            '''compute loss_action'''
-                            predicted_action_log_probs, loss_ent, predicted_action_log_probs_each = self.upper_layer.transition_model.inverse_mask_model(
-                                last_states  = observations_batch[:,-1:],
-                                now_states   = next_observations_batch,
-                            )
-                            loss_action = self.NLLLoss(predicted_action_log_probs, action_lable_batch)
-
-                            '''compute loss_action_each'''
-                            action_lable_batch_each = action_lable_batch.unsqueeze(1).expand(-1,predicted_action_log_probs_each.size()[1]).contiguous()
-                            loss_action_each = self.NLLLoss(
-                                predicted_action_log_probs_each.view(predicted_action_log_probs_each.size()[0] * predicted_action_log_probs_each.size()[1],predicted_action_log_probs_each.size()[2]),
-                                action_lable_batch_each        .view(action_lable_batch_each        .size()[0] * action_lable_batch_each        .size()[1]                                          ),
-                            ) * action_lable_batch_each.size()[1]
-
-                            '''compute loss_inverse_mask_model'''
-                            loss_inverse_mask_model = loss_action + loss_action_each + 0.001*loss_ent
-
-                            loss_transition_final = loss_transition + loss_inverse_mask_model
-
-                        else:
-                            loss_transition_final = loss_transition
+                        loss_transition_final = loss_transition
 
                     else:
                         predicted_action_log_probs, reward_bounty = self.upper_layer.transition_model(
@@ -212,9 +185,7 @@ class PPO(object):
                             loss_final = loss_mutual_information
 
                     '''backward'''
-                    loss_final.backward(
-                        retain_graph=self.this_layer.args.inverse_mask,
-                    )
+                    loss_final.backward()
 
                     self.optimizer_transition_model.step()
 
@@ -234,10 +205,6 @@ class PPO(object):
                         print_str += ', lt {}'.format(
                             loss_transition.item(),
                         )
-                        if self.this_layer.args.inverse_mask:
-                            print_str += ', limm {}'.format(
-                                loss_inverse_mask_model.item(),
-                            )
                     else:
                         print_str += ', lmi {}'.format(
                             loss_mutual_information.item(),
@@ -246,8 +213,6 @@ class PPO(object):
 
             if not self.this_layer.args.mutual_information:
                 epoch_loss['loss_transition'] = loss_transition.item()
-                if self.this_layer.args.inverse_mask:
-                    epoch_loss['loss_inverse_mask_model'] = loss_inverse_mask_model.item()
             else:
                 epoch_loss['loss_mutual_information'] = loss_mutual_information.item()
             if self.this_layer.update_i not in [0]:

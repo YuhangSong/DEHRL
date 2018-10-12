@@ -123,6 +123,63 @@ if args.distance in ['match']:
     search_params = dict(checks = 50)
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
+if args.inverse_mask:
+    from model import InverseMaskModel
+    inverse_mask_model = InverseMaskModel(
+        predicted_action_space = bottom_envs.action_space.n,
+    ).cuda()
+    optimizer_inverse_mask_model = optim.Adam(inverse_mask_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
+    NLLLoss = nn.NLLLoss(reduction='elementwise_mean')
+
+    def update_inverse_mask_model(bottom_layer):
+
+        epoch_loss = {}
+        inverse_mask_model.train()
+
+        for e in range(4):
+
+            data_generator = bottom_layer.rollouts.transition_model_feed_forward_generator(
+                mini_batch_size = bottom_layer.args.actor_critic_mini_batch_size,
+            )
+
+            for sample in data_generator:
+
+                observations_batch, next_observations_batch, action_onehot_batch, reward_bounty_raw_batch = sample
+
+                optimizer_inverse_mask_model.zero_grad()
+
+                '''forward'''
+                inverse_mask_model.train()
+
+                action_lable_batch = action_onehot_batch.nonzero()[:,1]
+
+                '''compute loss_action'''
+                predicted_action_log_probs, loss_ent, predicted_action_log_probs_each = inverse_mask_model(
+                    last_states  = observations_batch[:,-1:],
+                    now_states   = next_observations_batch,
+                )
+                loss_action = NLLLoss(predicted_action_log_probs, action_lable_batch)
+
+                '''compute loss_action_each'''
+                action_lable_batch_each = action_lable_batch.unsqueeze(1).expand(-1,predicted_action_log_probs_each.size()[1]).contiguous()
+                loss_action_each = NLLLoss(
+                    predicted_action_log_probs_each.view(predicted_action_log_probs_each.size()[0] * predicted_action_log_probs_each.size()[1],predicted_action_log_probs_each.size()[2]),
+                    action_lable_batch_each        .view(action_lable_batch_each        .size()[0] * action_lable_batch_each        .size()[1]                                          ),
+                ) * action_lable_batch_each.size()[1]
+
+                '''compute loss_inverse_mask_model'''
+                loss_inverse_mask_model = loss_action + loss_action_each + 0.001*loss_ent
+
+                '''backward'''
+                loss_inverse_mask_model.backward()
+
+                optimizer_inverse_mask_model.step()
+
+        epoch_loss['loss_inverse_mask_model'] = loss_inverse_mask_model.item()
+
+        return epoch_loss
+
+
 class HierarchyLayer(object):
     """docstring for HierarchyLayer."""
     """
@@ -167,7 +224,6 @@ class HierarchyLayer(object):
                 output_observation_shape = self.envs.observation_space.shape,
                 num_subpolicy = args.num_subpolicy[self.hierarchy_id-1],
                 mutual_information = args.mutual_information,
-                inverse_mask = self.args.inverse_mask,
             ).cuda()
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0
@@ -214,9 +270,9 @@ class HierarchyLayer(object):
         self.episode_reward['bounty_clip'] = 0.0
         self.episode_reward['len'] = 0.0
 
-        if self.args.inverse_mask:
-            self.inverse_mask_model_accurency_on_predicted_states = 0.0
-            self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
+        # if self.args.inverse_mask:
+        #     self.inverse_mask_model_accurency_on_predicted_states = 0.0
+        #     self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
 
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
@@ -461,8 +517,9 @@ class HierarchyLayer(object):
                 )
                 '''generate inverse mask'''
                 if self.args.inverse_mask:
-                    self.mask_of_predicted_observation_to_downer_layer = self.transition_model.inverse_mask_model.get_mask(
-                        now_states = (self.predicted_next_observations_to_downer_layer+now_states[:,-1:]),
+                    inverse_mask_model.eval()
+                    self.mask_of_predicted_observation_to_downer_layer = inverse_mask_model.get_mask(
+                        last_states = now_states[:,-1:],
                     )
 
             self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
@@ -738,6 +795,10 @@ class HierarchyLayer(object):
 
         '''update, either actor_critic or transition_model'''
         epoch_loss = self.agent.update(self.update_type)
+        if self.args.inverse_mask and self.hierarchy_id in [0]:
+            update_inverse_mask_model(
+                bottom_layer=self,
+            )
         self.num_trained_frames += (args.num_steps[self.hierarchy_id]*args.num_processes)
         self.update_i += 1
 
@@ -832,16 +893,16 @@ class HierarchyLayer(object):
                     simple_value = epoch_loss[epoch_loss_type],
                 )
 
-            if self.args.inverse_mask and (self.inverse_mask_model_accurency_on_predicted_states_count>0.0):
-                self.summary.value.add(
-                    tag = 'hierarchy_{}/{}'.format(
-                        self.hierarchy_id,
-                        'inverse_mask_model_accurency_on_predicted_states',
-                    ),
-                    simple_value = self.inverse_mask_model_accurency_on_predicted_states/self.inverse_mask_model_accurency_on_predicted_states_count,
-                )
-                self.inverse_mask_model_accurency_on_predicted_states = 0.0
-                self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
+            # if self.args.inverse_mask and (self.inverse_mask_model_accurency_on_predicted_states_count>0.0):
+            #     self.summary.value.add(
+            #         tag = 'hierarchy_{}/{}'.format(
+            #             self.hierarchy_id,
+            #             'inverse_mask_model_accurency_on_predicted_states',
+            #         ),
+            #         simple_value = self.inverse_mask_model_accurency_on_predicted_states/self.inverse_mask_model_accurency_on_predicted_states_count,
+            #     )
+            #     self.inverse_mask_model_accurency_on_predicted_states = 0.0
+            #     self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
 
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()

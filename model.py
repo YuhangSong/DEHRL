@@ -224,11 +224,10 @@ class MLPBase(nn.Module):
         return x, states
 
 class InverseMaskModel(nn.Module):
-    def __init__(self, predicted_action_space, linear_size=256):
+    def __init__(self, predicted_action_space):
         super(InverseMaskModel, self).__init__()
 
         self.predicted_action_space = predicted_action_space
-        self.linear_size = linear_size
 
         self.linear_init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -294,11 +293,11 @@ class InverseMaskModel(nn.Module):
         )
         # 8 * 7 * 7
 
-    def get_alpha(self, conved_now_states):
+    def get_alpha(self, conved_last_states):
         alpha_bar = []
         for i in range(7):
             for j in range(7):
-                alpha_bar += [self.mlp_alpha(conved_now_states[:,:,i,j])]
+                alpha_bar += [self.mlp_alpha(conved_last_states[:,:,i,j])]
         alpha = F.softmax(torch.cat(alpha_bar, 1), dim=1)
         return alpha
 
@@ -341,7 +340,7 @@ class InverseMaskModel(nn.Module):
         conved_now_states  = self.conv_now (now_states /255.0)
 
         alpha = self.get_alpha(
-            conved_now_states=conved_now_states,
+            conved_last_states = conved_last_states,
         )
 
         e = self.get_e(
@@ -367,10 +366,10 @@ class InverseMaskModel(nn.Module):
         '''alpha is kept to be softmax'''
         return alpha
 
-    def get_mask(self, now_states):
-        conved_now_states  = self.conv_now (now_states /255.0)
+    def get_mask(self, last_states):
+        conved_last_states  = self.conv_last (last_states /255.0)
         alpha = self.get_alpha(
-            conved_now_states=conved_now_states,
+            conved_last_states = conved_last_states,
         )
         mask = self.alpha_to_mask(
             alpha = alpha,
@@ -383,7 +382,7 @@ class InverseMaskModel(nn.Module):
 
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256, inverse_mask=False):
+    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
         super(TransitionModel, self).__init__()
         '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
@@ -393,7 +392,6 @@ class TransitionModel(nn.Module):
 
         self.linear_size = linear_size
         self.num_subpolicy = num_subpolicy
-        self.inverse_mask = inverse_mask
 
         self.linear_init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -474,13 +472,6 @@ class TransitionModel(nn.Module):
             self.label_linear = nn.Sequential(
                 self.linear_init_(nn.Linear(self.linear_size, num_subpolicy)),
             )
-
-        if self.inverse_mask:
-            self.inverse_mask_model = InverseMaskModel(
-                predicted_action_space = self.input_action_space.n,
-                linear_size=256,
-            )
-
 
     def forward(self, inputs, input_action=None):
         before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)

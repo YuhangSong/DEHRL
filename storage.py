@@ -88,14 +88,27 @@ class RolloutStorage(object):
             yield observations_batch, input_actions_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
-    def transition_model_feed_forward_generator(self, mini_batch_size, recent_steps, recent_at):
+    def transition_model_feed_forward_generator(self, mini_batch_size, recent_steps=None, recent_at=None):
 
-        '''get recent and flatten'''
-        observations_batch           = self.observations          [recent_at-recent_steps:recent_at+1]     [ :-1].view(-1,*self.observations.size()[2:])
-        reward_bounty_raw_batch      = self.reward_bounty_raw     [recent_at-recent_steps:recent_at  ]           .view(-1, 1                           )
-        next_observations_batch      = self.observations          [recent_at-recent_steps:recent_at+1]     [1:  ].view(-1,*self.observations.size()[2:])
-        actions_batch                = self.actions               [recent_at-recent_steps:recent_at  ]           .view(-1, self.actions.size(-1)       )
-        next_masks_batch             = self.masks                 [recent_at-recent_steps:recent_at+1]     [1:  ].view(-1, 1                           )
+        observations_batch           = self.observations
+        reward_bounty_raw_batch      = self.reward_bounty_raw
+        next_observations_batch      = self.observations
+        actions_batch                = self.actions
+        next_masks_batch             = self.masks
+
+        if recent_steps is not None:
+            '''get recent and flatten'''
+            observations_batch           = observations_batch          [recent_at-recent_steps:recent_at+1]
+            reward_bounty_raw_batch      = reward_bounty_raw_batch     [recent_at-recent_steps:recent_at  ]
+            next_observations_batch      = next_observations_batch     [recent_at-recent_steps:recent_at+1]
+            actions_batch                = actions_batch               [recent_at-recent_steps:recent_at  ]
+            next_masks_batch             = next_masks_batch            [recent_at-recent_steps:recent_at+1]
+
+        observations_batch           = observations_batch               [ :-1].view(-1,*self.observations.size()[2:])
+        reward_bounty_raw_batch      = reward_bounty_raw_batch                .view(-1, 1                           )
+        next_observations_batch      = next_observations_batch          [1:  ].view(-1,*self.observations.size()[2:])
+        actions_batch                = actions_batch                          .view(-1, self.actions.size(-1)       )
+        next_masks_batch             = next_masks_batch                 [1:  ].view(-1, 1                           )
 
         '''generate indexs'''
         next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
