@@ -324,7 +324,7 @@ class InverseMaskModel(nn.Module):
         return e
 
     def get_predicted_action_log_probs(self, e, alpha):
-        predicted_action_log_probs = F.log_softmax(
+        return F.log_softmax(
             (e * torch.cat(
                 [alpha.unsqueeze(2)]*self.predicted_action_space,
                 dim = 2,
@@ -360,12 +360,23 @@ class InverseMaskModel(nn.Module):
 
         return predicted_action_log_probs, loss_ent, predicted_action_log_probs_each
 
+    def alpha_to_mask(self, alpha, extand_times=12):
+        alpha = alpha.unsqueeze(2).expand(-1,-1,extand_times)
+        alpha = alpha.contiguous().view(alpha.size()[0], 7, -1)
+        alpha = torch.cat([alpha]*extand_times,dim=2).view(alpha.size()[0],extand_times*7,extand_times*7)
+        '''alpha is kept to be softmax'''
+        return alpha
+
     def get_mask(self, now_states):
         conved_now_states  = self.conv_now (now_states /255.0)
         alpha = self.get_alpha(
             conved_now_states=conved_now_states,
         )
-        return alpha
+        mask = self.alpha_to_mask(
+            alpha = alpha,
+            extand_times = 12,
+        ).unsqueeze(1)*255.0
+        return mask
 
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)

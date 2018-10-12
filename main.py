@@ -464,9 +464,6 @@ class HierarchyLayer(object):
                     self.mask_of_predicted_observation_to_downer_layer = self.transition_model.inverse_mask_model.get_mask(
                         now_states = (self.predicted_next_observations_to_downer_layer+now_states[:,-1:]),
                     )
-                    print(self.mask_of_predicted_observation_to_downer_layer.size())
-                    print(oo)
-
 
             self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
             self.mask_of_predicted_observation_to_downer_layer = self.mask_of_predicted_observation_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.mask_of_predicted_observation_to_downer_layer.size()[1:])
