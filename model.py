@@ -356,7 +356,7 @@ class InverseMaskModel(nn.Module):
         # predicted_action_log_probs_each = F.log_softmax(e,dim=2)
         predicted_action_log_probs_each = None
 
-        loss_ent = (alpha*alpha.log()).sum(dim=1,keepdim=False).mean(dime=0,keepdim=False)
+        loss_ent = (alpha*alpha.log()).sum(dim=1,keepdim=False).mean(dim=0,keepdim=False)
 
         return predicted_action_log_probs, loss_ent, predicted_action_log_probs_each
 
