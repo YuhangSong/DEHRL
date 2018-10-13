@@ -128,6 +128,13 @@ if args.inverse_mask:
     inverse_mask_model = InverseMaskModel(
         predicted_action_space = bottom_envs.action_space.n,
     ).cuda()
+    try:
+        inverse_mask_model.load_state_dict(torch.load(args.save_dir+'/inverse_mask_model.pth'))
+        print('Load inverse_mask_model previous point: Successed')
+    except Exception as e:
+        print('Load inverse_mask_model previous point: Failed, due to {}')
+
+
     optimizer_inverse_mask_model = optim.Adam(inverse_mask_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
     NLLLoss = nn.NLLLoss(reduction='elementwise_mean')
 
@@ -1037,7 +1044,7 @@ class HierarchyLayer(object):
                 img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
-                    img = torch.cat([img,((inverse_model_mask-inverse_model_mask.min())/(inverse_model_mask.max()-inverse_model_mask.min())*255.0).permute(1,2,0)],1)
+                    img = torch.cat([img,inverse_model_mask.permute(1,2,0)],1)
             img = img.cpu().numpy()
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
