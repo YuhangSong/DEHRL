@@ -125,7 +125,8 @@ class PPO(object):
                     self.this_layer.update_i,
                 ))
                 if not self.this_layer.checkpoint_loaded:
-                    epoch = 800
+                    # epoch = 800
+                    epoch = 2
 
             self.upper_layer.transition_model.train()
 

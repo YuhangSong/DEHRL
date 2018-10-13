@@ -163,15 +163,15 @@ if args.inverse_mask:
                 )
                 loss_action = NLLLoss(predicted_action_log_probs, action_lable_batch)
 
-                '''compute loss_action_each'''
-                action_lable_batch_each = action_lable_batch.unsqueeze(1).expand(-1,predicted_action_log_probs_each.size()[1]).contiguous()
-                loss_action_each = NLLLoss(
-                    predicted_action_log_probs_each.view(predicted_action_log_probs_each.size()[0] * predicted_action_log_probs_each.size()[1],predicted_action_log_probs_each.size()[2]),
-                    action_lable_batch_each        .view(action_lable_batch_each        .size()[0] * action_lable_batch_each        .size()[1]                                          ),
-                ) * action_lable_batch_each.size()[1]
+                # '''compute loss_action_each'''
+                # action_lable_batch_each = action_lable_batch.unsqueeze(1).expand(-1,predicted_action_log_probs_each.size()[1]).contiguous()
+                # loss_action_each = NLLLoss(
+                #     predicted_action_log_probs_each.view(predicted_action_log_probs_each.size()[0] * predicted_action_log_probs_each.size()[1],predicted_action_log_probs_each.size()[2]),
+                #     action_lable_batch_each        .view(action_lable_batch_each        .size()[0] * action_lable_batch_each        .size()[1]                                          ),
+                # ) * action_lable_batch_each.size()[1]
 
                 '''compute loss_inverse_mask_model'''
-                loss_inverse_mask_model = loss_action + loss_action_each + 0.001*loss_ent
+                loss_inverse_mask_model = loss_action + loss_ent
 
                 '''backward'''
                 loss_inverse_mask_model.backward()

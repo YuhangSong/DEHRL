@@ -280,7 +280,7 @@ class InverseMaskModel(nn.Module):
         # )
 
         self.mlp_e = nn.Sequential(
-            self.relu_init_(nn.Linear(144*2, 256)),
+            self.relu_init_(nn.Linear(144, 256)),
             nn.ReLU(inplace=True),
             self.relu_init_(nn.Linear(256, 128)),
             nn.ReLU(inplace=True),
@@ -315,19 +315,11 @@ class InverseMaskModel(nn.Module):
                 e += [
                     torch.unsqueeze(
                         self.mlp_e(
-                            torch.cat(
-                                [
-                                    flatten(
-                                        conved_now_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]-conved_last_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
-                                    ),
-                                    flatten(
-                                        conved_now_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
-                                    )
-                                ],
-                                1,
+                            flatten(
+                                conved_now_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]-conved_last_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
                             )
                         ),
-                        dim = 1
+                        dim = 1,
                     )
                 ]
         e = torch.cat(e, dim=1)
@@ -335,10 +327,7 @@ class InverseMaskModel(nn.Module):
 
     def get_predicted_action_log_probs(self, e, alpha):
         return F.log_softmax(
-            (e * torch.cat(
-                [alpha.unsqueeze(2)]*self.predicted_action_space,
-                dim = 2,
-            )).sum(
+            (e*alpha.unsqueeze(2).expand(-1,-1,self.predicted_action_space)).sum(
                 dim = 1,
                 keepdim = False,
             ),
@@ -364,9 +353,10 @@ class InverseMaskModel(nn.Module):
             alpha = alpha,
         )
 
-        predicted_action_log_probs_each = F.log_softmax(e,dim=2)
+        # predicted_action_log_probs_each = F.log_softmax(e,dim=2)
+        predicted_action_log_probs_each = None
 
-        loss_ent = (alpha*alpha.log()).sum(1).mean(0)
+        loss_ent = (alpha*alpha.log()).sum(dim=1,keepdim=False).mean(dime=0,keepdim=False)
 
         return predicted_action_log_probs, loss_ent, predicted_action_log_probs_each
 
