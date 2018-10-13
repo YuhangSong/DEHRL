@@ -10,6 +10,9 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
+def flatten(x):
+    return x.contiguous().view(x.size(0), -1)
+
 class DeFlatten(nn.Module):
     def __init__(self, shape):
         super(DeFlatten, self).__init__()
@@ -248,36 +251,36 @@ class InverseMaskModel(nn.Module):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('tanh'))
 
-        self.conv_now = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(1, 8, 8, stride=4)),
-            # input do not normalize
-            nn.LeakyReLU(inplace=True),
-
-            self.leakrelu_init_(nn.Conv2d(8, 16, 4, stride=2)),
-            # nn.BatchNorm2d(16),
-            nn.LeakyReLU(inplace=True),
-
-            self.leakrelu_init_(nn.Conv2d(16, 8, 3, stride=1)),
-            # nn.BatchNorm2d(8),
-            nn.LeakyReLU(inplace=True),
-        )
-
-        self.conv_last = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(1, 8, 8, stride=4)),
-            # input do not normalize
-            nn.LeakyReLU(inplace=True),
-
-            self.leakrelu_init_(nn.Conv2d(8, 16, 4, stride=2)),
-            # nn.BatchNorm2d(16),
-            nn.LeakyReLU(inplace=True),
-
-            self.leakrelu_init_(nn.Conv2d(16, 8, 3, stride=1)),
-            # nn.BatchNorm2d(8),
-            nn.LeakyReLU(inplace=True),
-        )
+        # self.conv_now = nn.Sequential(
+        #     self.leakrelu_init_(nn.Conv2d(1, 8, 3, stride=2)),
+        #     # input do not normalize
+        #     nn.LeakyReLU(inplace=True),
+        #
+        #     self.leakrelu_init_(nn.Conv2d(8, 16, 3, stride=2)),
+        #     # nn.BatchNorm2d(xx),
+        #     nn.LeakyReLU(inplace=True),
+        #
+        #     self.leakrelu_init_(nn.Conv2d(16, 16, 3, stride=2)),
+        #     # nn.BatchNorm2d(xx),
+        #     nn.LeakyReLU(inplace=True),
+        # )
+        #
+        # self.conv_last = nn.Sequential(
+        #     self.leakrelu_init_(nn.Conv2d(1, 8, 3, stride=2)),
+        #     # input do not normalize
+        #     nn.LeakyReLU(inplace=True),
+        #
+        #     self.leakrelu_init_(nn.Conv2d(8, 16, 3, stride=2)),
+        #     # nn.BatchNorm2d(16),
+        #     nn.LeakyReLU(inplace=True),
+        #
+        #     self.leakrelu_init_(nn.Conv2d(16, 16, 3, stride=2)),
+        #     # nn.BatchNorm2d(8),
+        #     nn.LeakyReLU(inplace=True),
+        # )
 
         self.mlp_e = nn.Sequential(
-            self.relu_init_(nn.Linear(8+8, 256)),
+            self.relu_init_(nn.Linear(144*2, 256)),
             nn.ReLU(inplace=True),
             self.relu_init_(nn.Linear(256, 128)),
             nn.ReLU(inplace=True),
@@ -285,7 +288,7 @@ class InverseMaskModel(nn.Module):
         )
 
         self.mlp_alpha = nn.Sequential(
-            self.relu_init_(nn.Linear(8, 64)),
+            self.relu_init_(nn.Linear(144, 64)),
             nn.ReLU(inplace=True),
             self.relu_init_(nn.Linear(64, 64)),
             nn.ReLU(inplace=True),
@@ -297,7 +300,11 @@ class InverseMaskModel(nn.Module):
         alpha_bar = []
         for i in range(7):
             for j in range(7):
-                alpha_bar += [self.mlp_alpha(conved_last_states[:,:,i,j])]
+                alpha_bar += [self.mlp_alpha(
+                    flatten(
+                        conved_last_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
+                    )
+                )]
         alpha = F.softmax(torch.cat(alpha_bar, 1), dim=1)
         return alpha
 
@@ -310,8 +317,12 @@ class InverseMaskModel(nn.Module):
                         self.mlp_e(
                             torch.cat(
                                 [
-                                    (conved_now_states[:,:,i,j]-conved_last_states[:,:,i,j]),
-                                    (conved_now_states[:,:,i,j]                            )
+                                    flatten(
+                                        conved_now_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]-conved_last_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
+                                    ),
+                                    flatten(
+                                        conved_now_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
+                                    )
                                 ],
                                 1,
                             )
@@ -336,8 +347,8 @@ class InverseMaskModel(nn.Module):
 
     def forward(self, last_states, now_states):
 
-        conved_last_states = self.conv_last(last_states/255.0)
-        conved_now_states  = self.conv_now (now_states /255.0)
+        conved_last_states = (last_states/255.0)
+        conved_now_states  = (now_states /255.0)
 
         alpha = self.get_alpha(
             conved_last_states = conved_last_states,
@@ -367,7 +378,8 @@ class InverseMaskModel(nn.Module):
         return alpha
 
     def get_mask(self, last_states):
-        conved_last_states  = self.conv_last (last_states /255.0)
+        conved_last_states  = (last_states /255.0)
+
         alpha = self.get_alpha(
             conved_last_states = conved_last_states,
         )
