@@ -131,6 +131,9 @@ if args.inverse_mask:
     optimizer_inverse_mask_model = optim.Adam(inverse_mask_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
     NLLLoss = nn.NLLLoss(reduction='elementwise_mean')
 
+    def normalize_mask(mask):
+        return (mask-np.min(mask))/(np.max(mask)-np.min(mask))
+
     def update_inverse_mask_model(bottom_layer):
 
         epoch_loss = {}
@@ -550,6 +553,7 @@ class HierarchyLayer(object):
             if not args.mutual_information:
                 obs_rb = self.obs.astype(float)-self.observation_predicted_from_by_upper_layer.cpu().numpy()
                 prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
+                mask_rb = self.mask_of_predicted_observation_by_upper_layer.cpu().numpy()
 
             else:
                 self.upper_layer.transition_model.eval()
@@ -576,12 +580,24 @@ class HierarchyLayer(object):
                         if args.distance in ['mass_center','l1_mass_center']:
                             mass_center_0 = np.asarray(
                                 ndimage.measurements.center_of_mass(
-                                    ((obs_rb[process_i][0]+255.0)/2.0).astype(np.uint8)
+                                    (
+                                        (
+                                            (obs_rb[process_i][0]+255.0)/2.0
+                                        ) * normalize_mask(
+                                            mask = mask_rb[action_i,process_i][0],
+                                        )
+                                    ).astype(np.uint8)
                                 )
                             )
                             mass_center_1 = np.asarray(
                                 ndimage.measurements.center_of_mass(
-                                    ((prediction_rb[action_i,process_i][0]+255.0)/2.0).astype(np.uint8)
+                                    (
+                                        (
+                                            (prediction_rb[action_i,process_i][0]+255.0)/2.0
+                                        ) * normalize_mask(
+                                            mask = mask_rb[action_i,process_i][0],
+                                        )
+                                    ).astype(np.uint8)
                                 )
                             )
                             difference_mass_center = np.linalg.norm(mass_center_0-mass_center_1)
@@ -795,7 +811,7 @@ class HierarchyLayer(object):
 
         '''update, either actor_critic or transition_model'''
         epoch_loss = self.agent.update(self.update_type)
-        if self.args.inverse_mask and self.hierarchy_id in [0]:
+        if self.args.inverse_mask and (self.hierarchy_id in [0]):
             update_inverse_mask_model(
                 bottom_layer=self,
             )
@@ -815,6 +831,8 @@ class HierarchyLayer(object):
                 self.actor_critic.save_model(args.save_dir+'/hierarchy_{}_actor_critic.pth'.format(self.hierarchy_id))
                 if self.transition_model is not None:
                     self.transition_model.save_model(args.save_dir+'/hierarchy_{}_transition_model.pth'.format(self.hierarchy_id))
+                if self.args.inverse_mask and (self.hierarchy_id in [0]):
+                    inverse_mask_model   .save_model(args.save_dir+'/inverse_mask_model.pth')
                 print("[H-{:1}] Save checkpoint successed.".format(self.hierarchy_id))
             except Exception as e:
                 print("[H-{:1}] Save checkpoint failed, due to {}.".format(self.hierarchy_id,e))
