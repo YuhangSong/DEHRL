@@ -1044,7 +1044,7 @@ class HierarchyLayer(object):
                 img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
-                    img = torch.cat([img,inverse_model_mask.permute(1,2,0)],1)
+                    img = torch.cat([img,(inverse_model_mask*10.0).permute(1,2,0)],1)
             img = img.cpu().numpy()
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
