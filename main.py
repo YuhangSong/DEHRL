@@ -127,6 +127,7 @@ if args.inverse_mask:
     from model import InverseMaskModel
     inverse_mask_model = InverseMaskModel(
         predicted_action_space = bottom_envs.action_space.n,
+        num_grid = args.num_grid,
     ).cuda()
     try:
         inverse_mask_model.load_state_dict(torch.load(args.save_dir+'/inverse_mask_model.pth'))
@@ -176,21 +177,24 @@ if args.inverse_mask:
                 )
                 loss_action = NLLLoss(predicted_action_log_probs, action_lable_batch)
 
-                # '''compute loss_action_each'''
-                # action_lable_batch_each = action_lable_batch.unsqueeze(1).expand(-1,predicted_action_log_probs_each.size()[1]).contiguous()
-                # loss_action_each = NLLLoss(
-                #     predicted_action_log_probs_each.view(predicted_action_log_probs_each.size()[0] * predicted_action_log_probs_each.size()[1],predicted_action_log_probs_each.size()[2]),
-                #     action_lable_batch_each        .view(action_lable_batch_each        .size()[0] * action_lable_batch_each        .size()[1]                                          ),
-                # ) * action_lable_batch_each.size()[1]
+                '''compute loss_action_each'''
+                action_lable_batch_each = action_lable_batch.unsqueeze(1).expand(-1,predicted_action_log_probs_each.size()[1]).contiguous()
+                loss_action_each = NLLLoss(
+                    predicted_action_log_probs_each.view(predicted_action_log_probs_each.size()[0] * predicted_action_log_probs_each.size()[1],predicted_action_log_probs_each.size()[2]),
+                    action_lable_batch_each        .view(action_lable_batch_each        .size()[0] * action_lable_batch_each        .size()[1]                                          ),
+                ) * action_lable_batch_each.size()[1]
 
                 '''compute loss_inverse_mask_model'''
-                loss_inverse_mask_model = loss_action + loss_ent
+                loss_inverse_mask_model = loss_action + 0.001*loss_ent + loss_action_each
 
                 '''backward'''
                 loss_inverse_mask_model.backward()
 
                 optimizer_inverse_mask_model.step()
 
+        epoch_loss['loss_action'] = loss_action.item()
+        epoch_loss['loss_ent'] = loss_ent.item()
+        epoch_loss['loss_action_each'] = loss_action_each.item()
         epoch_loss['loss_inverse_mask_model'] = loss_inverse_mask_model.item()
 
         return epoch_loss
@@ -526,7 +530,8 @@ class HierarchyLayer(object):
             '''predict states'''
             self.transition_model.eval()
             with torch.no_grad():
-                now_states = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1)
+                self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i][:,-1:]
+                now_states                                      = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1)
                 self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer = self.transition_model(
                     inputs = now_states,
                     input_action = self.action_onehot_batch,
@@ -535,7 +540,8 @@ class HierarchyLayer(object):
                 if self.args.inverse_mask:
                     inverse_mask_model.eval()
                     self.mask_of_predicted_observation_to_downer_layer = inverse_mask_model.get_mask(
-                        last_states = (now_states[:,-1:]+self.predicted_next_observations_to_downer_layer),
+                        # last_states = (now_states[:,-1:]+self.predicted_next_observations_to_downer_layer),
+                        last_states = now_states[:,-1:], # only predict from real obs first
                     )
 
             self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
@@ -545,7 +551,7 @@ class HierarchyLayer(object):
                 'actions_to_step': self.action.squeeze(1).cpu().numpy(),
                 'predicted_next_observations_to_downer_layer': self.predicted_next_observations_to_downer_layer,
                 'mask_of_predicted_observation_to_downer_layer': self.mask_of_predicted_observation_to_downer_layer,
-                'observation_predicted_from_to_downer_layer': self.rollouts.observations[self.step_i][:,-1:],
+                'observation_predicted_from_to_downer_layer': self.observation_predicted_from_to_downer_layer,
                 'predicted_reward_bounty_to_downer_layer': self.predicted_reward_bounty_to_downer_layer,
             }
 
@@ -823,11 +829,17 @@ class HierarchyLayer(object):
             self.rollouts.compute_returns(self.next_value, args.use_gae, args.gamma, args.tau)
 
         '''update, either actor_critic or transition_model'''
-        epoch_loss = self.agent.update(self.update_type)
+        epoch_loss = {}
+        epoch_loss.update(
+            self.agent.update(self.update_type)
+        )
         if self.args.inverse_mask and (self.hierarchy_id in [0]):
-            update_inverse_mask_model(
-                bottom_layer=self,
+            epoch_loss.update(
+                update_inverse_mask_model(
+                    bottom_layer=self,
+                )
             )
+
         self.num_trained_frames += (args.num_steps[self.hierarchy_id]*args.num_processes)
         self.update_i += 1
 
@@ -1045,7 +1057,7 @@ class HierarchyLayer(object):
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.rollouts.observations[self.step_i][0,-self.envs.observation_space.shape[0]:].permute(1,2,0)
+            img = self.observation_predicted_from_to_downer_layer[0].permute(1,2,0)
             for action_i in range(self.envs.action_space.n):
                 img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
                 if self.args.inverse_mask:

@@ -107,8 +107,11 @@ def get_args():
                         help='active function of clip reward bounty: linear, u, relu, shrink_relu' )
     parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
                         help='num of the subpolicies per hierarchy' )
+
     parser.add_argument('--inverse-mask', action='store_true',
                         help='whether use inverse mask to avoid the influence from uncontrollable parts of state' )
+    parser.add_argument('--num-grid', type=int,
+                        help='num grid of inverse_mask_model' )
 
 
     '''for log behavior'''
@@ -185,6 +188,8 @@ def get_args():
             args.save_dir = os.path.join(args.save_dir, 'c_r_b_a_f-{}'.format(args.clip_reward_bounty_active_function))
         '''inverse mask'''
         args.save_dir = os.path.join(args.save_dir, 'i_m-{}'.format(args.inverse_mask))
+        if args.inverse_mask:
+            args.save_dir = os.path.join(args.save_dir, 'n_g-{}'.format(args.num_grid))
 
     if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
         '''for encourage_ac_connection'''

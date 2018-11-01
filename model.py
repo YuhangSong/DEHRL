@@ -227,7 +227,7 @@ class MLPBase(nn.Module):
         return x, states
 
 class InverseMaskModel(nn.Module):
-    def __init__(self, predicted_action_space, num_grid=3):
+    def __init__(self, predicted_action_space, num_grid):
         super(InverseMaskModel, self).__init__()
 
         self.predicted_action_space = predicted_action_space
@@ -254,7 +254,7 @@ class InverseMaskModel(nn.Module):
             nn.init.calculate_gain('tanh'))
 
         self.mlp_e = nn.Sequential(
-            self.relu_init_(nn.Linear(int(self.size_grid**2), 256)),
+            self.relu_init_(nn.Linear(int((self.size_grid**2)*2), 256)),
             nn.ReLU(inplace=True),
             self.relu_init_(nn.Linear(256, 128)),
             nn.ReLU(inplace=True),
@@ -269,17 +269,24 @@ class InverseMaskModel(nn.Module):
             self.linear_init_(nn.Linear(64, 1)),
         )
 
-    def get_alpha(self, conved_last_states):
+    def get_alpha(self, states):
         alpha_bar = []
         for i in range(self.num_grid):
             for j in range(self.num_grid):
                 alpha_bar += [self.mlp_alpha(
                     flatten(
-                        conved_last_states[:,:,i*self.size_grid:(i+1)*self.size_grid,j*self.size_grid:(j+1)*self.size_grid]
+                        self.slice_grid(
+                            states=states,
+                            i=i,
+                            j=j,
+                        )
                     )
                 )]
         alpha = F.softmax(torch.cat(alpha_bar, 1), dim=1)
         return alpha
+
+    def slice_grid(self, states, i, j):
+        return states [:,:,i*self.size_grid:(i+1)*self.size_grid,j*self.size_grid:(j+1)*self.size_grid]
 
     def get_e(self, conved_last_states, conved_now_states):
         e = []
@@ -288,8 +295,28 @@ class InverseMaskModel(nn.Module):
                 e += [
                     torch.unsqueeze(
                         self.mlp_e(
-                            flatten(
-                                conved_now_states[:,:,i*self.size_grid:(i+1)*self.size_grid,j*self.size_grid:(j+1)*self.size_grid]-conved_last_states[:,:,i*self.size_grid:(i+1)*self.size_grid,j*self.size_grid:(j+1)*self.size_grid]
+                            torch.cat(
+                                [
+                                    flatten(
+                                        self.slice_grid(
+                                            states=conved_now_states,
+                                            i=i,
+                                            j=j,
+                                        ) - self.slice_grid(
+                                            states=conved_last_states,
+                                            i=i,
+                                            j=j,
+                                        )
+                                    ),
+                                    flatten(
+                                        self.slice_grid(
+                                            states=conved_now_states,
+                                            i=i,
+                                            j=j,
+                                        )
+                                    )
+                                ],
+                                dim = 1,
                             )
                         ),
                         dim = 1,
@@ -313,7 +340,7 @@ class InverseMaskModel(nn.Module):
         conved_now_states  = (now_states /255.0)
 
         alpha = self.get_alpha(
-            conved_last_states = conved_last_states,
+            states = conved_now_states,
         )
 
         e = self.get_e(
@@ -326,8 +353,8 @@ class InverseMaskModel(nn.Module):
             alpha = alpha,
         )
 
-        # predicted_action_log_probs_each = F.log_softmax(e,dim=2)
-        predicted_action_log_probs_each = None
+        predicted_action_log_probs_each = F.log_softmax(e,dim=2)
+        # predicted_action_log_probs_each = None
 
         loss_ent = (alpha*alpha.log()).sum(dim=1,keepdim=False).mean(dim=0,keepdim=False)
 
@@ -344,7 +371,7 @@ class InverseMaskModel(nn.Module):
         conved_last_states  = (last_states /255.0)
 
         alpha = self.get_alpha(
-            conved_last_states = conved_last_states,
+            states = conved_last_states,
         )
         mask = self.alpha_to_mask(
             alpha = alpha,
