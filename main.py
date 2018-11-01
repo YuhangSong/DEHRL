@@ -142,7 +142,10 @@ if args.inverse_mask:
         return (mask-np.amin(mask))/(np.amax(mask)-np.amin(mask))
 
     def normalize_mask_torch(mask):
-        return (mask-mask.min()   )/(mask.max()   -mask.min()   )
+        return (mask-mask.min())/(mask.max()-mask.min())
+
+    def binarize_mask_torch(mask):
+        return ((mask-mask.max()).sign()+1.0)
 
     def update_inverse_mask_model(bottom_layer):
 
@@ -1047,7 +1050,7 @@ class HierarchyLayer(object):
                 img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
-                    img = torch.cat([img,(normalize_mask_torch(inverse_model_mask)*255.0).permute(1,2,0)],1)
+                    img = torch.cat([img,(binarize_mask_torch(inverse_model_mask)*255.0).permute(1,2,0)],1)
             img = img.cpu().numpy()
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
