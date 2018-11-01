@@ -227,10 +227,12 @@ class MLPBase(nn.Module):
         return x, states
 
 class InverseMaskModel(nn.Module):
-    def __init__(self, predicted_action_space):
+    def __init__(self, predicted_action_space, num_grid=6):
         super(InverseMaskModel, self).__init__()
 
         self.predicted_action_space = predicted_action_space
+        self.num_grid = num_grid
+        self.size_grid = int(84/self.num_grid)
 
         self.linear_init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -251,36 +253,8 @@ class InverseMaskModel(nn.Module):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('tanh'))
 
-        # self.conv_now = nn.Sequential(
-        #     self.leakrelu_init_(nn.Conv2d(1, 8, 3, stride=2)),
-        #     # input do not normalize
-        #     nn.LeakyReLU(inplace=True),
-        #
-        #     self.leakrelu_init_(nn.Conv2d(8, 16, 3, stride=2)),
-        #     # nn.BatchNorm2d(xx),
-        #     nn.LeakyReLU(inplace=True),
-        #
-        #     self.leakrelu_init_(nn.Conv2d(16, 16, 3, stride=2)),
-        #     # nn.BatchNorm2d(xx),
-        #     nn.LeakyReLU(inplace=True),
-        # )
-        #
-        # self.conv_last = nn.Sequential(
-        #     self.leakrelu_init_(nn.Conv2d(1, 8, 3, stride=2)),
-        #     # input do not normalize
-        #     nn.LeakyReLU(inplace=True),
-        #
-        #     self.leakrelu_init_(nn.Conv2d(8, 16, 3, stride=2)),
-        #     # nn.BatchNorm2d(16),
-        #     nn.LeakyReLU(inplace=True),
-        #
-        #     self.leakrelu_init_(nn.Conv2d(16, 16, 3, stride=2)),
-        #     # nn.BatchNorm2d(8),
-        #     nn.LeakyReLU(inplace=True),
-        # )
-
         self.mlp_e = nn.Sequential(
-            self.relu_init_(nn.Linear(144, 256)),
+            self.relu_init_(nn.Linear(int(self.size_grid**2), 256)),
             nn.ReLU(inplace=True),
             self.relu_init_(nn.Linear(256, 128)),
             nn.ReLU(inplace=True),
@@ -288,21 +262,20 @@ class InverseMaskModel(nn.Module):
         )
 
         self.mlp_alpha = nn.Sequential(
-            self.relu_init_(nn.Linear(144, 64)),
+            self.relu_init_(nn.Linear(int(self.size_grid**2), 64)),
             nn.ReLU(inplace=True),
             self.relu_init_(nn.Linear(64, 64)),
             nn.ReLU(inplace=True),
             self.linear_init_(nn.Linear(64, 1)),
         )
-        # 8 * 7 * 7
 
     def get_alpha(self, conved_last_states):
         alpha_bar = []
-        for i in range(7):
-            for j in range(7):
+        for i in range(self.num_grid):
+            for j in range(self.num_grid):
                 alpha_bar += [self.mlp_alpha(
                     flatten(
-                        conved_last_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
+                        conved_last_states[:,:,i*self.size_grid:(i+1)*self.size_grid,j*self.size_grid:(j+1)*self.size_grid]
                     )
                 )]
         alpha = F.softmax(torch.cat(alpha_bar, 1), dim=1)
@@ -310,13 +283,13 @@ class InverseMaskModel(nn.Module):
 
     def get_e(self, conved_last_states, conved_now_states):
         e = []
-        for i in range(7):
-            for j in range(7):
+        for i in range(self.num_grid):
+            for j in range(self.num_grid):
                 e += [
                     torch.unsqueeze(
                         self.mlp_e(
                             flatten(
-                                conved_now_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]-conved_last_states[:,:,i*12:(i+1)*12,j*12:(j+1)*12]
+                                conved_now_states[:,:,i*self.size_grid:(i+1)*self.size_grid,j*self.size_grid:(j+1)*self.size_grid]-conved_last_states[:,:,i*self.size_grid:(i+1)*self.size_grid,j*self.size_grid:(j+1)*self.size_grid]
                             )
                         ),
                         dim = 1,
@@ -360,10 +333,10 @@ class InverseMaskModel(nn.Module):
 
         return predicted_action_log_probs, loss_ent, predicted_action_log_probs_each
 
-    def alpha_to_mask(self, alpha, extand_times=12):
-        alpha = alpha.unsqueeze(2).expand(-1,-1,extand_times)
-        alpha = alpha.contiguous().view(alpha.size()[0], 7, -1)
-        alpha = torch.cat([alpha]*extand_times,dim=2).view(alpha.size()[0],extand_times*7,extand_times*7)
+    def alpha_to_mask(self, alpha):
+        alpha = alpha.unsqueeze(2).expand(-1,-1,self.size_gri)
+        alpha = alpha.contiguous().view(alpha.size()[0], self.num_grid, -1)
+        alpha = torch.cat([alpha]*self.size_gri,dim=2).view(alpha.size()[0],self.size_gri*self.num_grid,self.size_gri*self.num_grid)
         '''alpha is kept to be softmax'''
         return alpha
 
@@ -375,7 +348,6 @@ class InverseMaskModel(nn.Module):
         )
         mask = self.alpha_to_mask(
             alpha = alpha,
-            extand_times = 12,
         ).unsqueeze(1)*255.0
         return mask
 
