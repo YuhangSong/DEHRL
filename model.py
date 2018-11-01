@@ -227,7 +227,7 @@ class MLPBase(nn.Module):
         return x, states
 
 class InverseMaskModel(nn.Module):
-    def __init__(self, predicted_action_space, num_grid=6):
+    def __init__(self, predicted_action_space, num_grid=3):
         super(InverseMaskModel, self).__init__()
 
         self.predicted_action_space = predicted_action_space
@@ -334,9 +334,9 @@ class InverseMaskModel(nn.Module):
         return predicted_action_log_probs, loss_ent, predicted_action_log_probs_each
 
     def alpha_to_mask(self, alpha):
-        alpha = alpha.unsqueeze(2).expand(-1,-1,self.size_gri)
+        alpha = alpha.unsqueeze(2).expand(-1,-1,self.size_grid)
         alpha = alpha.contiguous().view(alpha.size()[0], self.num_grid, -1)
-        alpha = torch.cat([alpha]*self.size_gri,dim=2).view(alpha.size()[0],self.size_gri*self.num_grid,self.size_gri*self.num_grid)
+        alpha = torch.cat([alpha]*self.size_grid,dim=2).view(alpha.size()[0],self.size_grid*self.num_grid,self.size_grid*self.num_grid)
         '''alpha is kept to be softmax'''
         return alpha
 
