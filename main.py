@@ -138,8 +138,11 @@ if args.inverse_mask:
     optimizer_inverse_mask_model = optim.Adam(inverse_mask_model.parameters(), lr=1e-4, betas=(0.0, 0.9))
     NLLLoss = nn.NLLLoss(reduction='elementwise_mean')
 
-    def normalize_mask(mask):
-        return (mask-np.min(mask))/(np.max(mask)-np.min(mask))
+    def normalize_mask_np(mask):
+        return (mask-np.amin(mask))/(np.amax(mask)-np.amin(mask))
+
+    def normalize_mask_torch(mask):
+        return (mask-mask.min()   )/(mask.max()   -mask.min()   )
 
     def update_inverse_mask_model(bottom_layer):
 
@@ -590,7 +593,7 @@ class HierarchyLayer(object):
                                     (
                                         (
                                             (obs_rb[process_i][0]+255.0)/2.0
-                                        ) * normalize_mask(
+                                        ) * normalize_mask_np(
                                             mask = mask_rb[action_i,process_i][0],
                                         )
                                     ).astype(np.uint8)
@@ -601,7 +604,7 @@ class HierarchyLayer(object):
                                     (
                                         (
                                             (prediction_rb[action_i,process_i][0]+255.0)/2.0
-                                        ) * normalize_mask(
+                                        ) * normalize_mask_np(
                                             mask = mask_rb[action_i,process_i][0],
                                         )
                                     ).astype(np.uint8)
@@ -1044,7 +1047,7 @@ class HierarchyLayer(object):
                 img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
-                    img = torch.cat([img,normalize_mask(inverse_model_mask).permute(1,2,0)],1)
+                    img = torch.cat([img,(normalize_mask_torch(inverse_model_mask)*255.0).permute(1,2,0)],1)
             img = img.cpu().numpy()
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
