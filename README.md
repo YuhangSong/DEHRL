@@ -58,6 +58,11 @@ conda install pytorch torchvision -c soumith
 pip install opencv-contrib-python
 conda install scikit-image
 pip install --upgrade imutils
+
+mkdir dehrl
+cd dehrl
+git clone https://github.com/YuhangSong/DEHRL.git
+mkdir results
 ```
 
 Run commands here to enter the virtual environment before proceeding to following commands:
@@ -107,6 +112,14 @@ Goal-type: random
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal random --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
+
+#### Load pre-trained model and data
+
+The code antomatically check and reload everything from the log dir you set, and everything (model/curves/videos, etc.) is saved every 10 minutes.
+Thus, please feel free to continue your experiment from where you stopped by simply typing in the same command.
+
+If you want to load our pre-trained model, download the zipped log dir from [here]() and unzip it to the ```../results/``` dir.
+Then run the same commands to load our model as well as other training data.
 
 ### Run MineCraft
 
