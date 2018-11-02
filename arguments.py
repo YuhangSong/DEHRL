@@ -91,16 +91,8 @@ def get_args():
                         help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
     parser.add_argument('--distance', type=str,
                         help='distance to meansure the difference between states: l1, mass_center, l1_mass_center' )
-    parser.add_argument('--encourage-ac-connection', type=str,
-                        help='encourage connection to action conditional input on: transition_model, actor_critic, both, none' )
-    parser.add_argument('--encourage-ac-connection-type', type=str,
-                        help='type of encourage_ac_connection: gradients_reward, preserve_prediction' )
-    parser.add_argument('--encourage-ac-connection-coefficient', type=float,
-                        help='coefficient of encourage-ac-connection')
     parser.add_argument('--train-mode', type=str,
                         help='train mode for transition_model and actor_critic: switch, together' )
-    parser.add_argument('--mutual-information', action='store_true',
-                        help='whether use mutual information as bounty reward' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
@@ -108,6 +100,10 @@ def get_args():
     parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
                         help='num of the subpolicies per hierarchy' )
 
+    parser.add_argument('--mutual-information', action='store_true',
+                        help='whether use mutual information as bounty reward' )
+
+    '''inverse mask'''
     parser.add_argument('--inverse-mask', action='store_true',
                         help='whether use inverse mask to avoid the influence from uncontrollable parts of state' )
     parser.add_argument('--num-grid', type=int,
@@ -123,6 +119,7 @@ def get_args():
     parser.add_argument('--aux', type=str, default='',
                         help='some aux information you may want to record along with this run')
 
+    '''for debug'''
     parser.add_argument('--test-reward-bounty', action='store_true',
                         help='to test what reward bounty will each macro-action produce')
     parser.add_argument('--test-action', action='store_true',
@@ -190,18 +187,6 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'i_m-{}'.format(args.inverse_mask))
         if args.inverse_mask:
             args.save_dir = os.path.join(args.save_dir, 'n_g-{}'.format(args.num_grid))
-
-    if (args.reward_bounty > 0.0) or args.use_fake_reward_bounty:
-        '''for encourage_ac_connection'''
-
-        # if args.use_fake_reward_bounty:
-        #     '''if use_fake_reward_bounty, encourage_ac_connection can only be applied on actor_critic, or not applied'''
-        #     assert args.encourage_ac_connection in ['none','actor_critic']
-
-        # args.save_dir = os.path.join(args.save_dir, 'e_a_c-{}'.format(args.encourage_ac_connection))
-        # if args.encourage_ac_connection not in ['none']:
-        #     args.save_dir = os.path.join(args.save_dir, 'e_a_c_t-{}'.format(args.encourage_ac_connection_type))
-        #     args.save_dir = os.path.join(args.save_dir, 'e_a_c_c-{}'.format(args.encourage_ac_connection_coefficient))
 
     args.save_dir = os.path.join(args.save_dir, 'a-{}'.format(args.aux))
 

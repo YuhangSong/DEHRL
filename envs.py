@@ -110,6 +110,13 @@ def make_env(rank, args):
                 args = args,
             )
 
+        elif args.env_name in ['GridWorld']:
+            '''OverCooked game we wrote'''
+            import gridworld
+            env = gridworld.GridWorld(
+                args = args,
+            )
+
         elif args.env_name in ['MineCraft']:
             '''OverCooked game we wrote'''
             import minecraft

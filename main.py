@@ -106,7 +106,7 @@ sess = tf.Session()
 
 if args.test_action:
      from visdom import Visdom
-     viz = Visdom(port=6008)
+     viz = Visdom(port=6009)
      win = None
      win_dic = {}
      win_dic['Obs'] = None
@@ -680,7 +680,7 @@ class HierarchyLayer(object):
                 if self.args.env_name in ['OverCooked','MineCraft']:
                     '''other levels only receives reward_bounty'''
                     self.reward_final = self.reward_bounty
-                elif 'NoFrameskip' in self.args.env_name:
+                elif ('NoFrameskip' in self.args.env_name) or self.args.env_name in ['GridWorld']:
                     self.reward_final = self.reward.cuda() + self.reward_bounty
 
         else:
