@@ -19,6 +19,53 @@ try:
 except ImportError:
     pass
 
+class WrapperMontezumaRevenge(gym.Wrapper):
+    def __init__(self, env):
+        """MontezumaRevenge has some very weird actions, fix this
+        """
+        gym.Wrapper.__init__(self, env)
+        '''
+        0 is nope action
+        1 is jump, but only function after take 0
+        2 is nope
+        3 is right ->
+        4 is lift ->
+        5 is down ->
+        6 is duplicated right/lift,
+        7 is duplicated right/lift,
+        8 is duplicated right/lift,
+        9 is duplicated right/lift,
+        10 is up and jump but still need 0 before jump ->
+        11 is right jump ->
+        12 is duplicated lift
+        13 is down
+        14 is right
+        15 is lift
+        16 is right jump
+        17 is lift jump ->
+        '''
+        from gym import error, spaces
+        self.action_space = spaces.Discrete(5)
+        self.action_map = {
+            0: [3], # right
+            1: [4], # lift
+            2: [5], # down
+            3: [0,10], # jump
+            4: [0,11], # right jump
+            5: [0,17], # lift jump
+        }
+
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
+        for reset_times in range(10):
+            self.obs, self.reward, done, self.info = self.env.step(0)
+        return self.obs
+
+    def step(self, ac):
+        for action in self.action_map[ac]:
+            self.obs, self.reward, done, self.info = self.env.step(action)
+        return self.obs, self.reward, done, self.info
+
 class SleepAfterDone(gym.Wrapper):
     def __init__(self, env):
         """make the env sleep after returning done,
@@ -133,14 +180,18 @@ def make_env(rank, args):
 
             if is_atari:
                 '''atari from openai gym'''
-                '''we need the environment have no frame skip
-                and no action repeat stochasticity'''
-                assert 'NoFrameskip-v4' in env.spec.id
-                from baselines.common.atari_wrappers import NoopResetEnv, EpisodicLifeEnv, FireResetEnv, WarpFrame
-                env = NoopResetEnv(env, noop_max=30)
-                env = EpisodicLifeEnv(env)
+                assert 'NoFrameskip-v4' in env.spec.id # so that we make sure no action repeat stochasticity is introduced
+                from baselines.common.atari_wrappers import NoopResetEnv, NoLifeEnv, FireResetEnv, WarpFrame, MaxAndSkipEnv
+                # env = NoopResetEnv(env, noop_max=30)
+                if args.env_name in ['MontezumaRevengeNoFrameskip-v4']:
+                    frame_skip = 2
+                else:
+                    frame_skip = 4
+                env = MaxAndSkipEnv(env, skip=frame_skip)
+                env = NoLifeEnv(env)
                 if 'FIRE' in env.unwrapped.get_action_meanings():
                     env = FireResetEnv(env)
+                env = WrapperMontezumaRevenge(env)
                 env = WarpFrame(env)
 
         env.seed(args.seed + rank)

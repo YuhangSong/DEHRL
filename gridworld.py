@@ -31,7 +31,7 @@ class GridWorld(gym.Env):
         self.action_space = spaces.Discrete(5)
         self.action_pos_dict = {0: [0,0], 1:[-1, 0], 2:[1,0], 3:[0,-1], 4:[0,1]}
 
-        self.episode_length_limit = 50
+        self.episode_length_limit = int((12+12)*3)
 
         ''' set observation space '''
         self.obs_shape = [84, 84, 3]  # observation space shape
@@ -58,6 +58,8 @@ class GridWorld(gym.Env):
 
         GridWorld.num_env += 1
         self.rank = GridWorld.num_env
+
+        print('# WARNING: No reward returned')
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -109,7 +111,8 @@ class GridWorld(gym.Env):
 
         # correlation reward
         if new_color == 2:
-           return (self.observation, 1, done, True)
+           # return (self.observation, 1, done, True)
+           return (self.observation, 0, done, True)
         else:
            return (self.observation, 0, done, True)
 

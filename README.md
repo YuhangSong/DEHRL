@@ -237,6 +237,12 @@ Full ADM Model on GridWorld
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp gridworld --obs-type 'image' --env-name "GridWorld" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --inverse-mask --num-grid 7 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
+ADM model is OK on GridWorld [here](https://www.dropbox.com/s/zg82hq5rlrwy00l/H-1_F-2951168_state_prediction.avi?dl=0). Clearer illustration [here](https://www.dropbox.com/s/4drfiycqgn9g00n/H-1_F-2997248_state_prediction.avi?dl=0)
+
+On MontezumaRevenge, action test OK.
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp retest_mr --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --inverse-mask --num-grid 7 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+```
 
 Try MuJoCo. (IceClear, try run this.)
 ```bash

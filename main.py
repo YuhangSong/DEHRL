@@ -342,29 +342,29 @@ class HierarchyLayer(object):
 
         self.agent.set_this_layer(self)
 
-        if args.test_reward_bounty:
-            if self.hierarchy_id == 1.0:
-                self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
-                self.macros_count = 0
-                print(self.macros)
+        # if args.test_reward_bounty:
+        #     if self.hierarchy_id == 1.0:
+        #         self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
+        #         self.macros_count = 0
+        #         print(self.macros)
+        #
+        #     if self.hierarchy_id == 0.0:
+        #         self.actions = ([0,0,0,0]+[4,12,8,16]+[1,9,5,13]+[3,11,7,15]+[2,10,6,14])*5
+        #         self.actions_count = 0
+        #         print(self.actions)
+        #
+        #         self.bounty_results = []
 
-            if self.hierarchy_id == 0.0:
-                self.actions = ([0,0,0,0]+[4,12,8,16]+[1,9,5,13]+[3,11,7,15]+[2,10,6,14])*5
-                self.actions_count = 0
-                print(self.actions)
-
-                self.bounty_results = []
-
-        if args.test_action_vis:
-            if self.hierarchy_id == 1.0:
-                self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
-                self.macros_count = 0
-                print(self.macros)
-
-            if self.hierarchy_id == 0.0:
-                self.action_sum = 5*5*4
-                self.actions_count = 0
-                self.action_dic = {}
+        # if args.test_action_vis:
+        #     if self.hierarchy_id == 1.0:
+        #         self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
+        #         self.macros_count = 0
+        #         print(self.macros)
+        #
+        #     if self.hierarchy_id == 0.0:
+        #         self.action_sum = 5*5*4
+        #         self.actions_count = 0
+        #         self.action_dic = {}
 
         self.bounty_clip = torch.zeros(args.num_processes).cuda()
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
@@ -427,14 +427,27 @@ class HierarchyLayer(object):
 
         if args.test_action:
             if self.hierarchy_id in [0]:
-                self.action[0,0] = int(
-                    input(
+                human_action = 'nope'
+                while human_action not in ['q','w','e','a','s','d']:
+                    human_action = input(
                         '[Macro Action {}, actual action {}], Act: '.format(
                             utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()),
                             self.action[0,0].item(),
                         )
                     )
-                )
+                if args.env_name in ['MontezumaRevengeNoFrameskip-v4']:
+                    human_action_map = {
+                        'd':0,
+                        'a':1,
+                        's':2,
+                        'w':3,
+                        'e':4,
+                        'q':5,
+                    }
+                    self.action[0,0] = int(human_action_map[human_action])
+                else:
+                    self.action[0,0] = int(human_action)
+
             # if self.hierarchy_id in [1]:
             #     self.action[0,0] = int(
             #         input(
@@ -452,46 +465,46 @@ class HierarchyLayer(object):
                     )
                 )
 
-        if args.test_reward_bounty:
-            if self.hierarchy_id in [0]:
-                if self.episode_reward['len'] < 4.0:
-                    self.action[0,0] = self.actions[self.actions_count]
-                    self.actions_count += 1
-                    print('set action to {}'.format(self.action[0,0].item()))
-            if self.hierarchy_id in [1]:
-                if self.episode_reward['len']==0.0:
-                    self.action[0,0] = self.macros[self.macros_count]
-                    self.macros_count += 1
-                    print('set macro action: {}'.format(self.action[0,0].item()))
+        # if args.test_reward_bounty:
+        #     if self.hierarchy_id in [0]:
+        #         if self.episode_reward['len'] < 4.0:
+        #             self.action[0,0] = self.actions[self.actions_count]
+        #             self.actions_count += 1
+        #             print('set action to {}'.format(self.action[0,0].item()))
+        #     if self.hierarchy_id in [1]:
+        #         if self.episode_reward['len']==0.0:
+        #             self.action[0,0] = self.macros[self.macros_count]
+        #             self.macros_count += 1
+        #             print('set macro action: {}'.format(self.action[0,0].item()))
 
-        if args.test_action_vis:
-            if self.hierarchy_id in [0]:
-                if self.episode_reward['len'] < 16.0:
-                    new_key = False
-                    try:
-                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().item())
-                    except Exception as e:
-                        new_key = True
-                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().item()]
-                    self.actions_count += 1
-                    if self.actions_count%4 == 0 and not new_key:
-                        self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] += [' ']
-
-            if self.hierarchy_id in [1]:
-                if self.episode_reward['len']==0.0:
-                    self.action[0,0] = self.macros[self.macros_count]
-                    self.macros_count += 1
-                    print('set macro action: {}'.format(self.action[0,0].item()))
+        # if args.test_action_vis:
+        #     if self.hierarchy_id in [0]:
+        #         if self.episode_reward['len'] < 16.0:
+        #             new_key = False
+        #             try:
+        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().item())
+        #             except Exception as e:
+        #                 new_key = True
+        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().item()]
+        #             self.actions_count += 1
+        #             if self.actions_count%4 == 0 and not new_key:
+        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] += [' ']
+        #
+        #     if self.hierarchy_id in [1]:
+        #         if self.episode_reward['len']==0.0:
+        #             self.action[0,0] = self.macros[self.macros_count]
+        #             self.macros_count += 1
+        #             print('set macro action: {}'.format(self.action[0,0].item()))
 
     def log_for_specify_action(self):
 
         if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
-            if args.test_action_vis:
-                if self.episode_reward['len'] == 3.0:
-                    if self.actions_count == self.action_sum:
-                        for action_keys in self.action_dic.keys():
-                            print('macro action: {}, action list: {}'.format(action_keys, self.action_dic[action_keys]))
-                        print(s)
+            # if args.test_action_vis:
+            #     if self.episode_reward['len'] == 3.0:
+            #         if self.actions_count == self.action_sum:
+            #             for action_keys in self.action_dic.keys():
+            #                 print('macro action: {}, action list: {}'.format(action_keys, self.action_dic[action_keys]))
+            #             print(s)
 
             print_str = ''
             print_str += '[reward {} ][done {}][masks {}]'.format(
@@ -503,22 +516,22 @@ class HierarchyLayer(object):
                 print_str += '[reward_bounty {}]'.format(
                     self.reward_bounty[0],
                 )
-                if args.test_reward_bounty:
-                    if self.episode_reward['len'] == 3.0:
-                        self.bounty_results += [self.reward_bounty[0]]
-                        if self.actions_count == (len(self.actions)):
-                            for x in range(5):
-                                print_str = ''
-                                max_value = 0.0
-                                max_index = -1
-                                for y in range(5):
-                                    temp = self.bounty_results[x*5+y]
-                                    print_str += '{}\t'.format(temp)
-                                    if temp>max_value:
-                                        max_value = temp
-                                        max_index = y
-                                print('{} max_index: {}'.format(print_str, max_index))
-                            print(s)
+                # if args.test_reward_bounty:
+                #     if self.episode_reward['len'] == 3.0:
+                #         self.bounty_results += [self.reward_bounty[0]]
+                #         if self.actions_count == (len(self.actions)):
+                #             for x in range(5):
+                #                 print_str = ''
+                #                 max_value = 0.0
+                #                 max_index = -1
+                #                 for y in range(5):
+                #                     temp = self.bounty_results[x*5+y]
+                #                     print_str += '{}\t'.format(temp)
+                #                     if temp>max_value:
+                #                         max_value = temp
+                #                         max_index = y
+                #                 print('{} max_index: {}'.format(print_str, max_index))
+                #             print(s)
 
             print(print_str)
 
@@ -730,8 +743,12 @@ class HierarchyLayer(object):
 
         if self.hierarchy_id in [(args.num_hierarchy-1)]:
             '''top hierarchy layer is responsible for reseting env if all env has done'''
-            if self.masks.sum() == 0.0:
-                self.obs = self.reset()
+            if args.test_action:
+                if self.masks[0] == 0.0:
+                    self.obs = self.reset()
+            else:
+                if self.masks.sum() == 0.0:
+                    self.obs = self.reset()
 
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
@@ -807,10 +824,6 @@ class HierarchyLayer(object):
 
         '''overwrite if args.act_deterministically'''
         if args.act_deterministically:
-            self.deterministic = True
-
-        if args.test_reward_bounty or args.test_action_vis or args.test_action:
-            self.update_type = 'none'
             self.deterministic = True
 
     def update_agent_one_step(self):
@@ -1057,7 +1070,7 @@ class HierarchyLayer(object):
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.observation_predicted_from_to_downer_layer[0].permute(1,2,0)
+            img = self.observation_predicted_from_to_downer_layer[0].permute(1,2,0)*(binarize_mask_torch(self.mask_of_predicted_observation_to_downer_layer[0,0,:,:,:])*255.0).permute(1,2,0)
             for action_i in range(self.envs.action_space.n):
                 img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
                 if self.args.inverse_mask:

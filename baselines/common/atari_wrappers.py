@@ -90,6 +90,27 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = self.env.unwrapped.ale.lives()
         return obs
 
+class NoLifeEnv(gym.Wrapper):
+    def __init__(self, env):
+        """Make end-of-life == end-of-episode, and reset.
+        """
+        gym.Wrapper.__init__(self, env)
+        self.lives = 0
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        lives = self.env.unwrapped.ale.lives()
+        if lives < self.lives:
+            done = True
+        self.lives = lives
+        return obs, reward, done, info
+
+    def reset(self, **kwargs):
+        """Reset"""
+        obs = self.env.reset(**kwargs)
+        self.lives = self.env.unwrapped.ale.lives()
+        return obs
+
 class MaxAndSkipEnv(gym.Wrapper):
     def __init__(self, env, skip=4):
         """Return only every `skip`-th frame"""
