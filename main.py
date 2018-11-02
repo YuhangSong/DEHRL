@@ -558,7 +558,10 @@ class HierarchyLayer(object):
                     )
 
             self.predicted_next_observations_to_downer_layer = self.predicted_next_observations_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_next_observations_to_downer_layer.size()[1:])
-            self.mask_of_predicted_observation_to_downer_layer = self.mask_of_predicted_observation_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.mask_of_predicted_observation_to_downer_layer.size()[1:])
+            if self.args.inverse_mask:
+                self.mask_of_predicted_observation_to_downer_layer = self.mask_of_predicted_observation_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.mask_of_predicted_observation_to_downer_layer.size()[1:])
+            else:
+                self.mask_of_predicted_observation_to_downer_layer = None
             self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:]).squeeze(2)
             self.actions_to_step = {
                 'actions_to_step': self.action.squeeze(1).cpu().numpy(),
@@ -585,7 +588,8 @@ class HierarchyLayer(object):
             if not args.mutual_information:
                 obs_rb = self.obs.astype(float)-self.observation_predicted_from_by_upper_layer.cpu().numpy()
                 prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
-                mask_rb = self.mask_of_predicted_observation_by_upper_layer.cpu().numpy()
+                if self.args.inverse_mask:
+                    mask_rb = self.mask_of_predicted_observation_by_upper_layer.cpu().numpy()
 
             else:
                 self.upper_layer.transition_model.eval()
@@ -610,25 +614,18 @@ class HierarchyLayer(object):
                             )/255.0
 
                         if args.distance in ['mass_center','l1_mass_center']:
+                            # mask here: *mask_rb[action_i,process_i][0]
                             mass_center_0 = np.asarray(
                                 ndimage.measurements.center_of_mass(
                                     (
-                                        (
-                                            (obs_rb[process_i][0]+255.0)/2.0
-                                        ) * normalize_mask_np(
-                                            mask = mask_rb[action_i,process_i][0],
-                                        )
+                                        (obs_rb[process_i][0]+255.0)/2.0
                                     ).astype(np.uint8)
                                 )
                             )
                             mass_center_1 = np.asarray(
                                 ndimage.measurements.center_of_mass(
                                     (
-                                        (
-                                            (prediction_rb[action_i,process_i][0]+255.0)/2.0
-                                        ) * normalize_mask_np(
-                                            mask = mask_rb[action_i,process_i][0],
-                                        )
+                                        (prediction_rb[action_i,process_i][0]+255.0)/2.0
                                     ).astype(np.uint8)
                                 )
                             )
@@ -1070,7 +1067,7 @@ class HierarchyLayer(object):
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.observation_predicted_from_to_downer_layer[0].permute(1,2,0)*(binarize_mask_torch(self.mask_of_predicted_observation_to_downer_layer[0,0,:,:,:])*255.0).permute(1,2,0)
+            img = self.observation_predicted_from_to_downer_layer[0].permute(1,2,0)
             for action_i in range(self.envs.action_space.n):
                 img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
                 if self.args.inverse_mask:
