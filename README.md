@@ -68,6 +68,12 @@ source activate dehrl
 
 ### Run OverCooked
 
+Level 1; Any | Level 1; Fix | Level 1; Random 
+:-------------------------:|:-------------------------:|:-------------------------:
+<img src="imgs/1-any.png">  |  <img src="imgs/1-fix.png">  |  <img src="imgs/1-random.png">
+Level 2; Any | Level 2; Fix | Level 2; Random 
+<img src="imgs/2-any.png">  |  <img src="imgs/2-fix.png">  |  <img src="imgs/2-random.png">
+
 #### Level: 1
 
 Goal-type: any.
