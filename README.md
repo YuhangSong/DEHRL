@@ -73,10 +73,10 @@ source activate dehrl
 
 ### Run OverCooked
 
-Level 1; Any | Level 1; Fix | Level 1; Random 
+Level 1; Any | Level 1; Fix | Level 1; Random
 :-------------------------:|:-------------------------:|:-------------------------:
 <img src="imgs/1-any.png">  |  <img src="imgs/1-fix.png">  |  <img src="imgs/1-random.png">
-Level 2; Any | Level 2; Fix | Level 2; Random 
+Level 2; Any | Level 2; Fix | Level 2; Random
 <img src="imgs/2-any.png">  |  <img src="imgs/2-fix.png">  |  <img src="imgs/2-random.png">
 
 #### Level: 1
@@ -155,6 +155,12 @@ We are waiting for their official release to further advance our DEHRL on domain
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 1 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Reacher-v2" --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 8 4 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+```
+
+## Run Explore2D
+
+```bash
+CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --num-hierarchy 4 --num-subpolicy 4 4 4 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
 
 ## Results Visualization

@@ -73,6 +73,11 @@ if len(bottom_envs.observation_space.shape) == 1:
 obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
+if (obs_shape[0]==84) and (obs_shape[0]==84):
+    state_type = 'standard_image'
+else:
+    state_type = 'vector'
+
 if len(args.num_subpolicy) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
     args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
@@ -606,14 +611,23 @@ class HierarchyLayer(object):
                     for action_i in range(prediction_rb.shape[0]):
 
                         '''compute difference'''
-                        if args.distance in ['l1','l1_mass_center']:
+                        if args.distance in ['l1']:
                             difference_l1 = np.mean(
                                 np.abs(
                                     (obs_rb[process_i]-prediction_rb[action_i,process_i])
                                 )
                             )/255.0
 
-                        if args.distance in ['mass_center','l1_mass_center']:
+                        if args.distance in ['l2']:
+                            if args.env_name in ['Explore2D']:
+                                difference_l2 = np.linalg.norm(
+                                    x = (obs_rb[process_i][0,0]-prediction_rb[action_i,process_i][0,0]),
+                                    ord = 2,
+                                )
+                            else:
+                                raise NotImplemented
+
+                        if args.distance in ['mass_center']:
                             # mask here: *mask_rb[action_i,process_i][0]
                             mass_center_0 = np.asarray(
                                 ndimage.measurements.center_of_mass(
@@ -634,12 +648,10 @@ class HierarchyLayer(object):
                         '''assign difference'''
                         if args.distance in ['l1']:
                             difference = difference_l1
+                        if args.distance in ['l2']:
+                            difference = difference_l2
                         elif args.distance in ['mass_center']:
                             difference = difference_mass_center
-                        elif args.distance in ['l1_mass_center']:
-                            difference = difference_l1*5.0+difference_mass_center
-                        elif args.distance in ['match']:
-                            raise DeprecationWarning
                         else:
                             raise NotImplementedError
 
@@ -687,11 +699,13 @@ class HierarchyLayer(object):
                 self.reward_final = self.reward
 
             else:
-                if self.args.env_name in ['OverCooked','MineCraft']:
+                if self.args.env_name in ['OverCooked','MineCraft','Explore2D']:
                     '''other levels only receives reward_bounty'''
                     self.reward_final = self.reward_bounty
                 elif ('NoFrameskip' in self.args.env_name) or self.args.env_name in ['GridWorld']:
                     self.reward_final = self.reward.cuda() + self.reward_bounty
+                else:
+                    raise NotImplemented
 
         else:
             self.reward_final = self.reward
@@ -1031,34 +1045,38 @@ class HierarchyLayer(object):
 
         '''Summary observation'''
 
-        img = None
+        if state_type in ['standard_image']:
+            for hierarchy_i in range(args.num_hierarchy-1):
+                hierarchy_i_back = (args.num_hierarchy-1)-1-hierarchy_i
+                macro_action_img = utils.actions_onehot_visualize(
+                    actions_onehot = np.expand_dims(
+                        input_actions_onehot_global[hierarchy_i_back][0].cpu().numpy(),
+                        axis = 0,
+                    ),
+                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy[hierarchy_i_back]*1))
+                )
+                try:
+                    img = np.concatenate((img, macro_action_img),0)
+                except Exception as e:
+                    img = macro_action_img
 
-        for hierarchy_i in range(args.num_hierarchy-1):
-            hierarchy_i_back = (args.num_hierarchy-1)-1-hierarchy_i
-            macro_action_img = utils.actions_onehot_visualize(
-                actions_onehot = np.expand_dims(
-                    input_actions_onehot_global[hierarchy_i_back][0].cpu().numpy(),
-                    axis = 0,
-                ),
-                figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy[hierarchy_i_back]*1))
-            )
-            try:
-                img = np.concatenate((img, macro_action_img),0)
-            except Exception as e:
-                img = macro_action_img
+        def obs_to_state_img(obs):
+            if state_type in ['standard_image']:
+                state_img = obs
+            elif state_type in ['vector']:
+                if args.env_name in ['Explore2D']:
+                    state_img = np.zeros((args.episode_length_limit*2,args.episode_length_limit*2))
+                    state_img[int(obs[0,0])+args.episode_length_limit,int(obs[0,1])+args.episode_length_limit] = 255
+            state_img = state_img.astype(np.uint8)
+            return state_img
 
-        state_img = utils.gray_to_rgb(self.obs[0,0])
-        state_img = cv2.putText(
-            state_img,
-            'Reward: {}'.format(
-                self.reward_raw_OR_reward[0],
-            ),
-            (30,10),
-            cv2.FONT_HERSHEY_COMPLEX,
-            0.2,
-            (0,0,255),
-        )
-        img = np.concatenate((img, state_img),0)
+        state_img = obs_to_state_img(self.obs[0,0])
+        state_img = utils.gray_to_rgb(state_img)
+
+        try:
+            img = np.concatenate((img, state_img),0)
+        except Exception as e:
+            img = state_img
 
         try:
             self.episode_visilize_stack['observation'] += [img]
@@ -1067,13 +1085,36 @@ class HierarchyLayer(object):
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.observation_predicted_from_to_downer_layer[0].permute(1,2,0)
+            img = obs_to_state_img(self.observation_predicted_from_to_downer_layer[0][0].cpu().numpy())
+
             for action_i in range(self.envs.action_space.n):
-                img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
+                if state_type in ['standard_image']:
+                    temp = ((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0)
+                elif state_type in ['vector']:
+                    temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]
+
+                img = np.concatenate(
+                    (
+                        img,
+                        obs_to_state_img(
+                            temp[0].cpu().numpy()
+                        )
+                    ),
+                    1,
+                )
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
-                    img = torch.cat([img,(binarize_mask_torch(inverse_model_mask)*255.0).permute(1,2,0)],1)
-            img = img.cpu().numpy()
+                    img = np.concatenate(
+                        (
+                            img,
+                            obs_to_state_img(
+                                (binarize_mask_torch(inverse_model_mask)*255.0)[0].cpu().numpy()
+                            )
+                        ),
+                        1,
+                    )
+            img = np.expand_dims(img,2)
+
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
             except Exception as e:

@@ -41,8 +41,8 @@ def get_args():
                         help='mini batch size for ppo (default: 32)')
     parser.add_argument('--clip-param', type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
-    parser.add_argument('--num-stack', type=int, default=4,
-                        help='number of frames to stack (default: 4)')
+    parser.add_argument('--num-stack', type=int, default=1,
+                        help='number of frames to stack')
     parser.add_argument('--log-interval', type=int, default=1,
                         help='log interval, one log per n updates')
     parser.add_argument('--save-interval', type=int, default=100,
@@ -65,6 +65,8 @@ def get_args():
                         help='environment to train on')
     parser.add_argument('--reward-level', type=int, default=2,
                         help='level of reward in games like OverCooked')
+    parser.add_argument('--episode-length-limit', type=int, default=100,
+                        help='episode length limit in game like Explore2D')
     parser.add_argument('--use-fake-reward-bounty', action='store_true',
                         help='if use fake reward bounty')
     parser.add_argument('--reset-leg', action='store_true',
@@ -157,6 +159,9 @@ def get_args():
         # args.save_dir = os.path.join(args.save_dir, 'a_g_c-{}'.format(args.add_goal_color))
         args.save_dir = os.path.join(args.save_dir, 's_g-{}'.format(args.setup_goal))
         # args.save_dir = os.path.join(args.save_dir, 'n_o-{}'.format(args.new_overcooked))
+
+    if args.env_name in ['Explore2D']:
+        args.save_dir = os.path.join(args.save_dir, 'e_l_l-{}'.format(args.episode_length_limit))
 
     '''policy details'''
     args.save_dir = os.path.join(args.save_dir, 'n_h-{}'.format(args.num_hierarchy))
