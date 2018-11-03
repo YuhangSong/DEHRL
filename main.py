@@ -1066,7 +1066,18 @@ class HierarchyLayer(object):
             elif state_type in ['vector']:
                 if args.env_name in ['Explore2D']:
                     state_img = np.zeros((args.episode_length_limit*2,args.episode_length_limit*2))
-                    state_img[int(obs[0,0])+args.episode_length_limit,int(obs[0,1])+args.episode_length_limit] = 255
+                    state_img[
+                        np.clip(
+                            int(obs[0,0]),
+                            -args.episode_length_limit,
+                            +args.episode_length_limit
+                        )+args.episode_length_limit,
+                        np.clip(
+                            int(obs[0,1]),
+                            -args.episode_length_limit,
+                            +args.episode_length_limit
+                        )+args.episode_length_limit
+                    ] = 255
             state_img = state_img.astype(np.uint8)
             return state_img
 
@@ -1140,6 +1151,7 @@ class HierarchyLayer(object):
             # if self.hierarchy_id == 0:
             #     '''hierarchy_id=0 has very long episode, log it with video'''
             # print(self.episode_visilize_stack[episode_visilize_stack_name].shape)
+            print(self.hierarchy_id)
             videoWriter = cv2.VideoWriter(
                 '{}/H-{}_F-{}_{}.avi'.format(
                     args.save_dir,
