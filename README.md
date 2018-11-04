@@ -73,11 +73,16 @@ source activate dehrl
 
 ### Run OverCooked
 
+Following curves are produced at commit point ```7ea3aec9eabcd421d5660042d3e50333454f928e```. 
+
 Level 1; Any | Level 1; Fix | Level 1; Random 
 :-------------------------:|:-------------------------:|:-------------------------:
 <img src="imgs/1-any.png">  |  <img src="imgs/1-fix.png">  |  <img src="imgs/1-random.png">
 Level 2; Any | Level 2; Fix | Level 2; Random 
 <img src="imgs/2-any.png">  |  <img src="imgs/2-fix.png">  |  <img src="imgs/2-random.png">
+
+If you cannot reproduce above curves, checkout to above points and run following commands again.
+In the mean time, open an issue immediately, since we believe we are introducing unintentional changes to the code when adding more domains to present.
 
 #### Level: 1
 
