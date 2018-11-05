@@ -1,6 +1,6 @@
 # DEHRL
 
-This repository provides implementation of [**domains**](#domains), [**DEHRL**](#setup-an-environment-to-run-our-code) and [**results visualization**](#results-visualization) for reproducing results in the paper:
+This repository provides implementation of [**domains**](#domains), [**DEHRL**](#setup-an-environment-to-run-our-code) and [**results visualization**](#results-visualization) for paper:
 
 * [**Diversity−Driven Extensible Hierarchical Reinforcement Learning.**](xxx)
 [*Yuhang Song* &#8224;](http://www.cs.ox.ac.uk/people/yuhang.song/),
