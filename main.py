@@ -74,8 +74,10 @@ obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
 if (obs_shape[0]==84) and (obs_shape[0]==84):
+    '''standard image state of 84*84'''
     state_type = 'standard_image'
 else:
+    '''any thing else is treated as a one-dimentional vector'''
     state_type = 'vector'
 
 if len(args.num_subpolicy) != (args.num_hierarchy-1):
@@ -108,6 +110,27 @@ for hierarchy_i in range(args.num_hierarchy):
 input_actions_onehot_global[-1][:,0]=1.0
 
 sess = tf.Session()
+
+def obs_to_state_img(obs):
+    if state_type in ['standard_image']:
+        state_img = obs
+    elif state_type in ['vector']:
+        if args.env_name in ['Explore2D']:
+            state_img = np.zeros((args.episode_length_limit*2+1,args.episode_length_limit*2+1))
+            state_img[
+                np.clip(
+                    int(obs[0,0]),
+                    -args.episode_length_limit,
+                    +args.episode_length_limit
+                )+args.episode_length_limit,
+                np.clip(
+                    int(obs[0,1]),
+                    -args.episode_length_limit,
+                    +args.episode_length_limit
+                )+args.episode_length_limit
+            ] = 255
+    state_img = state_img.astype(np.uint8)
+    return state_img
 
 if args.test_action:
      from visdom import Visdom
@@ -235,6 +258,7 @@ class HierarchyLayer(object):
 
         self.actor_critic = Policy(
             obs_shape = obs_shape,
+            state_type = state_type,
             input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
@@ -245,6 +269,7 @@ class HierarchyLayer(object):
             from model import TransitionModel
             self.transition_model = TransitionModel(
                 input_observation_shape = obs_shape if not args.mutual_information else self.envs.observation_space.shape,
+                state_type = state_type,
                 input_action_space = self.envs.action_space,
                 output_observation_shape = self.envs.observation_space.shape,
                 num_subpolicy = args.num_subpolicy[self.hierarchy_id-1],
@@ -295,10 +320,6 @@ class HierarchyLayer(object):
         self.episode_reward['bounty_clip'] = 0.0
         self.episode_reward['len'] = 0.0
 
-        # if self.args.inverse_mask:
-        #     self.inverse_mask_model_accurency_on_predicted_states = 0.0
-        #     self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
-
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
@@ -346,30 +367,6 @@ class HierarchyLayer(object):
         self.mask_of_predicted_observation_to_downer_layer = None
 
         self.agent.set_this_layer(self)
-
-        # if args.test_reward_bounty:
-        #     if self.hierarchy_id == 1.0:
-        #         self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
-        #         self.macros_count = 0
-        #         print(self.macros)
-        #
-        #     if self.hierarchy_id == 0.0:
-        #         self.actions = ([0,0,0,0]+[4,12,8,16]+[1,9,5,13]+[3,11,7,15]+[2,10,6,14])*5
-        #         self.actions_count = 0
-        #         print(self.actions)
-        #
-        #         self.bounty_results = []
-
-        # if args.test_action_vis:
-        #     if self.hierarchy_id == 1.0:
-        #         self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
-        #         self.macros_count = 0
-        #         print(self.macros)
-        #
-        #     if self.hierarchy_id == 0.0:
-        #         self.action_sum = 5*5*4
-        #         self.actions_count = 0
-        #         self.action_dic = {}
 
         self.bounty_clip = torch.zeros(args.num_processes).cuda()
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
@@ -453,14 +450,6 @@ class HierarchyLayer(object):
                 else:
                     self.action[0,0] = int(human_action)
 
-            # if self.hierarchy_id in [1]:
-            #     self.action[0,0] = int(
-            #         input(
-            #             '[Macro Action {}], Act: '.format(
-            #                 self.action[0,0].item(),
-            #             )
-            #         )
-            #     )
             if self.hierarchy_id in [2]:
                 self.action[0,0] = int(
                     input(
@@ -470,46 +459,9 @@ class HierarchyLayer(object):
                     )
                 )
 
-        # if args.test_reward_bounty:
-        #     if self.hierarchy_id in [0]:
-        #         if self.episode_reward['len'] < 4.0:
-        #             self.action[0,0] = self.actions[self.actions_count]
-        #             self.actions_count += 1
-        #             print('set action to {}'.format(self.action[0,0].item()))
-        #     if self.hierarchy_id in [1]:
-        #         if self.episode_reward['len']==0.0:
-        #             self.action[0,0] = self.macros[self.macros_count]
-        #             self.macros_count += 1
-        #             print('set macro action: {}'.format(self.action[0,0].item()))
-
-        # if args.test_action_vis:
-        #     if self.hierarchy_id in [0]:
-        #         if self.episode_reward['len'] < 16.0:
-        #             new_key = False
-        #             try:
-        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().item())
-        #             except Exception as e:
-        #                 new_key = True
-        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().item()]
-        #             self.actions_count += 1
-        #             if self.actions_count%4 == 0 and not new_key:
-        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] += [' ']
-        #
-        #     if self.hierarchy_id in [1]:
-        #         if self.episode_reward['len']==0.0:
-        #             self.action[0,0] = self.macros[self.macros_count]
-        #             self.macros_count += 1
-        #             print('set macro action: {}'.format(self.action[0,0].item()))
-
     def log_for_specify_action(self):
 
         if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
-            # if args.test_action_vis:
-            #     if self.episode_reward['len'] == 3.0:
-            #         if self.actions_count == self.action_sum:
-            #             for action_keys in self.action_dic.keys():
-            #                 print('macro action: {}, action list: {}'.format(action_keys, self.action_dic[action_keys]))
-            #             print(s)
 
             print_str = ''
             print_str += '[reward {} ][done {}][masks {}]'.format(
@@ -521,22 +473,6 @@ class HierarchyLayer(object):
                 print_str += '[reward_bounty {}]'.format(
                     self.reward_bounty[0],
                 )
-                # if args.test_reward_bounty:
-                #     if self.episode_reward['len'] == 3.0:
-                #         self.bounty_results += [self.reward_bounty[0]]
-                #         if self.actions_count == (len(self.actions)):
-                #             for x in range(5):
-                #                 print_str = ''
-                #                 max_value = 0.0
-                #                 max_index = -1
-                #                 for y in range(5):
-                #                     temp = self.bounty_results[x*5+y]
-                #                     print_str += '{}\t'.format(temp)
-                #                     if temp>max_value:
-                #                         max_value = temp
-                #                         max_index = y
-                #                 print('{} max_index: {}'.format(print_str, max_index))
-                #             print(s)
 
             print(print_str)
 
@@ -960,17 +896,6 @@ class HierarchyLayer(object):
                     simple_value = epoch_loss[epoch_loss_type],
                 )
 
-            # if self.args.inverse_mask and (self.inverse_mask_model_accurency_on_predicted_states_count>0.0):
-            #     self.summary.value.add(
-            #         tag = 'hierarchy_{}/{}'.format(
-            #             self.hierarchy_id,
-            #             'inverse_mask_model_accurency_on_predicted_states',
-            #         ),
-            #         simple_value = self.inverse_mask_model_accurency_on_predicted_states/self.inverse_mask_model_accurency_on_predicted_states_count,
-            #     )
-            #     self.inverse_mask_model_accurency_on_predicted_states = 0.0
-            #     self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
-
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
 
@@ -1060,27 +985,6 @@ class HierarchyLayer(object):
                 except Exception as e:
                     img = macro_action_img
 
-        def obs_to_state_img(obs):
-            if state_type in ['standard_image']:
-                state_img = obs
-            elif state_type in ['vector']:
-                if args.env_name in ['Explore2D']:
-                    state_img = np.zeros((args.episode_length_limit*2,args.episode_length_limit*2))
-                    state_img[
-                        np.clip(
-                            int(obs[0,0]),
-                            -args.episode_length_limit,
-                            +args.episode_length_limit
-                        )+args.episode_length_limit,
-                        np.clip(
-                            int(obs[0,1]),
-                            -args.episode_length_limit,
-                            +args.episode_length_limit
-                        )+args.episode_length_limit
-                    ] = 255
-            state_img = state_img.astype(np.uint8)
-            return state_img
-
         state_img = obs_to_state_img(self.obs[0,0])
         state_img = utils.gray_to_rgb(state_img)
 
@@ -1147,11 +1051,6 @@ class HierarchyLayer(object):
             )
 
             '''log everything with video'''
-            # '''log as video'''
-            # if self.hierarchy_id == 0:
-            #     '''hierarchy_id=0 has very long episode, log it with video'''
-            # print(self.episode_visilize_stack[episode_visilize_stack_name].shape)
-            print(self.hierarchy_id)
             videoWriter = cv2.VideoWriter(
                 '{}/H-{}_F-{}_{}.avi'.format(
                     args.save_dir,
@@ -1170,23 +1069,6 @@ class HierarchyLayer(object):
                     cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
                 videoWriter.write(cur_frame.astype(np.uint8))
             videoWriter.release()
-
-            '''since we log everything with video,
-            no need for tensorboard logging'''
-            # '''log on tensorboard'''
-            # if self.hierarchy_id > 0:
-            #     '''hierarchy_id=0 has very long episode, do not log it on tensorboard'''
-            #     image_summary_op = tf.summary.image(
-            #         'H-{}_F-{}_{}'.format(
-            #             self.hierarchy_id,
-            #             self.num_trained_frames,
-            #             episode_visilize_stack_name,
-            #         ),
-            #         self.episode_visilize_stack[episode_visilize_stack_name],
-            #         max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
-            #     )
-            #     image_summary = sess.run(image_summary_op)
-            #     summary_writer.add_summary(image_summary, self.num_trained_frames)
 
             self.episode_visilize_stack[episode_visilize_stack_name] = None
 

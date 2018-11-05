@@ -22,13 +22,14 @@ class DeFlatten(nn.Module):
 
 class Policy(nn.Module):
 
-    def __init__(self, obs_shape, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
+    def __init__(self, obs_shape, state_type, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
         super(Policy, self).__init__()
 
         self.num_subpolicy = num_subpolicy
         self.base = CNNBase(
             use_gru = recurrent_policy,
             obs_shape = obs_shape,
+            state_type = state_type,
         )
 
         self.state_size = self.base.state_size
@@ -121,10 +122,11 @@ class Policy(nn.Module):
 
 class CNNBase(nn.Module):
 
-    def __init__(self, use_gru, obs_shape, linear_size=256):
+    def __init__(self, use_gru, obs_shape, state_type, linear_size=256):
         super(CNNBase, self).__init__()
 
         self.linear_size = linear_size
+        self.state_type = state_type
 
         self.relu_init_ = lambda m: init(m,
                       nn.init.orthogonal_,
@@ -140,9 +142,7 @@ class CNNBase(nn.Module):
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
 
-        if (obs_shape[1]==84) and (obs_shape[2]==84):
-            '''standard 84x84 image state'''
-            self.state_type = 'standard_image'
+        if self.state_type in ['standard_image']:
             self.main = nn.Sequential(
                 self.leakrelu_init_(nn.Conv2d(obs_shape[0], 32, 8, stride=4)),
                 nn.LeakyReLU(),
@@ -154,9 +154,7 @@ class CNNBase(nn.Module):
                 self.leakrelu_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
                 nn.LeakyReLU()
             )
-        else:
-            self.state_type = 'vector'
-            '''any thing else is treated as a one-dimentional vector'''
+        elif self.state_type in ['vector']:
             self.main = nn.Sequential(
                 self.linear_init_(nn.Linear(obs_shape[0]*obs_shape[1]*obs_shape[2], self.linear_size)),
                 nn.Tanh(),
@@ -369,11 +367,12 @@ class InverseMaskModel(nn.Module):
         torch.save(self.state_dict(), save_path)
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
+    def __init__(self, input_observation_shape, state_type, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
         super(TransitionModel, self).__init__()
         '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
         self.input_observation_shape = input_observation_shape
+        self.state_type = state_type
         self.output_observation_shape = output_observation_shape
         self.mutual_information = mutual_information
 
@@ -399,9 +398,7 @@ class TransitionModel(nn.Module):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('tanh'))
 
-        if (self.input_observation_shape[1]==84) and (self.input_observation_shape[2]==84):
-            '''standard 84x84 image state'''
-            self.state_type = 'standard_image'
+        if self.state_type in ['standard_image']:
             self.conv = nn.Sequential(
                 self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 16, 8, stride=4)),
                 # input do not normalize
@@ -421,9 +418,7 @@ class TransitionModel(nn.Module):
                 # fc donot normalize
                 # fc linear
             )
-        else:
-            self.state_type = 'vector'
-            '''any thing else is treated as a one-dimentional vector'''
+        elif self.state_type in ['vector']:
             self.conv = nn.Sequential(
                 self.linear_init_(nn.Linear(self.input_observation_shape[0]*self.input_observation_shape[1]*self.input_observation_shape[2], self.linear_size)),
                 nn.BatchNorm1d(self.linear_size),
