@@ -111,6 +111,30 @@ input_actions_onehot_global[-1][:,0]=1.0
 
 sess = tf.Session()
 
+if args.env_name in ['Explore2D']:
+    import tables
+    import numpy as np
+
+    from pathlib import Path
+
+    my_file = Path('{}/terminal_states.h5'.format(
+        args.save_dir,
+    ))
+    if not my_file.is_file():
+        terminal_states_f = tables.open_file(
+            '{}/terminal_states.h5'.format(
+                args.save_dir,
+            ),
+            mode='w',
+        )
+        atom = tables.Float64Atom()
+        array_c = terminal_states_f.create_earray(terminal_states_f.root, 'data', atom, (0, 2))
+
+        x = np.zeros((1, 2))
+        array_c.append(x)
+
+        terminal_states_f.close()
+
 def obs_to_state_img(obs):
     if state_type in ['standard_image']:
         state_img = obs
@@ -372,6 +396,9 @@ class HierarchyLayer(object):
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
         self.reward_bounty = torch.zeros(args.num_processes).cuda()
 
+        if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
+            self.terminal_states = []
+
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
         self.agent.set_upper_layer(self.upper_layer)
@@ -479,6 +506,13 @@ class HierarchyLayer(object):
     def generate_actions_to_step(self):
         '''this method generate actions_to_step controlled by many logic'''
 
+        self.actions_to_step = self.action.squeeze(1).cpu().numpy()
+
+        if self.hierarchy_id not in [0]:
+            self.actions_to_step = {
+                'actions_to_step': self.actions_to_step,
+            }
+
         if (self.hierarchy_id not in [0]) and (args.reward_bounty > 0.0) and (not args.mutual_information):
 
             '''predict states'''
@@ -504,16 +538,14 @@ class HierarchyLayer(object):
             else:
                 self.mask_of_predicted_observation_to_downer_layer = None
             self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:]).squeeze(2)
-            self.actions_to_step = {
-                'actions_to_step': self.action.squeeze(1).cpu().numpy(),
-                'predicted_next_observations_to_downer_layer': self.predicted_next_observations_to_downer_layer,
-                'mask_of_predicted_observation_to_downer_layer': self.mask_of_predicted_observation_to_downer_layer,
-                'observation_predicted_from_to_downer_layer': self.observation_predicted_from_to_downer_layer,
-                'predicted_reward_bounty_to_downer_layer': self.predicted_reward_bounty_to_downer_layer,
-            }
-
-        else:
-            self.actions_to_step = self.action.squeeze(1).cpu().numpy()
+            self.actions_to_step.update(
+                {
+                    'predicted_next_observations_to_downer_layer': self.predicted_next_observations_to_downer_layer,
+                    'mask_of_predicted_observation_to_downer_layer': self.mask_of_predicted_observation_to_downer_layer,
+                    'observation_predicted_from_to_downer_layer': self.observation_predicted_from_to_downer_layer,
+                    'predicted_reward_bounty_to_downer_layer': self.predicted_reward_bounty_to_downer_layer,
+                }
+            )
 
     def generate_reward_bounty(self):
         '''this method generate reward bounty'''
@@ -806,6 +838,25 @@ class HierarchyLayer(object):
         '''prepare rollouts for new round of interaction'''
         self.rollouts.after_update()
 
+        if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
+
+            try:
+                terminal_states_f = tables.open_file(
+                    '{}/terminal_states.h5'.format(
+                        args.save_dir,
+                    ),
+                    mode='a',
+                    )
+
+                for t_s in self.terminal_states:
+                    terminal_states_f.root.data.append(t_s)
+
+                self.terminal_states = []
+                terminal_states_f.close()
+
+            except Exception as e:
+                print('Skip appending terminal_states')
+
         '''save checkpoint'''
         if (self.update_i % args.save_interval == 0 and args.save_dir != "") or (self.update_i in [1,2]):
             try:
@@ -953,6 +1004,7 @@ class HierarchyLayer(object):
         self.episode_reward['len'] += 1
 
         if self.done[0]:
+
             for episode_reward_type in self.episode_reward.keys():
                 self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
                 self.episode_reward[episode_reward_type] = 0.0
@@ -965,6 +1017,9 @@ class HierarchyLayer(object):
             if self.log_behavior:
                 self.summary_behavior_at_done()
                 self.log_behavior = False
+
+            if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
+                self.terminal_states += [self.obs[0,0,0:1]]
 
     def summary_behavior_at_step(self):
 

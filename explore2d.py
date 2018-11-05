@@ -20,7 +20,7 @@ class Explore2D(gym.Env):
         self.args = args
 
         '''config'''
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(5)
         self.episode_length_limit = self.args.episode_length_limit
         self.observation_space = spaces.Box(
             low   = -float(self.episode_length_limit),
@@ -29,10 +29,11 @@ class Explore2D(gym.Env):
             dtype = np.float64,
         )
         self.action_to_delta_position_map = {
-            0: np.array([ 1.0, 0.0]),
-            1: np.array([ 0.0, 1.0]),
-            2: np.array([-1.0, 0.0]),
-            3: np.array([ 0.0,-1.0]),
+            0: np.array([ 0.0, 0.0]),
+            1: np.array([ 1.0, 0.0]),
+            2: np.array([ 0.0, 1.0]),
+            3: np.array([-1.0, 0.0]),
+            4: np.array([ 0.0,-1.0]),
         }
 
     def seed(self, seed):

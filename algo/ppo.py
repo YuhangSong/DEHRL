@@ -56,12 +56,14 @@ class PPO(object):
 
             '''prepare epoch'''
             epoch = self.this_layer.args.actor_critic_epoch
-            if self.this_layer.update_i in [0,1]:
-                print('[H-{}] {}-th time train actor_critic, skip, since transition_model need to be trained first.'.format(
-                    self.this_layer.hierarchy_id,
-                    self.this_layer.update_i,
-                ))
-                epoch *= 0
+
+            if self.this_layer.args.reward_bounty > 0.0:
+                if self.this_layer.update_i in [0,1]:
+                    print('[H-{}] {}-th time train actor_critic, skip, since transition_model need to be trained first.'.format(
+                        self.this_layer.hierarchy_id,
+                        self.this_layer.update_i,
+                    ))
+                    epoch *= 0
 
             for e in range(epoch):
 
