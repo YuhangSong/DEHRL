@@ -12,7 +12,7 @@ terminal_states_f = tables.open_file(
     mode='r',
 )
 
-num_data_perframe = 100
+num_data_perframe = 1000
 
 def fixation_to_salmap_2d(fixation):
     salmap = np.zeros(
