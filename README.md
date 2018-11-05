@@ -199,3 +199,9 @@ python replay.py
 to have a third person view of the built world.
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/replay.gif"/></p>
+
+## Meet some problems?
+
+Please feel free to contact us or open an issue (or a pull request if you already solve it, cheers!), we will keep tracking of the issues and updating the code.
+
+Hope you have fun with our work!
