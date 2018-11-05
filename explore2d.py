@@ -63,5 +63,5 @@ class Explore2D(gym.Env):
 
     def reset(self):
         self.eposide_length = 0
-        self.position = np.array([3.0,2.0])
+        self.position = np.array([0.0,0.0])
         return self.obs()

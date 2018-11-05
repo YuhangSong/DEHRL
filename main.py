@@ -706,7 +706,12 @@ class HierarchyLayer(object):
         '''Obser reward and next obs'''
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
+            # print('====')
+            # print(self.obs[0])
             self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
+            # print(self.obs[0])
+            # print(self.done[0])
+            # input('continue')
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
@@ -1056,22 +1061,22 @@ class HierarchyLayer(object):
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
             img = obs_to_state_img(self.observation_predicted_from_to_downer_layer[0][0].cpu().numpy())
-
+            # print(img)
+            # input('sss')
             for action_i in range(self.envs.action_space.n):
                 if state_type in ['standard_image']:
                     temp = ((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0)
                 elif state_type in ['vector']:
                     temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]
-
-                img = np.concatenate(
-                    (
-                        img,
-                        obs_to_state_img(
-                            temp[0].cpu().numpy()
-                        )
-                    ),
-                    1,
+                temp = obs_to_state_img(
+                    temp[0].cpu().numpy()
                 )
+
+                if args.env_name in ['Explore2D']:
+                    img = img + temp/2
+                else:
+                    img = np.concatenate((img,temp),1)
+
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
                     img = np.concatenate(
@@ -1083,6 +1088,8 @@ class HierarchyLayer(object):
                         ),
                         1,
                     )
+            if args.env_name in ['Explore2D']:
+                img = (img/np.amax(img)*255.0).astype(np.uint8)
             img = np.expand_dims(img,2)
 
             try:
