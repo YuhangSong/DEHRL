@@ -180,7 +180,7 @@ and visit ```http://localhost:6009``` for visualization with tensorboard.
 
 Besides, multiple videos are saved in the logdir.
 
-<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/videos.gif"/></p>
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/video.gif"/></p>
 
 For Minecraft, we also save the world build by the agent, set 
 ```
