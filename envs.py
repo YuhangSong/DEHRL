@@ -150,6 +150,10 @@ def make_env(rank, args):
             _, domain, task = args.env_name.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
 
+        elif args.env_name.find('Bullet') > -1:
+            import pybullet_envs
+            env = pybullet_envs.make(args.env_name)
+
         elif args.env_name in ['OverCooked']:
             '''OverCooked game we wrote'''
             import overcooked

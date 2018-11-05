@@ -98,11 +98,6 @@ if len(args.num_steps) != (args.num_hierarchy):
     print('# WARNING: Exlicity num_steps is not matching args.num_hierarchy, use the first num_steps for all layers')
     args.num_steps = [args.num_steps[0]]*(args.num_hierarchy)
 
-if bottom_envs.action_space.__class__.__name__ == "Discrete":
-    action_shape = 1
-else:
-    action_shape = bottom_envs.action_space.shape[0]
-
 input_actions_onehot_global = []
 for hierarchy_i in range(args.num_hierarchy):
     input_actions_onehot_global += [torch.zeros(args.num_processes, args.num_subpolicy[hierarchy_i]).cuda()]
@@ -266,6 +261,7 @@ class HierarchyLayer(object):
         self.args = args
 
         '''as an env, it should have action_space and observation space'''
+        print(stophere)
         self.action_space = gym.spaces.Discrete((input_actions_onehot_global[self.hierarchy_id]).size()[1])
         self.observation_space = self.envs.observation_space
         if self.hierarchy_id not in [args.num_hierarchy-1]:
