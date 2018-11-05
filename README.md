@@ -75,7 +75,7 @@ source activate dehrl
 
 The domain is somehow inspired by a game in the same name (though significantly different and coded by ourselves):
 
-<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/overcooked_official.png"/></p>
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/overcooked_official.png" width="600"/></p>
 
 We thank them a lot for this inspiration.
 
