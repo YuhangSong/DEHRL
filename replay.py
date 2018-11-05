@@ -450,7 +450,7 @@ def main():
 
     # window.loadWorld('/home/yuhangsong/Dropbox/Yuhang Song/EHRL_Data/level_2/H-0_F-2046080_savegame.sav')
     # window.loadWorld('./random_policy_savegame_6.sav')
-    window.loadWorld('./none_action_savegame.sav')
+    window.loadWorld('./saved_minecraft_baselines/H-0_F-2046080_savegame.sav')
     # Hide the mouse cursor and prevent the mouse from leaving the window.
     window.set_exclusive_mouse(True)
     setup()
