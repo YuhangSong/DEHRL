@@ -152,7 +152,7 @@ Run following command to see the learnt masks on GridWorld,
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "GridWorld" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --inverse-mask --num-grid 7 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
-Following curves are produced at commit point ```04baecee316234a7f3fdcd51d1908c971211fdce```.
+Following video is produced at commit point ```04baecee316234a7f3fdcd51d1908c971211fdce```.
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/adm_on_grid.gif" width="900"/></p>
 
@@ -172,6 +172,24 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 
 The code log multiple curves to help analysis the training process, run:
 ```
-tensorboard --logdir ../results/code_release/
+tensorboard --logdir ../results/code_release/ --port 6009
 ```
-for visualization with tensorboard.
+and visit ```http://localhost:6009``` for visualization with tensorboard.
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/tensorboard.gif"/></p>
+
+Besides, multiple videos are saved in the logdir.
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/videos.gif"/></p>
+
+For Minecraft, we also save the world build by the agent, set 
+```
+window.loadWorld('<path-to-the-save-file>.sav')
+```
+to the path of ```.sav``` file and run
+```
+python replay.py
+```
+to have a third person view of the built world.
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/replay.gif"/></p>
