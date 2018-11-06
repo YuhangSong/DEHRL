@@ -12,7 +12,8 @@ terminal_states_f = tables.open_file(
     mode='r',
 )
 
-num_data_perframe = 1000
+num_data_perframe = 1024
+data_skipped_per_frame = 10
 
 def fixation_to_salmap_2d(fixation):
     salmap = np.zeros(
@@ -40,8 +41,9 @@ log_fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 log_fps = 10
 '''log everything with video'''
 videoWriter = cv2.VideoWriter(
-    '{}/terminal_states.avi'.format(
+    '{}/terminal_states_{}.avi'.format(
         args.save_dir,
+        args.num_hierarchy,
     ),
     log_fourcc,
     log_fps,
@@ -50,8 +52,9 @@ videoWriter = cv2.VideoWriter(
 
 frame_i = 0
 while True:
-    print('[{}]'.format(
+    print('[{}/{}]'.format(
         frame_i,
+        terminal_states_f.root.data.shape[0],
     ))
     if (frame_i+num_data_perframe >= terminal_states_f.root.data.shape[0]):
         terminal_states_f.close()
@@ -62,4 +65,4 @@ while True:
     )*255.0).astype(np.uint8)
     salmap = cv2.cvtColor(salmap, cv2.cv2.COLOR_GRAY2RGB)
     videoWriter.write(salmap.astype(np.uint8))
-    frame_i += 1
+    frame_i += data_skipped_per_frame
