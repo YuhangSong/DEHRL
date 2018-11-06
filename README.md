@@ -175,6 +175,10 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 
 Visualize Explore2D: replace ```main.py``` to ```vis_explore2d.py``` in corresponding command.
 
+Level 1 | Level 2 | Level 3 | Level 4
+:-------------------------:|:-------------------------:|:-------------------------:
+<img src="imgs/terminal_states_1.jpg">  |  <img src="imgs/terminal_states_2.jpg">  |  <img src="imgs/terminal_states_3.jpg">  |  <img src="imgs/terminal_states_4.jpg">
+
 ## Run MuJoCo
 
 ```bash
