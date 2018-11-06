@@ -177,7 +177,7 @@ Visualize Explore2D: replace ```main.py``` to ```vis_explore2d.py``` in correspo
 
 Level 1 | Level 2 | Level 3 | Level 4
 :-------------------------:|:-------------------------:|:-------------------------:
-<img src="imgs/terminal_states_1.jpg">  |  <img src="imgs/terminal_states_2.jpg">  |  <img src="imgs/terminal_states_3.jpg">  |  <img src="imgs/terminal_states_4.jpg">
+<img src="imgs/5_sub/terminal_states_1.jpg">  |  <img src="imgs/5_sub/terminal_states_2.jpg">  |  <img src="imgs/5_sub/terminal_states_3.jpg">  |  <img src="imgs/5_sub/terminal_states_4.jpg">
 
 ## Run MuJoCo
 
