@@ -113,6 +113,8 @@ def get_args():
 
 
     '''for log behavior'''
+    parser.add_argument('--log-behavior', action='store_true',
+                        help='whether log behavior as video' )
     parser.add_argument('--log-behavior-interval', type=int, default=10,
                         help='log behavior every x minutes')
     parser.add_argument('--act-deterministically', action='store_true',

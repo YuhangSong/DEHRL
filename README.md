@@ -1,6 +1,6 @@
 # DEHRL
 
-This repository provides implementation of [**domains**](#domains), [**DEHRL**](#setup-an-environment-to-run-our-code) and [**results visualization**](#results-visualization) for reproducing results in the paper:
+This repository provides implementation of [**domains**](#domains), [**DEHRL**](#setup-an-environment-to-run-our-code) and [**results visualization**](#results-visualization) for paper:
 
 * [**Diversity−Driven Extensible Hierarchical Reinforcement Learning.**](xxx)
 [*Yuhang Song* &#8224;](http://www.cs.ox.ac.uk/people/yuhang.song/),
@@ -73,11 +73,11 @@ source activate dehrl
 
 ### Run OverCooked
 
-Level 1; Any | Level 1; Fix | Level 1; Random
-:-------------------------:|:-------------------------:|:-------------------------:
-<img src="imgs/1-any.png">  |  <img src="imgs/1-fix.png">  |  <img src="imgs/1-random.png">
-Level 2; Any | Level 2; Fix | Level 2; Random
-<img src="imgs/2-any.png">  |  <img src="imgs/2-fix.png">  |  <img src="imgs/2-random.png">
+The domain is somehow inspired by a game in the same name (though significantly different and coded by ourselves):
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/overcooked_official.png"/></p>
+
+We thank them a lot for this inspiration.
 
 #### Level: 1
 
@@ -113,6 +113,17 @@ Goal-type: random
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal random --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
 
+Following curves are produced at commit point ```7ea3aec9eabcd421d5660042d3e50333454f928e```. 
+
+Level 1; Any | Level 1; Fix | Level 1; Random 
+:-------------------------:|:-------------------------:|:-------------------------:
+<img src="imgs/1-any.png">  |  <img src="imgs/1-fix.png">  |  <img src="imgs/1-random.png">
+Level 2; Any | Level 2; Fix | Level 2; Random 
+<img src="imgs/2-any.png">  |  <img src="imgs/2-fix.png">  |  <img src="imgs/2-random.png">
+
+If you cannot reproduce above curves, checkout to above points and run following commands again.
+In the mean time, open an issue immediately, since we believe we are introducing unintentional changes to the code when adding more domains to present.
+
 #### Load pre-trained model and data
 
 The code antomatically check and reload everything from the log dir you set, and everything (model/curves/videos, etc.) is saved every 10 minutes.
@@ -147,43 +158,107 @@ Run following command to see the learnt masks on GridWorld,
 ```bash
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "GridWorld" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --inverse-mask --num-grid 7 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
+Following video is produced at commit point ```04baecee316234a7f3fdcd51d1908c971211fdce```.
+
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/adm_on_grid.gif" width="900"/></p>
+
+If you cannot reproduce above curves, checkout to above points and run following commands again.
+In the mean time, open an issue immediately, since we believe we are introducing unintentional changes to the code when adding more domains to present.
+
 But it performs poorly on MontezumaRevenge.
 We are waiting for their official release to further advance our DEHRL on domains with uncontrollable objects.
-
-## Run PyBullet
-
-Pybullet is a free alternative for Mujoco, with even better / more complex continuous control tasks.
-Install by ```pip install -U pybullet```.
-Available environments can be found [here](https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_envs/__init__.py).
-
-```bash
-CUDA_VISIBLE_DEVICES=2 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MinitaurBulletEnv-v0" --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 8 4 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
-```
 
 ## Run Explore2D
 
 Random policy baseline
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 128 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
 
-Test basic, works perfectly [here](https://www.dropbox.com/s/qqsw2a28n1e5fvi/H-1_F-2843648_state_prediction.avi?dl=0)
+### Run with 5 subpolicies
+
+Number of levels: 2
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 12 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
 
-Go for longer episode-length-limit,
+Number of levels: 3
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 128 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+```
+
+Number of levels: 4
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 4 --num-subpolicy 5 5 5 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
 ```
 
 Visualize Explore2D: replace ```main.py``` to ```vis_explore2d.py``` in corresponding command.
+
+Level 1 | Level 2 | Level 3 | Level 4
+:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
+<img src="imgs/5_sub/terminal_states_1.jpg">  |  <img src="imgs/5_sub/terminal_states_2.jpg">  |  <img src="imgs/5_sub/terminal_states_3.jpg">  |  <img src="imgs/5_sub/terminal_states_4.jpg">
+
+### Run with 9 subpolicies
+
+Number of levels: 2
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 9 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+```
+
+Number of levels: 3
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 3 --num-subpolicy 9 9 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+```
+
+Number of levels: 4
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 4 --num-subpolicy 9 9 9 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+```
+
+Level 1 | Level 2 | Level 3 | Level 4
+:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
+<img src="imgs/9_sub/terminal_states_1.jpg">  |  <img src="imgs/9_sub/terminal_states_2.jpg">  |  <img src="imgs/9_sub/terminal_states_3.jpg">  |  <img src="imgs/9_sub/terminal_states_4.jpg">
+
+
+## Run Continuous Control (PyBullet)
+
+Pybullet is a free alternative for Mujoco, with even better / more complex continuous control tasks.
+Install by ```pip install -U pybullet```.
+Available environments can be found [here](https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_envs/__init__.py).
+
+MinitaurBulletEnv-v0
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MinitaurBulletEnv-v0" --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 8 4 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+```
 
 ## Results Visualization
 
 The code log multiple curves to help analysis the training process, run:
 ```
-tensorboard --logdir ../results/code_release/
+tensorboard --logdir ../results/code_release/ --port 6009
 ```
-for visualization with tensorboard.
+and visit ```http://localhost:6009``` for visualization with tensorboard.
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/tensorboard.gif"/></p>
+
+Besides, multiple videos are saved in the logdir.
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/video.gif"/></p>
+
+For Minecraft, we also save the world build by the agent, set 
+```
+window.loadWorld('<path-to-the-save-file>.sav')
+```
+to the path of ```.sav``` file and run
+```
+python replay.py
+```
+to have a third person view of the built world.
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/replay.gif"/></p>
+
+## Meet some problems?
+
+Please feel free to contact us or open an issue (or a pull request if you already solve it, cheers!), we will keep tracking of the issues and updating the code.
+
+Hope you have fun with our work!
