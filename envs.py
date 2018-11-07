@@ -164,6 +164,13 @@ def make_env(rank, args):
                 args = args,
             )
 
+        elif args.env_name in ['Explore2D']:
+            '''OverCooked game we wrote'''
+            import explore2d
+            env = explore2d.Explore2D(
+                args = args,
+            )
+
         elif args.env_name in ['MineCraft']:
             '''OverCooked game we wrote'''
             import minecraft

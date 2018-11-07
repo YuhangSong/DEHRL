@@ -21,19 +21,17 @@ class DeFlatten(nn.Module):
         return x.view(x.size(0), *self.shape)
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
-        super(Policy, self).__init__()
-        self.num_subpolicy = num_subpolicy
 
-        '''build base model'''
-        if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], recurrent_policy)
-        elif len(obs_shape) == 1:
-            assert not recurrent_policy, \
-                "Recurrent policy is not implemented for the MLP controller"
-            self.base = MLPBase(obs_shape[0])
-        else:
-            raise NotImplementedError
+    def __init__(self, obs_shape, state_type, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
+        super(Policy, self).__init__()
+
+        self.num_subpolicy = num_subpolicy
+        self.base = CNNBase(
+            use_gru = recurrent_policy,
+            obs_shape = obs_shape,
+            state_type = state_type,
+        )
+
         self.state_size = self.base.state_size
 
         '''build actor model'''
@@ -57,7 +55,6 @@ class Policy(nn.Module):
             self.critic_linear = self.base.linear_init_(nn.Linear(self.base.linear_size, 1))
 
         self.input_action_space = input_action_space
-
 
     def forward(self, inputs, states, input_action, masks):
         raise NotImplementedError
@@ -124,10 +121,12 @@ class Policy(nn.Module):
         torch.save(self.state_dict(), save_path)
 
 class CNNBase(nn.Module):
-    def __init__(self, num_inputs, use_gru, linear_size=256):
+
+    def __init__(self, use_gru, obs_shape, state_type, linear_size=256):
         super(CNNBase, self).__init__()
 
         self.linear_size = linear_size
+        self.state_type = state_type
 
         self.relu_init_ = lambda m: init(m,
                       nn.init.orthogonal_,
@@ -139,18 +138,29 @@ class CNNBase(nn.Module):
                       lambda x: nn.init.constant_(x, 0),
                       nn.init.calculate_gain('leaky_relu'))
 
-        self.main = nn.Sequential(
-            # self.leakrelu_init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
-            self.leakrelu_init_(nn.Conv2d(1, 16, 8, stride=4)),
-            nn.LeakyReLU(),
-            self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
-            nn.LeakyReLU(),
-            self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
-            nn.LeakyReLU(),
-            Flatten(),
-            self.leakrelu_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
-            nn.LeakyReLU()
-        )
+        self.linear_init_ = lambda m: init(m,
+              init_normc_,
+              lambda x: nn.init.constant_(x, 0))
+
+        if self.state_type in ['standard_image']:
+            self.main = nn.Sequential(
+                self.leakrelu_init_(nn.Conv2d(obs_shape[0], 32, 8, stride=4)),
+                nn.LeakyReLU(),
+                self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
+                nn.LeakyReLU(),
+                self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
+                nn.LeakyReLU(),
+                Flatten(),
+                self.leakrelu_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
+                nn.LeakyReLU()
+            )
+        elif self.state_type in ['vector']:
+            self.main = nn.Sequential(
+                self.linear_init_(nn.Linear(obs_shape[0]*obs_shape[1]*obs_shape[2], self.linear_size)),
+                nn.Tanh(),
+                self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
+                nn.Tanh()
+            )
 
         if use_gru:
             self.gru = nn.GRUCell(self.linear_size, self.linear_size)
@@ -158,10 +168,6 @@ class CNNBase(nn.Module):
             nn.init.orthogonal_(self.gru.weight_hh.data)
             self.gru.bias_ih.data.fill_(0)
             self.gru.bias_hh.data.fill_(0)
-
-        self.linear_init_ = lambda m: init(m,
-          nn.init.orthogonal_,
-          lambda x: nn.init.constant_(x, 0))
 
         self.train()
 
@@ -177,54 +183,33 @@ class CNNBase(nn.Module):
         return self.linear_size
 
     def forward(self, inputs, states, masks):
-        inputs = inputs[:,-1:]
-        x = self.main(inputs / 255.0)
 
-        if hasattr(self, 'gru'):
-            if inputs.size(0) == states.size(0):
-                x = states = self.gru(x, states * masks)
-            else:
-                x = x.view(-1, states.size(0), x.size(1))
-                masks = masks.view(-1, states.size(0), 1)
-                outputs = []
-                for i in range(x.size(0)):
-                    hx = states = self.gru(x[i], states * masks[i])
-                    outputs.append(hx)
-                x = torch.cat(outputs, 0)
+        if self.state_type in ['standard_image']:
+            inputs = inputs[:,-1:]
+            x = self.main(inputs / 255.0)
 
-        return x, states
+            if hasattr(self, 'gru'):
+                if inputs.size(0) == states.size(0):
+                    x = states = self.gru(x, states * masks)
+                else:
+                    x = x.view(-1, states.size(0), x.size(1))
+                    masks = masks.view(-1, states.size(0), 1)
+                    outputs = []
+                    for i in range(x.size(0)):
+                        hx = states = self.gru(x[i], states * masks[i])
+                        outputs.append(hx)
+                    x = torch.cat(outputs, 0)
 
-class MLPBase(nn.Module):
-    def __init__(self, num_inputs, linear_size=64):
-        super(MLPBase, self).__init__()
+            return x, states
 
-        self.linear_size = linear_size
+        elif self.state_type in ['vector']:
+            x = self.main(
+                inputs.view(inputs.size()[0],-1)
+            )
+            return x, states
 
-        self.linear_init_ = lambda m: init(m,
-              init_normc_,
-              lambda x: nn.init.constant_(x, 0))
-
-        self.main = nn.Sequential(
-            self.linear_init_(nn.Linear(num_inputs, self.linear_size)),
-            nn.Tanh(),
-            self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-            nn.Tanh()
-        )
-
-        self.train()
-
-    @property
-    def state_size(self):
-        return 1
-
-    @property
-    def output_size(self):
-        return 64
-
-    def forward(self, inputs, states, masks):
-        x = self.main(inputs)
-
-        return x, states
+        else:
+            raise NotImplemented
 
 class InverseMaskModel(nn.Module):
     def __init__(self, predicted_action_space, num_grid):
@@ -381,13 +366,13 @@ class InverseMaskModel(nn.Module):
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)
 
-
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
+    def __init__(self, input_observation_shape, state_type, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
         super(TransitionModel, self).__init__()
         '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
         self.input_observation_shape = input_observation_shape
+        self.state_type = state_type
         self.output_observation_shape = output_observation_shape
         self.mutual_information = mutual_information
 
@@ -413,25 +398,35 @@ class TransitionModel(nn.Module):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('tanh'))
 
-        self.conv = nn.Sequential(
-            self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 16, 8, stride=4)),
-            # input do not normalize
-            nn.LeakyReLU(inplace=True),
+        if self.state_type in ['standard_image']:
+            self.conv = nn.Sequential(
+                self.leakrelu_init_(nn.Conv2d(self.input_observation_shape[0], 16, 8, stride=4)),
+                # input do not normalize
+                nn.LeakyReLU(inplace=True),
 
-            self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
-            nn.BatchNorm2d(32),
-            nn.LeakyReLU(inplace=True),
+                self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
+                nn.BatchNorm2d(32),
+                nn.LeakyReLU(inplace=True),
 
-            self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
-            nn.BatchNorm2d(16),
-            nn.LeakyReLU(inplace=True),
+                self.leakrelu_init_(nn.Conv2d(32, 16, 3, stride=1)),
+                nn.BatchNorm2d(16),
+                nn.LeakyReLU(inplace=True),
 
-            Flatten(),
+                Flatten(),
 
-            self.linear_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
-            # fc donot normalize
-            # fc linear
-        )
+                self.linear_init_(nn.Linear(16 * 7 * 7, self.linear_size)),
+                # fc donot normalize
+                # fc linear
+            )
+        elif self.state_type in ['vector']:
+            self.conv = nn.Sequential(
+                self.linear_init_(nn.Linear(self.input_observation_shape[0]*self.input_observation_shape[1]*self.input_observation_shape[2], self.linear_size)),
+                nn.BatchNorm1d(self.linear_size),
+                nn.Tanh(),
+                self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
+                nn.BatchNorm1d(self.linear_size),
+                nn.Tanh()
+            )
 
         self.reward_bounty_linear = nn.Sequential(
             self.linear_init_(nn.Linear(self.linear_size, 1)),
@@ -448,25 +443,34 @@ class TransitionModel(nn.Module):
                 # fc linear
             )
 
-            self.deconv = nn.Sequential(
-                self.leakrelu_init_(nn.Linear(self.linear_size, 16 * 7 * 7)),
-                # project donot normalize
-                nn.LeakyReLU(),
+            if self.state_type in ['standard_image']:
+                self.deconv = nn.Sequential(
+                    self.leakrelu_init_(nn.Linear(self.linear_size, 16 * 7 * 7)),
+                    # project donot normalize
+                    nn.LeakyReLU(),
 
-                DeFlatten((16,7,7)),
+                    DeFlatten((16,7,7)),
 
-                self.leakrelu_init_(nn.ConvTranspose2d(16, 32, 3, stride=1)),
-                nn.BatchNorm2d(32),
-                nn.LeakyReLU(),
+                    self.leakrelu_init_(nn.ConvTranspose2d(16, 32, 3, stride=1)),
+                    nn.BatchNorm2d(32),
+                    nn.LeakyReLU(),
 
-                self.leakrelu_init_(nn.ConvTranspose2d(32, 16, 4, stride=2)),
-                nn.BatchNorm2d(16),
-                nn.LeakyReLU(),
+                    self.leakrelu_init_(nn.ConvTranspose2d(32, 16, 4, stride=2)),
+                    nn.BatchNorm2d(16),
+                    nn.LeakyReLU(),
 
-                self.tanh_init_(nn.ConvTranspose2d(16, self.output_observation_shape[0], 8, stride=4)),
-                # output do not normalize
-                nn.Tanh(),
-            )
+                    self.tanh_init_(nn.ConvTranspose2d(16, self.output_observation_shape[0], 8, stride=4)),
+                    # output do not normalize
+                    nn.Tanh(),
+                )
+            elif self.state_type in ['vector']:
+                self.deconv = nn.Sequential(
+                    self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
+                    nn.BatchNorm1d(self.linear_size),
+                    nn.Tanh(),
+                    self.linear_init_(nn.Linear(self.linear_size, self.output_observation_shape[0]*self.output_observation_shape[1]*self.output_observation_shape[2])),
+                    # output do not normalize
+                )
 
         else:
 
@@ -475,13 +479,30 @@ class TransitionModel(nn.Module):
             )
 
     def forward(self, inputs, input_action=None):
-        before_deconv = self.conv(inputs/255.0)*self.input_action_linear(input_action)
+
+        if self.state_type in ['standard_image']:
+            conved = self.conv(
+                inputs/255.0,
+            )
+        elif self.state_type in ['vector']:
+            conved = self.conv(
+                inputs.view(inputs.size()[0],-1),
+            )
+
+        before_deconv = conved*self.input_action_linear(input_action)
 
         predicted_reward_bounty = self.reward_bounty_linear(before_deconv)
 
         if not self.mutual_information:
 
-            predicted_state = self.deconv(before_deconv)*255.0
+            if self.state_type in ['standard_image']:
+
+                predicted_state = self.deconv(before_deconv)*255.0
+
+            elif self.state_type in ['vector']:
+
+                predicted_state = self.deconv(before_deconv)
+                predicted_state = predicted_state.view(predicted_state.size()[0],*self.output_observation_shape)
 
             return predicted_state, predicted_reward_bounty
 

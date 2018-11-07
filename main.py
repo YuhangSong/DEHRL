@@ -73,6 +73,13 @@ if len(bottom_envs.observation_space.shape) == 1:
 obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
+if (obs_shape[0]==84) and (obs_shape[0]==84):
+    '''standard image state of 84*84'''
+    state_type = 'standard_image'
+else:
+    '''any thing else is treated as a one-dimentional vector'''
+    state_type = 'vector'
+
 if len(args.num_subpolicy) != (args.num_hierarchy-1):
     print('# WARNING: Exlicity num_subpolicy is not matching args.num_hierarchy, use the first num_subpolicy for all layers')
     args.num_subpolicy = [args.num_subpolicy[0]]*(args.num_hierarchy-1)
@@ -103,6 +110,51 @@ for hierarchy_i in range(args.num_hierarchy):
 input_actions_onehot_global[-1][:,0]=1.0
 
 sess = tf.Session()
+
+if args.env_name in ['Explore2D']:
+    import tables
+    import numpy as np
+
+    from pathlib import Path
+
+    my_file = Path('{}/terminal_states.h5'.format(
+        args.save_dir,
+    ))
+    if not my_file.is_file():
+        terminal_states_f = tables.open_file(
+            '{}/terminal_states.h5'.format(
+                args.save_dir,
+            ),
+            mode='w',
+        )
+        atom = tables.Float64Atom()
+        array_c = terminal_states_f.create_earray(terminal_states_f.root, 'data', atom, (0, 2))
+
+        x = np.zeros((1, 2))
+        array_c.append(x)
+
+        terminal_states_f.close()
+
+def obs_to_state_img(obs):
+    if state_type in ['standard_image']:
+        state_img = obs
+    elif state_type in ['vector']:
+        if args.env_name in ['Explore2D']:
+            state_img = np.zeros((args.episode_length_limit*2+1,args.episode_length_limit*2+1))
+            state_img[
+                np.clip(
+                    int(obs[0,0]),
+                    -args.episode_length_limit,
+                    +args.episode_length_limit
+                )+args.episode_length_limit,
+                np.clip(
+                    int(obs[0,1]),
+                    -args.episode_length_limit,
+                    +args.episode_length_limit
+                )+args.episode_length_limit
+            ] = 255
+    state_img = state_img.astype(np.uint8)
+    return state_img
 
 if args.test_action:
      from visdom import Visdom
@@ -230,6 +282,7 @@ class HierarchyLayer(object):
 
         self.actor_critic = Policy(
             obs_shape = obs_shape,
+            state_type = state_type,
             input_action_space = self.action_space,
             output_action_space = self.envs.action_space,
             recurrent_policy = args.recurrent_policy,
@@ -240,6 +293,7 @@ class HierarchyLayer(object):
             from model import TransitionModel
             self.transition_model = TransitionModel(
                 input_observation_shape = obs_shape if not args.mutual_information else self.envs.observation_space.shape,
+                state_type = state_type,
                 input_action_space = self.envs.action_space,
                 output_observation_shape = self.envs.observation_space.shape,
                 num_subpolicy = args.num_subpolicy[self.hierarchy_id-1],
@@ -290,10 +344,6 @@ class HierarchyLayer(object):
         self.episode_reward['bounty_clip'] = 0.0
         self.episode_reward['len'] = 0.0
 
-        # if self.args.inverse_mask:
-        #     self.inverse_mask_model_accurency_on_predicted_states = 0.0
-        #     self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
-
         if self.hierarchy_id in [0]:
             '''for hierarchy_id=0, we need to summarize reward_raw'''
             self.episode_reward['raw'] = 0.0
@@ -342,33 +392,12 @@ class HierarchyLayer(object):
 
         self.agent.set_this_layer(self)
 
-        # if args.test_reward_bounty:
-        #     if self.hierarchy_id == 1.0:
-        #         self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
-        #         self.macros_count = 0
-        #         print(self.macros)
-        #
-        #     if self.hierarchy_id == 0.0:
-        #         self.actions = ([0,0,0,0]+[4,12,8,16]+[1,9,5,13]+[3,11,7,15]+[2,10,6,14])*5
-        #         self.actions_count = 0
-        #         print(self.actions)
-        #
-        #         self.bounty_results = []
-
-        # if args.test_action_vis:
-        #     if self.hierarchy_id == 1.0:
-        #         self.macros = [0]*5+[1]*5+[2]*5+[3]*5+[4]*5
-        #         self.macros_count = 0
-        #         print(self.macros)
-        #
-        #     if self.hierarchy_id == 0.0:
-        #         self.action_sum = 5*5*4
-        #         self.actions_count = 0
-        #         self.action_dic = {}
-
         self.bounty_clip = torch.zeros(args.num_processes).cuda()
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
         self.reward_bounty = torch.zeros(args.num_processes).cuda()
+
+        if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
+            self.terminal_states = []
 
     def set_upper_layer(self, upper_layer):
         self.upper_layer = upper_layer
@@ -448,14 +477,6 @@ class HierarchyLayer(object):
                 else:
                     self.action[0,0] = int(human_action)
 
-            # if self.hierarchy_id in [1]:
-            #     self.action[0,0] = int(
-            #         input(
-            #             '[Macro Action {}], Act: '.format(
-            #                 self.action[0,0].item(),
-            #             )
-            #         )
-            #     )
             if self.hierarchy_id in [2]:
                 self.action[0,0] = int(
                     input(
@@ -465,46 +486,9 @@ class HierarchyLayer(object):
                     )
                 )
 
-        # if args.test_reward_bounty:
-        #     if self.hierarchy_id in [0]:
-        #         if self.episode_reward['len'] < 4.0:
-        #             self.action[0,0] = self.actions[self.actions_count]
-        #             self.actions_count += 1
-        #             print('set action to {}'.format(self.action[0,0].item()))
-        #     if self.hierarchy_id in [1]:
-        #         if self.episode_reward['len']==0.0:
-        #             self.action[0,0] = self.macros[self.macros_count]
-        #             self.macros_count += 1
-        #             print('set macro action: {}'.format(self.action[0,0].item()))
-
-        # if args.test_action_vis:
-        #     if self.hierarchy_id in [0]:
-        #         if self.episode_reward['len'] < 16.0:
-        #             new_key = False
-        #             try:
-        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))].append(self.action[0,0].cpu().item())
-        #             except Exception as e:
-        #                 new_key = True
-        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] = [self.action[0,0].cpu().item()]
-        #             self.actions_count += 1
-        #             if self.actions_count%4 == 0 and not new_key:
-        #                 self.action_dic[str(utils.onehot_to_index(input_actions_onehot_global[0][0].cpu().numpy()))] += [' ']
-        #
-        #     if self.hierarchy_id in [1]:
-        #         if self.episode_reward['len']==0.0:
-        #             self.action[0,0] = self.macros[self.macros_count]
-        #             self.macros_count += 1
-        #             print('set macro action: {}'.format(self.action[0,0].item()))
-
     def log_for_specify_action(self):
 
         if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
-            # if args.test_action_vis:
-            #     if self.episode_reward['len'] == 3.0:
-            #         if self.actions_count == self.action_sum:
-            #             for action_keys in self.action_dic.keys():
-            #                 print('macro action: {}, action list: {}'.format(action_keys, self.action_dic[action_keys]))
-            #             print(s)
 
             print_str = ''
             print_str += '[reward {} ][done {}][masks {}]'.format(
@@ -516,27 +500,18 @@ class HierarchyLayer(object):
                 print_str += '[reward_bounty {}]'.format(
                     self.reward_bounty[0],
                 )
-                # if args.test_reward_bounty:
-                #     if self.episode_reward['len'] == 3.0:
-                #         self.bounty_results += [self.reward_bounty[0]]
-                #         if self.actions_count == (len(self.actions)):
-                #             for x in range(5):
-                #                 print_str = ''
-                #                 max_value = 0.0
-                #                 max_index = -1
-                #                 for y in range(5):
-                #                     temp = self.bounty_results[x*5+y]
-                #                     print_str += '{}\t'.format(temp)
-                #                     if temp>max_value:
-                #                         max_value = temp
-                #                         max_index = y
-                #                 print('{} max_index: {}'.format(print_str, max_index))
-                #             print(s)
 
             print(print_str)
 
     def generate_actions_to_step(self):
         '''this method generate actions_to_step controlled by many logic'''
+
+        self.actions_to_step = self.action.squeeze(1).cpu().numpy()
+
+        if self.hierarchy_id not in [0]:
+            self.actions_to_step = {
+                'actions_to_step': self.actions_to_step,
+            }
 
         if (self.hierarchy_id not in [0]) and (args.reward_bounty > 0.0) and (not args.mutual_information):
 
@@ -563,16 +538,14 @@ class HierarchyLayer(object):
             else:
                 self.mask_of_predicted_observation_to_downer_layer = None
             self.predicted_reward_bounty_to_downer_layer = self.predicted_reward_bounty_to_downer_layer.view(self.envs.action_space.n,args.num_processes,*self.predicted_reward_bounty_to_downer_layer.size()[1:]).squeeze(2)
-            self.actions_to_step = {
-                'actions_to_step': self.action.squeeze(1).cpu().numpy(),
-                'predicted_next_observations_to_downer_layer': self.predicted_next_observations_to_downer_layer,
-                'mask_of_predicted_observation_to_downer_layer': self.mask_of_predicted_observation_to_downer_layer,
-                'observation_predicted_from_to_downer_layer': self.observation_predicted_from_to_downer_layer,
-                'predicted_reward_bounty_to_downer_layer': self.predicted_reward_bounty_to_downer_layer,
-            }
-
-        else:
-            self.actions_to_step = self.action.squeeze(1).cpu().numpy()
+            self.actions_to_step.update(
+                {
+                    'predicted_next_observations_to_downer_layer': self.predicted_next_observations_to_downer_layer,
+                    'mask_of_predicted_observation_to_downer_layer': self.mask_of_predicted_observation_to_downer_layer,
+                    'observation_predicted_from_to_downer_layer': self.observation_predicted_from_to_downer_layer,
+                    'predicted_reward_bounty_to_downer_layer': self.predicted_reward_bounty_to_downer_layer,
+                }
+            )
 
     def generate_reward_bounty(self):
         '''this method generate reward bounty'''
@@ -606,14 +579,23 @@ class HierarchyLayer(object):
                     for action_i in range(prediction_rb.shape[0]):
 
                         '''compute difference'''
-                        if args.distance in ['l1','l1_mass_center']:
+                        if args.distance in ['l1']:
                             difference_l1 = np.mean(
                                 np.abs(
                                     (obs_rb[process_i]-prediction_rb[action_i,process_i])
                                 )
                             )/255.0
 
-                        if args.distance in ['mass_center','l1_mass_center']:
+                        if args.distance in ['l2']:
+                            if args.env_name in ['Explore2D']:
+                                difference_l2 = np.linalg.norm(
+                                    x = (obs_rb[process_i][0,0]-prediction_rb[action_i,process_i][0,0]),
+                                    ord = 2,
+                                )
+                            else:
+                                raise NotImplemented
+
+                        if args.distance in ['mass_center']:
                             # mask here: *mask_rb[action_i,process_i][0]
                             mass_center_0 = np.asarray(
                                 ndimage.measurements.center_of_mass(
@@ -634,12 +616,10 @@ class HierarchyLayer(object):
                         '''assign difference'''
                         if args.distance in ['l1']:
                             difference = difference_l1
+                        if args.distance in ['l2']:
+                            difference = difference_l2
                         elif args.distance in ['mass_center']:
                             difference = difference_mass_center
-                        elif args.distance in ['l1_mass_center']:
-                            difference = difference_l1*5.0+difference_mass_center
-                        elif args.distance in ['match']:
-                            raise DeprecationWarning
                         else:
                             raise NotImplementedError
 
@@ -687,11 +667,13 @@ class HierarchyLayer(object):
                 self.reward_final = self.reward
 
             else:
-                if self.args.env_name in ['OverCooked','MineCraft']:
+                if self.args.env_name in ['OverCooked','MineCraft','Explore2D']:
                     '''other levels only receives reward_bounty'''
                     self.reward_final = self.reward_bounty
                 elif ('NoFrameskip' in self.args.env_name) or self.args.env_name in ['GridWorld']:
                     self.reward_final = self.reward.cuda() + self.reward_bounty
+                else:
+                    raise NotImplemented
 
         else:
             self.reward_final = self.reward
@@ -724,7 +706,12 @@ class HierarchyLayer(object):
         '''Obser reward and next obs'''
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
+            # print('====')
+            # print(self.obs[0])
             self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
+            # print(self.obs[0])
+            # print(self.done[0])
+            # input('continue')
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
@@ -856,6 +843,25 @@ class HierarchyLayer(object):
         '''prepare rollouts for new round of interaction'''
         self.rollouts.after_update()
 
+        if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
+
+            try:
+                terminal_states_f = tables.open_file(
+                    '{}/terminal_states.h5'.format(
+                        args.save_dir,
+                    ),
+                    mode='a',
+                    )
+
+                for t_s in self.terminal_states:
+                    terminal_states_f.root.data.append(t_s)
+
+                self.terminal_states = []
+                terminal_states_f.close()
+
+            except Exception as e:
+                print('Skip appending terminal_states')
+
         '''save checkpoint'''
         if (self.update_i % args.save_interval == 0 and args.save_dir != "") or (self.update_i in [1,2]):
             try:
@@ -946,17 +952,6 @@ class HierarchyLayer(object):
                     simple_value = epoch_loss[epoch_loss_type],
                 )
 
-            # if self.args.inverse_mask and (self.inverse_mask_model_accurency_on_predicted_states_count>0.0):
-            #     self.summary.value.add(
-            #         tag = 'hierarchy_{}/{}'.format(
-            #             self.hierarchy_id,
-            #             'inverse_mask_model_accurency_on_predicted_states',
-            #         ),
-            #         simple_value = self.inverse_mask_model_accurency_on_predicted_states/self.inverse_mask_model_accurency_on_predicted_states_count,
-            #     )
-            #     self.inverse_mask_model_accurency_on_predicted_states = 0.0
-            #     self.inverse_mask_model_accurency_on_predicted_states_count = 0.0
-
             summary_writer.add_summary(self.summary, self.num_trained_frames)
             summary_writer.flush()
 
@@ -994,7 +989,7 @@ class HierarchyLayer(object):
 
     def step_summary_from_env_0(self):
 
-        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
+        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_action)) and args.log_behavior:
             '''log behavior every x minutes'''
             if self.episode_reward['len']==0:
                 self.last_time_log_behavior = time.time()
@@ -1014,6 +1009,7 @@ class HierarchyLayer(object):
         self.episode_reward['len'] += 1
 
         if self.done[0]:
+
             for episode_reward_type in self.episode_reward.keys():
                 self.final_reward[episode_reward_type] = self.episode_reward[episode_reward_type]
                 self.episode_reward[episode_reward_type] = 0.0
@@ -1027,38 +1023,35 @@ class HierarchyLayer(object):
                 self.summary_behavior_at_done()
                 self.log_behavior = False
 
+            if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
+                self.terminal_states += [self.obs[0,0,0:1]]
+
     def summary_behavior_at_step(self):
 
         '''Summary observation'''
 
-        img = None
+        if state_type in ['standard_image']:
+            for hierarchy_i in range(args.num_hierarchy-1):
+                hierarchy_i_back = (args.num_hierarchy-1)-1-hierarchy_i
+                macro_action_img = utils.actions_onehot_visualize(
+                    actions_onehot = np.expand_dims(
+                        input_actions_onehot_global[hierarchy_i_back][0].cpu().numpy(),
+                        axis = 0,
+                    ),
+                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy[hierarchy_i_back]*1))
+                )
+                try:
+                    img = np.concatenate((img, macro_action_img),0)
+                except Exception as e:
+                    img = macro_action_img
 
-        for hierarchy_i in range(args.num_hierarchy-1):
-            hierarchy_i_back = (args.num_hierarchy-1)-1-hierarchy_i
-            macro_action_img = utils.actions_onehot_visualize(
-                actions_onehot = np.expand_dims(
-                    input_actions_onehot_global[hierarchy_i_back][0].cpu().numpy(),
-                    axis = 0,
-                ),
-                figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy[hierarchy_i_back]*1))
-            )
-            try:
-                img = np.concatenate((img, macro_action_img),0)
-            except Exception as e:
-                img = macro_action_img
+        state_img = obs_to_state_img(self.obs[0,0])
+        state_img = utils.gray_to_rgb(state_img)
 
-        state_img = utils.gray_to_rgb(self.obs[0,0])
-        state_img = cv2.putText(
-            state_img,
-            'Reward: {}'.format(
-                self.reward_raw_OR_reward[0],
-            ),
-            (30,10),
-            cv2.FONT_HERSHEY_COMPLEX,
-            0.2,
-            (0,0,255),
-        )
-        img = np.concatenate((img, state_img),0)
+        try:
+            img = np.concatenate((img, state_img),0)
+        except Exception as e:
+            img = state_img
 
         try:
             self.episode_visilize_stack['observation'] += [img]
@@ -1067,13 +1060,38 @@ class HierarchyLayer(object):
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = self.observation_predicted_from_to_downer_layer[0].permute(1,2,0)
+            img = obs_to_state_img(self.observation_predicted_from_to_downer_layer[0][0].cpu().numpy())
+            # print(img)
+            # input('sss')
             for action_i in range(self.envs.action_space.n):
-                img = torch.cat([img,((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0).permute(1,2,0)],1)
+                if state_type in ['standard_image']:
+                    temp = ((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0)
+                elif state_type in ['vector']:
+                    temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]
+                temp = obs_to_state_img(
+                    temp[0].cpu().numpy()
+                )
+
+                if args.env_name in ['Explore2D']:
+                    img = img + temp/2
+                else:
+                    img = np.concatenate((img,temp),1)
+
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
-                    img = torch.cat([img,(binarize_mask_torch(inverse_model_mask)*255.0).permute(1,2,0)],1)
-            img = img.cpu().numpy()
+                    img = np.concatenate(
+                        (
+                            img,
+                            obs_to_state_img(
+                                (binarize_mask_torch(inverse_model_mask)*255.0)[0].cpu().numpy()
+                            )
+                        ),
+                        1,
+                    )
+            if args.env_name in ['Explore2D']:
+                img = (img/np.amax(img)*255.0).astype(np.uint8)
+            img = np.expand_dims(img,2)
+
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
             except Exception as e:
@@ -1095,10 +1113,6 @@ class HierarchyLayer(object):
             )
 
             '''log everything with video'''
-            # '''log as video'''
-            # if self.hierarchy_id == 0:
-            #     '''hierarchy_id=0 has very long episode, log it with video'''
-            # print(self.episode_visilize_stack[episode_visilize_stack_name].shape)
             videoWriter = cv2.VideoWriter(
                 '{}/H-{}_F-{}_{}.avi'.format(
                     args.save_dir,
@@ -1117,23 +1131,6 @@ class HierarchyLayer(object):
                     cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
                 videoWriter.write(cur_frame.astype(np.uint8))
             videoWriter.release()
-
-            '''since we log everything with video,
-            no need for tensorboard logging'''
-            # '''log on tensorboard'''
-            # if self.hierarchy_id > 0:
-            #     '''hierarchy_id=0 has very long episode, do not log it on tensorboard'''
-            #     image_summary_op = tf.summary.image(
-            #         'H-{}_F-{}_{}'.format(
-            #             self.hierarchy_id,
-            #             self.num_trained_frames,
-            #             episode_visilize_stack_name,
-            #         ),
-            #         self.episode_visilize_stack[episode_visilize_stack_name],
-            #         max_outputs = self.episode_visilize_stack[episode_visilize_stack_name].shape[0],
-            #     )
-            #     image_summary = sess.run(image_summary_op)
-            #     summary_writer.add_summary(image_summary, self.num_trained_frames)
 
             self.episode_visilize_stack[episode_visilize_stack_name] = None
 
