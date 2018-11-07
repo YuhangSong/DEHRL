@@ -29,93 +29,91 @@ FixedNormal.entropy = lambda self: entropy(self).sum(-1)
 
 FixedNormal.mode = lambda self: self.mean
 
-
 class Categorical(nn.Module):
-    def __init__(self, num_inputs, num_outputs, interval):
+    def __init__(self, num_inputs, num_outputs, num_subpolicy):
         super(Categorical, self).__init__()
-        self.interval = interval
+        self.num_subpolicy = num_subpolicy
 
         init_ = lambda m: init(m,
               nn.init.orthogonal_,
               lambda x: nn.init.constant_(x, 0),
               gain=0.01)
 
-        if self.interval <= 1:
+        if self.num_subpolicy <= 1:
             self.linear = init_(nn.Linear(num_inputs, num_outputs))
         else:
             self.linear = []
-            for linear_i in range(self.interval):
+            for linear_i in range(self.num_subpolicy):
                 self.linear += [init_(nn.Linear(num_inputs, num_outputs))]
             self.linear = nn.ModuleList(self.linear)
             self.index_dic = {}
-            self.tensor_dic = {}
             self.y_dic = {}
             self.num_outputs = num_outputs
 
-
     def forward(self, x, index = None):
-        if self.interval <= 1:
+        if self.num_subpolicy <= 1:
             y_ = self.linear(x)
         else:
-            self.tensor_dic = {}
             self.y_dic = {}
-            for dic_i in range(self.interval):
+            for dic_i in range(self.num_subpolicy):
                 self.index_dic[str(dic_i)] = torch.from_numpy(np.where(index==dic_i)[0]).long().cuda()
                 if self.index_dic[str(dic_i)].size()[0] != 0:
-                    self.tensor_dic[str(dic_i)] = torch.index_select(x,0,self.index_dic[str(dic_i)])
-                    self.y_dic[str(dic_i)] = self.linear[dic_i](self.tensor_dic[str(dic_i)])
+                    self.y_dic[str(dic_i)] = self.linear[dic_i](
+                        torch.index_select(x,0,self.index_dic[str(dic_i)])
+                    )
             y_ = torch.zeros((x.size()[0],self.num_outputs)).cuda()
-            for y_i in range(self.interval):
+            for y_i in range(self.num_subpolicy):
                 if str(y_i) in self.y_dic:
                     y_.index_add_(0,self.index_dic[str(y_i)],self.y_dic[str(y_i)])
 
         return FixedCategorical(logits=y_), y_
 
-
 class DiagGaussian(nn.Module):
-    def __init__(self, num_inputs, num_outputs):
+    def __init__(self, num_inputs, num_outputs, num_subpolicy):
         super(DiagGaussian, self).__init__()
+        self.num_subpolicy = num_subpolicy
 
         init_ = lambda m: init(m,
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
 
-        if self.interval <= 1:
+        if self.num_subpolicy <= 1:
             self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
+            self.logstd = AddBias(torch.zeros(num_outputs))
         else:
             self.fc_mean = []
-            for linear_i in range(self.interval):
+            self.logstd = []
+            for linear_i in range(self.num_subpolicy):
                 self.fc_mean += [init_(nn.Linear(num_inputs, num_outputs))]
+                self.logstd += [AddBias(torch.zeros(num_outputs))]
             self.fc_mean = nn.ModuleList(self.fc_mean)
+            self.logstd = nn.ModuleList(self.logstd)
             self.index_dic = {}
-            self.tensor_dic = {}
             self.y_dic = {}
             self.num_outputs = num_outputs
 
-        self.logstd = AddBias(torch.zeros(num_outputs))
-
     def forward(self, x, index = None):
 
-        if self.interval <= 1:
+        if self.num_subpolicy <= 1:
             action_mean = self.fc_mean(x)
+            action_logstd = self.logstd(torch.zeros(action_mean.size()).cuda())
         else:
-            self.tensor_dic = {}
             self.y_dic = {}
-
-            for dic_i in range(self.interval):
+            self.std_dic = {}
+            for dic_i in range(self.num_subpolicy):
                 self.index_dic[str(dic_i)] = torch.from_numpy(np.where(index==dic_i)[0]).long().cuda()
                 if self.index_dic[str(dic_i)].size()[0] != 0:
-                    self.tensor_dic[str(dic_i)] = torch.index_select(x,0,self.index_dic[str(dic_i)])
-                    self.y_dic[str(dic_i)] = self.linear[dic_i](self.tensor_dic[str(dic_i)])
-            action_mean = torch.zeros((x.size()[0],self.num_outputs)).cuda()
-            for y_i in range(self.interval):
+                    self.y_dic[str(dic_i)] = self.fc_mean[dic_i](
+                        torch.index_select(x,0,self.index_dic[str(dic_i)])
+                    )
+                    self.std_dic[str(dic_i)] = self.logstd[dic_i](
+                        torch.zeros(self.y_dic[str(dic_i)].size()).cuda()
+                    )
+            action_mean   = torch.zeros((x.size()[0],self.num_outputs)).cuda()
+            action_logstd = torch.zeros((x.size()[0],self.num_outputs)).cuda()
+            for y_i in range(self.num_subpolicy):
                 if str(y_i) in self.y_dic:
-                    action_mean.index_add_(0,self.index_dic[str(y_i)],self.y_dic[str(y_i)])
+                    action_mean  .index_add_(0,self.index_dic[str(y_i)],self.y_dic  [str(y_i)])
+                    action_logstd.index_add_(0,self.index_dic[str(y_i)],self.std_dic[str(y_i)])
 
-        #  An ugly hack for my KFAC implementation.
-        zeros = torch.zeros(action_mean.size())
-        if x.is_cuda:
-            zeros = zeros.cuda()
-
-        action_logstd = self.logstd(zeros)
-        return FixedNormal(action_mean, action_logstd.exp())
+        return FixedNormal(action_mean, action_logstd.exp()), action_mean

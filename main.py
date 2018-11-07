@@ -10,7 +10,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from arguments import get_args
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
@@ -25,6 +24,7 @@ import utils
 
 import algo
 
+from arguments import get_args
 args = get_args()
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
@@ -65,15 +65,15 @@ if args.env_name in ['MineCraft']:
     import minecraft
     minecraft.minecraft_global_setup()
 
-if len(bottom_envs.observation_space.shape) == 1:
-    if args.env_name in ['OverCooked']:
-        raise Exception("I donot know why they have VecNormalize for ram observation")
-    bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
+# if len(bottom_envs.observation_space.shape) == 1:
+#     if args.env_name in ['OverCooked']:
+#         raise Exception("I donot know why they have VecNormalize for ram observation")
+#     bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
 
 obs_shape = bottom_envs.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-if (obs_shape[0]==84) and (obs_shape[0]==84):
+if len(obs_shape)==3 and (obs_shape[1]==84) and (obs_shape[2]==84):
     '''standard image state of 84*84'''
     state_type = 'standard_image'
 else:
@@ -132,22 +132,36 @@ if args.env_name in ['Explore2D']:
 
 def obs_to_state_img(obs):
     if state_type in ['standard_image']:
-        state_img = obs
+        state_img = obs[0]
     elif state_type in ['vector']:
         if args.env_name in ['Explore2D']:
             state_img = np.zeros((args.episode_length_limit*2+1,args.episode_length_limit*2+1))
             state_img[
                 np.clip(
-                    int(obs[0,0]),
+                    int(obs[0,0,0]),
                     -args.episode_length_limit,
                     +args.episode_length_limit
                 )+args.episode_length_limit,
                 np.clip(
-                    int(obs[0,1]),
+                    int(obs[0,0,1]),
                     -args.episode_length_limit,
                     +args.episode_length_limit
                 )+args.episode_length_limit
             ] = 255
+        elif args.env_name in ['MinitaurBulletEnv-v0']:
+            import matplotlib.pyplot as plt
+            plt.clf()
+            axes = plt.gca()
+            axes.set_xlim([-1,1])
+            axes.set_ylim([-1,1])
+            plt.scatter(obs[28], obs[29], s=18, c=1, alpha=0.5)
+            from utils import figure_to_array
+            state_img = figure_to_array(plt.gcf())
+            state_img = cv2.cvtColor(state_img, cv2.cv2.COLOR_RGBA2GRAY)
+        else:
+            raise NotImplemented
+    else:
+        raise NotImplemented
     state_img = state_img.astype(np.uint8)
     return state_img
 
@@ -261,7 +275,6 @@ class HierarchyLayer(object):
         self.args = args
 
         '''as an env, it should have action_space and observation space'''
-        print(stophere)
         self.action_space = gym.spaces.Discrete((input_actions_onehot_global[self.hierarchy_id]).size()[1])
         self.observation_space = self.envs.observation_space
         if self.hierarchy_id not in [args.num_hierarchy-1]:
@@ -514,8 +527,20 @@ class HierarchyLayer(object):
             '''predict states'''
             self.transition_model.eval()
             with torch.no_grad():
-                self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i][:,-1:]
-                now_states                                      = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1)
+                if args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld','Explore2D']:
+                    '''state are represented in a image format'''
+                    self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i][:,-1:]
+                elif args.env_name in ['MinitaurBulletEnv-v0']:
+                    '''state are represented in a one-dimentional vector format'''
+                    self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i]
+
+                if len(self.rollouts.observations[self.step_i].size()) in [4]:
+                    now_states = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1,1,1)
+                elif len(self.rollouts.observations[self.step_i].size()) in [2]:
+                    now_states = self.rollouts.observations[self.step_i].repeat(self.envs.action_space.n,1)
+                else:
+                    raise NotImplemented
+
                 self.predicted_next_observations_to_downer_layer, self.predicted_reward_bounty_to_downer_layer = self.transition_model(
                     inputs = now_states,
                     input_action = self.action_onehot_batch,
@@ -586,6 +611,12 @@ class HierarchyLayer(object):
                             if args.env_name in ['Explore2D']:
                                 difference_l2 = np.linalg.norm(
                                     x = (obs_rb[process_i][0,0]-prediction_rb[action_i,process_i][0,0]),
+                                    ord = 2,
+                                )
+                            elif args.env_name in ['MinitaurBulletEnv-v0']:
+                                '''28:30 represents the position'''
+                                difference_l2 = np.linalg.norm(
+                                    x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
                                     ord = 2,
                                 )
                             else:
@@ -659,14 +690,20 @@ class HierarchyLayer(object):
 
         if args.reward_bounty>0:
             if self.hierarchy_id in [args.num_hierarchy-1]:
-                '''top level only receive reward from env'''
-                self.reward_final = self.reward
+                '''top level only receive reward from env or nothing to observe unsupervised learning'''
+                if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                    self.reward_final = self.reward
+                elif self.args.env_name in ['Explore2D','MineCraft','MinitaurBulletEnv-v0']:
+                    self.reward_final = self.reward*0.0
+                else:
+                    raise NotImplemented
 
             else:
-                if self.args.env_name in ['OverCooked','MineCraft','Explore2D']:
-                    '''other levels only receives reward_bounty'''
+                if self.args.env_name in ['OverCooked','MineCraft','Explore2D','MinitaurBulletEnv-v0']:
+                    '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
                     self.reward_final = self.reward_bounty
-                elif ('NoFrameskip' in self.args.env_name) or self.args.env_name in ['GridWorld']:
+                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                    '''reward occurs more frequently and we want down layers to know it'''
                     self.reward_final = self.reward.cuda() + self.reward_bounty
                 else:
                     raise NotImplemented
@@ -895,6 +932,10 @@ class HierarchyLayer(object):
                 print_string += ', remaining {:4.1f} hours'.format(
                     (self.end - self.start)/(self.num_trained_frames-self.num_trained_frames_at_start)*(args.num_frames-self.num_trained_frames)/60.0/60.0,
                 )
+            if self.args.log_behavior:
+                print_string += ', log_behavior {}'.format(
+                    self.log_behavior,
+                )
             print(print_string)
 
         '''visualize results'''
@@ -1026,52 +1067,30 @@ class HierarchyLayer(object):
 
         '''Summary observation'''
 
-        if state_type in ['standard_image']:
-            for hierarchy_i in range(args.num_hierarchy-1):
-                hierarchy_i_back = (args.num_hierarchy-1)-1-hierarchy_i
-                macro_action_img = utils.actions_onehot_visualize(
-                    actions_onehot = np.expand_dims(
-                        input_actions_onehot_global[hierarchy_i_back][0].cpu().numpy(),
-                        axis = 0,
-                    ),
-                    figsize = (self.obs.shape[2:][1], int(self.obs.shape[2:][1]/args.num_subpolicy[hierarchy_i_back]*1))
-                )
-                try:
-                    img = np.concatenate((img, macro_action_img),0)
-                except Exception as e:
-                    img = macro_action_img
-
-        state_img = obs_to_state_img(self.obs[0,0])
-        state_img = utils.gray_to_rgb(state_img)
-
+        state_img = obs_to_state_img(self.obs[0])
         try:
-            img = np.concatenate((img, state_img),0)
+            self.episode_visilize_stack['observation'] += [state_img]
         except Exception as e:
-            img = state_img
-
-        try:
-            self.episode_visilize_stack['observation'] += [img]
-        except Exception as e:
-            self.episode_visilize_stack['observation'] = [img]
+            self.episode_visilize_stack['observation'] = [state_img]
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
-            img = obs_to_state_img(self.observation_predicted_from_to_downer_layer[0][0].cpu().numpy())
-            # print(img)
-            # input('sss')
+            img = obs_to_state_img(self.observation_predicted_from_to_downer_layer[0].cpu().numpy())
             for action_i in range(self.envs.action_space.n):
                 if state_type in ['standard_image']:
-                    temp = ((self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]+255.0)/2.0)
+                    temp = ((self.predicted_next_observations_to_downer_layer[action_i,0]+255.0)/2.0)
                 elif state_type in ['vector']:
-                    temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0,:,:,:]
+                    temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0]
                 temp = obs_to_state_img(
-                    temp[0].cpu().numpy()
+                    temp.cpu().numpy()
                 )
 
-                if args.env_name in ['Explore2D']:
+                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0']:
                     img = img + temp/2
-                else:
+                elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     img = np.concatenate((img,temp),1)
+                else:
+                    raise NotImplemented
 
                 if self.args.inverse_mask:
                     inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
@@ -1079,14 +1098,13 @@ class HierarchyLayer(object):
                         (
                             img,
                             obs_to_state_img(
-                                (binarize_mask_torch(inverse_model_mask)*255.0)[0].cpu().numpy()
+                                (binarize_mask_torch(inverse_model_mask)*255.0).cpu().numpy()
                             )
                         ),
                         1,
                     )
-            if args.env_name in ['Explore2D']:
+            if args.env_name in ['Explore2D','MinitaurBulletEnv-v0']:
                 img = (img/np.amax(img)*255.0).astype(np.uint8)
-            img = np.expand_dims(img,2)
 
             try:
                 self.episode_visilize_stack['state_prediction'] += [img]
@@ -1122,9 +1140,7 @@ class HierarchyLayer(object):
             )
             for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
                 cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
-                if cur_frame.shape[2] in [1]:
-                    '''gray frame is converted to rgb'''
-                    cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
+                cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
                 videoWriter.write(cur_frame.astype(np.uint8))
             videoWriter.release()
 

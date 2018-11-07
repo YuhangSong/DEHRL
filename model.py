@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_
 import numpy as np
-
+from arguments import get_args
+args = get_args()
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -19,6 +20,15 @@ class DeFlatten(nn.Module):
         self.shape = shape
     def forward(self, x):
         return x.view(x.size(0), *self.shape)
+
+def get_obs_size_flatten(obs_shape):
+    if len(obs_shape) in [3]:
+        obs_size_flatten = obs_shape[0]*obs_shape[1]*obs_shape[2]
+    elif len(obs_shape) in [1]:
+        obs_size_flatten = obs_shape[0]
+    else:
+        raise NotImplemented
+    return obs_size_flatten
 
 class Policy(nn.Module):
 
@@ -38,10 +48,10 @@ class Policy(nn.Module):
         self.output_action_space = output_action_space
         if self.output_action_space.__class__.__name__ == "Discrete":
             num_outputs = self.output_action_space.n
-            self.dist = Categorical(self.base.output_size, num_outputs,self.num_subpolicy)
+            self.dist = Categorical(self.base.output_size, num_outputs, self.num_subpolicy)
         elif self.output_action_space.__class__.__name__ == "Box":
             num_outputs = self.output_action_space.shape[0]
-            self.dist = DiagGaussian(self.base.output_size, num_outputs)
+            self.dist = DiagGaussian(self.base.output_size, num_outputs, self.num_subpolicy)
         else:
             raise NotImplementedError
 
@@ -144,7 +154,7 @@ class CNNBase(nn.Module):
 
         if self.state_type in ['standard_image']:
             self.main = nn.Sequential(
-                self.leakrelu_init_(nn.Conv2d(obs_shape[0], 32, 8, stride=4)),
+                self.leakrelu_init_(nn.Conv2d(obs_shape[0], 16, 8, stride=4)),
                 nn.LeakyReLU(),
                 self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
                 nn.LeakyReLU(),
@@ -155,8 +165,9 @@ class CNNBase(nn.Module):
                 nn.LeakyReLU()
             )
         elif self.state_type in ['vector']:
+            obs_size_flatten = get_obs_size_flatten(obs_shape)
             self.main = nn.Sequential(
-                self.linear_init_(nn.Linear(obs_shape[0]*obs_shape[1]*obs_shape[2], self.linear_size)),
+                self.linear_init_(nn.Linear(obs_size_flatten, self.linear_size)),
                 nn.Tanh(),
                 self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
                 nn.Tanh()
@@ -183,7 +194,6 @@ class CNNBase(nn.Module):
         return self.linear_size
 
     def forward(self, inputs, states, masks):
-
         if self.state_type in ['standard_image']:
             inputs = inputs[:,-1:]
             x = self.main(inputs / 255.0)
@@ -419,8 +429,9 @@ class TransitionModel(nn.Module):
                 # fc linear
             )
         elif self.state_type in ['vector']:
+            obs_size_flatten = get_obs_size_flatten(self.input_observation_shape)
             self.conv = nn.Sequential(
-                self.linear_init_(nn.Linear(self.input_observation_shape[0]*self.input_observation_shape[1]*self.input_observation_shape[2], self.linear_size)),
+                self.linear_init_(nn.Linear(obs_size_flatten, self.linear_size)),
                 nn.BatchNorm1d(self.linear_size),
                 nn.Tanh(),
                 self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
@@ -468,9 +479,18 @@ class TransitionModel(nn.Module):
                     self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
                     nn.BatchNorm1d(self.linear_size),
                     nn.Tanh(),
-                    self.linear_init_(nn.Linear(self.linear_size, self.output_observation_shape[0]*self.output_observation_shape[1]*self.output_observation_shape[2])),
+                    self.linear_init_(nn.Linear(self.linear_size, obs_size_flatten)),
                     # output do not normalize
                 )
+                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0']:
+                    pass
+                elif args.env_name in ['env with obs bound'] > -1:
+                    self.deconv.add_module(
+                        'output_active',
+                        nn.Tanh(),
+                    )
+                else:
+                    raise NotImplemented
 
         else:
 
@@ -479,7 +499,6 @@ class TransitionModel(nn.Module):
             )
 
     def forward(self, inputs, input_action=None):
-
         if self.state_type in ['standard_image']:
             conved = self.conv(
                 inputs/255.0,

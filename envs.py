@@ -142,6 +142,14 @@ class DelayDone(gym.Wrapper):
 
         return self.obs, self.reward, self.done, self.info
 
+class ScaleActions(gym.ActionWrapper):
+    def __init__(self, env):
+        super(ScaleActions, self).__init__(env)
+
+    def action(self, action):
+        action = (np.tanh(action) + 1) / 2 * (self.action_space.high - self.action_space.low) + self.action_space.low
+        return action
+
 def make_env(rank, args):
     def _thunk():
 
@@ -153,6 +161,7 @@ def make_env(rank, args):
         elif args.env_name.find('Bullet') > -1:
             import pybullet_envs
             env = pybullet_envs.make(args.env_name)
+            env = ScaleActions(env)
 
         elif args.env_name in ['OverCooked']:
             '''OverCooked game we wrote'''
