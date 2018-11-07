@@ -15,10 +15,12 @@ terminal_states_f = tables.open_file(
 # num_data_perframe = 1024
 num_data_perframe = terminal_states_f.root.data.shape[0]
 data_skipped_per_frame = 10
+merge = 128
+img_size = (args.episode_length_limit*2+1+2*merge,args.episode_length_limit*2+1+2*merge)
 
 def fixation_to_salmap_2d(fixation):
     salmap = np.zeros(
-        (args.episode_length_limit*2+1,args.episode_length_limit*2+1)
+        img_size
     )
     for fixation_count in range(fixation.shape[0]):
         salmap[
@@ -26,12 +28,12 @@ def fixation_to_salmap_2d(fixation):
                 int(fixation[fixation_count,0]),
                 -args.episode_length_limit,
                 +args.episode_length_limit
-            )+args.episode_length_limit,
+            )+args.episode_length_limit+merge,
             np.clip(
                 int(fixation[fixation_count,1]),
                 -args.episode_length_limit,
                 +args.episode_length_limit
-            )+args.episode_length_limit
+            )+args.episode_length_limit+merge
         ] += 1.0
     salmap = ndimage.gaussian_filter(salmap, sigma=(10, 10), order=0)
     # salmap = salmap[:,int(config['cordi']['lon']['range']):int(config['cordi']['lon']['range'])*2]
@@ -48,7 +50,7 @@ videoWriter = cv2.VideoWriter(
     ),
     log_fourcc,
     log_fps,
-    (args.episode_length_limit*2+1,args.episode_length_limit*2+1),
+    img_size,
 )
 
 frame_i = 0
