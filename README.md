@@ -232,7 +232,12 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-para
 
 MinitaurBulletEnv-v1 (DEHRL)
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp MinitaurBulletEnv --obs-type 'image' --env-name "MinitaurBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_6 --log-behavior
+CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp MinitaurBulletEnv --obs-type 'image' --env-name "MinitaurBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_6 --log-behavior
+```
+
+MinitaurBulletEnv-v2 (DEHRL)
+```bash
+CUDA_VISIBLE_DEVICES=2 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp MinitaurBulletEnv --obs-type 'image' --env-name "MinitaurBulletEnv-v2" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_6 --log-behavior
 ```
 
 Other available environments can be found [here](https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_envs/__init__.py).
