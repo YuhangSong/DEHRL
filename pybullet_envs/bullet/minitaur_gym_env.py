@@ -135,6 +135,7 @@ class MinitaurBulletEnv(gym.Env):
     self._cam_dist = 1.0
     self._cam_yaw = 0
     self._cam_pitch = -30
+    self.x_velocity = 0.0
     self._hard_reset = True
     self._kd_for_pd_controllers = kd_for_pd_controllers
     self._last_frame_time = 0.0
@@ -356,20 +357,29 @@ class MinitaurBulletEnv(gym.Env):
     return self.is_fallen() or distance > self._distance_limit
 
   def _reward(self):
+
     current_base_position = self.minitaur.GetBasePosition()
+
     forward_reward = current_base_position[0] - self._last_base_position[0]
     drift_reward = -abs(current_base_position[1] - self._last_base_position[1])
     shake_reward = -abs(current_base_position[2] - self._last_base_position[2])
+
+    self.x_velocity = current_base_position[0] - self._last_base_position[0]
+
     self._last_base_position = current_base_position
+
     energy_reward = np.abs(
         np.dot(self.minitaur.GetMotorTorques(),
                self.minitaur.GetMotorVelocities())) * self._time_step
+
     reward = (
         self._distance_weight * forward_reward -
         self._energy_weight * energy_reward + self._drift_weight * drift_reward
         + self._shake_weight * shake_reward)
+
     self._objectives.append(
         [forward_reward, energy_reward, drift_reward, shake_reward])
+
     return reward
 
   def get_objectives(self):
@@ -377,6 +387,7 @@ class MinitaurBulletEnv(gym.Env):
 
   def _get_observation(self):
     self._observation = self.minitaur.GetObservation()
+    self._observation[28] = self.x_velocity
     return self._observation
 
   def _noisy_observation(self):

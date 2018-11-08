@@ -36,19 +36,6 @@ register(
 )
 
 register(
-    id='MinitaurBulletEnv-v2',
-    entry_point='pybullet_envs.bullet:MinitaurBulletEnv',
-    timestep_limit=1000,
-    reward_threshold=15.0,
-	kwargs={
-		'distance_weight':0.0,
-		'energy_weight':0.0,
-		'shake_weight':0.0,
-		'drift_weight':0.0,
-	},
-)
-
-register(
     id='MinitaurBulletDuckEnv-v0',
     entry_point='pybullet_envs.bullet:MinitaurBulletDuckEnv',
     timestep_limit=1000,
