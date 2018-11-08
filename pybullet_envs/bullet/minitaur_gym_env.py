@@ -387,7 +387,7 @@ class MinitaurBulletEnv(gym.Env):
 
   def _get_observation(self):
     self._observation = self.minitaur.GetObservation()
-    self._observation[28] = self.x_velocity
+    self._observation[30] = self.x_velocity
     return self._observation
 
   def _noisy_observation(self):
