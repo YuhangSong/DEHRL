@@ -309,7 +309,7 @@ class Minitaur(object):
     upper_bound[2 * self.num_motors:3 * self.num_motors] = (
         motor.OBSERVED_TORQUE_LIMIT)  # Joint torque.
     upper_bound[3 * self.num_motors:3 * self.num_motors+4] = 1.0  # Quaternion of base orientation.
-    upper_bound[3 * self.num_motors+4:] = 1.0  # Quaternion of base orientation.
+    upper_bound[3 * self.num_motors+4:] = 1.0  #  Base position.
     return upper_bound
 
   def GetObservationLowerBound(self):
