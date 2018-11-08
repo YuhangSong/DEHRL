@@ -118,7 +118,6 @@ class RolloutStorage(object):
         if len(observations_batch.size()) == 4:
             unsqueezed_next_masks_batch_index_for_obs = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3)
         elif len(observations_batch.size()) == 2:
-            print(next_masks_batch_index)
             unsqueezed_next_masks_batch_index_for_obs = next_masks_batch_index.unsqueeze(1)
         unsqueezed_next_masks_batch_index_for_vec =  next_masks_batch_index.unsqueeze(1)
 
