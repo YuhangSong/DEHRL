@@ -35,11 +35,19 @@ class Policy(nn.Module):
     def __init__(self, obs_shape, state_type, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
         super(Policy, self).__init__()
 
+        if args.env_name in ['MinitaurBulletEnv-v0']:
+            self.linear_size = 64
+        elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+            self.linear_size = 256
+        else:
+            raise NotImplemented
+
         self.num_subpolicy = num_subpolicy
-        self.base = CNNBase(
+        self.base = StateEncoder(
             use_gru = recurrent_policy,
             obs_shape = obs_shape,
             state_type = state_type,
+            linear_size = self.linear_size,
         )
 
         self.state_size = self.base.state_size
@@ -76,6 +84,8 @@ class Policy(nn.Module):
     def get_value_dist(self, base_features, input_action):
 
         if self.num_subpolicy > 1:
+
+            '''value forward'''
             index_dic = {}
             tensor_dic = {}
             y_dic = {}
@@ -83,7 +93,7 @@ class Policy(nn.Module):
             for dic_i in range(self.num_subpolicy):
                 index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                 if index_dic[str(dic_i)].size()[0] != 0:
-                    tensor_dic[str(dic_i)] = torch.index_select(base_features,0,index_dic[str(dic_i)])
+                    tensor_dic[str(dic_i)] = torch.index_select(base_features['critic'],0,index_dic[str(dic_i)])
                     y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
 
             value = torch.zeros((input_action.size()[0],1)).cuda()
@@ -91,11 +101,14 @@ class Policy(nn.Module):
                 if str(y_i) in y_dic:
                     value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
 
-            dist, dist_features = self.dist(base_features,action_index)
+            '''dist forward'''
+            dist, dist_features = self.dist(base_features['actor'],action_index)
 
         else:
-            value = self.critic_linear(base_features)
-            dist, dist_features = self.dist(base_features)
+            '''value forward'''
+            value = self.critic_linear(base_features['critic'])
+            'dist forward'
+            dist, dist_features = self.dist(base_features['actor'])
 
         return value, dist, dist_features
 
@@ -130,10 +143,10 @@ class Policy(nn.Module):
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)
 
-class CNNBase(nn.Module):
+class StateEncoder(nn.Module):
 
     def __init__(self, use_gru, obs_shape, state_type, linear_size=256):
-        super(CNNBase, self).__init__()
+        super(StateEncoder, self).__init__()
 
         self.linear_size = linear_size
         self.state_type = state_type
@@ -166,10 +179,19 @@ class CNNBase(nn.Module):
             )
         elif self.state_type in ['vector']:
             obs_size_flatten = get_obs_size_flatten(obs_shape)
-            self.main = nn.Sequential(
-                self.linear_init_(nn.Linear(obs_size_flatten, self.linear_size)),
+            init_ = lambda m: init(m,
+                init_normc_,
+                lambda x: nn.init.constant_(x, 0))
+            self.main_actor = nn.Sequential(
+                init_(nn.Linear(obs_size_flatten, self.linear_size)),
                 nn.Tanh(),
-                self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
+                init_(nn.Linear(self.linear_size, self.linear_size)),
+                nn.Tanh()
+            )
+            self.main_critic = nn.Sequential(
+                init_(nn.Linear(obs_size_flatten, self.linear_size)),
+                nn.Tanh(),
+                init_(nn.Linear(self.linear_size, self.linear_size)),
                 nn.Tanh()
             )
 
@@ -210,13 +232,16 @@ class CNNBase(nn.Module):
                         outputs.append(hx)
                     x = torch.cat(outputs, 0)
 
-            return x, states
+            return {'actor': x, 'critic': x}, states
 
         elif self.state_type in ['vector']:
-            x = self.main(
+            x_actor = self.main_actor(
                 inputs.view(inputs.size()[0],-1)
             )
-            return x, states
+            x_critic = self.main_critic(
+                inputs.view(inputs.size()[0],-1)
+            )
+            return {'actor': x_actor, 'critic': x_critic}, states
 
         else:
             raise NotImplemented

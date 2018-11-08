@@ -3,6 +3,7 @@ import os
 import gym
 import numpy as np
 from gym.spaces.box import Box
+from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
 try:
     import dm_control2gym
@@ -149,6 +150,27 @@ class ScaleActions(gym.ActionWrapper):
     def action(self, action):
         action = (np.tanh(action) + 1) / 2 * (self.action_space.high - self.action_space.low) + self.action_space.low
         return action
+
+class VecNormalize(VecNormalize_):
+
+    def __init__(self, *args, **kwargs):
+        super(VecNormalize, self).__init__(*args, **kwargs)
+        self.training = True
+
+    def _obfilt(self, obs):
+        if self.ob_rms:
+            if self.training:
+                self.ob_rms.update(obs)
+            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+            return obs
+        else:
+            return obs
+
+    def train(self):
+        self.training = True
+
+    def eval(self):
+        self.training = False
 
 def make_env(rank, args):
     def _thunk():

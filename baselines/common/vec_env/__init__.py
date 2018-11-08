@@ -88,12 +88,17 @@ class VecEnv(ABC):
             return self
 
 class VecEnvWrapper(VecEnv):
+    """
+    An environment wrapper that applies to an entire batch
+    of environments at once.
+    """
+
     def __init__(self, venv, observation_space=None, action_space=None):
         self.venv = venv
-        VecEnv.__init__(self, 
-            num_envs=venv.num_envs,
-            observation_space=observation_space or venv.observation_space, 
-            action_space=action_space or venv.action_space)
+        VecEnv.__init__(self,
+                        num_envs=venv.num_envs,
+                        observation_space=observation_space or venv.observation_space,
+                        action_space=action_space or venv.action_space)
 
     def step_async(self, actions):
         self.venv.step_async(actions)
@@ -109,8 +114,11 @@ class VecEnvWrapper(VecEnv):
     def close(self):
         return self.venv.close()
 
-    def render(self):
-        self.venv.render()
+    def render(self, mode='human'):
+        return self.venv.render(mode=mode)
+
+    def get_images(self):
+        return self.venv.get_images()
 
 class CloudpickleWrapper(object):
     """

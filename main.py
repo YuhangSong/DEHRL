@@ -61,6 +61,20 @@ if args.num_processes > 1:
 else:
     bottom_envs = bottom_envs[0]()
 
+if args.env_name in ['MinitaurBulletEnv-v0']:
+    if len(bottom_envs.observation_space.shape) == 1:
+        from envs import VecNormalize
+        if args.gamma is None:
+            bottom_envs = VecNormalize(bottom_envs, ret=False)
+        else:
+            bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
+
+elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+    pass
+
+else:
+    raise NotImplemented
+
 if args.env_name in ['MineCraft']:
     import minecraft
     minecraft.minecraft_global_setup()
