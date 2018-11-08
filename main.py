@@ -773,7 +773,12 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
             self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float()
-            self.reward = self.reward_raw.sign()
+            if args.env_name in ['OverCooked','MineCraft','GridWorld','MontezumaRevengeNoFrameskip-v4','Explore2D']:
+                self.reward = self.reward_raw.sign()
+            elif args.env_name in ['MinitaurBulletEnv-v0']:
+                self.reward = self.reward_raw
+            else:
+                raise NotImplemented
         else:
             '''otherwise, this is reward'''
             self.reward = self.reward_raw_OR_reward
