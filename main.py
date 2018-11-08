@@ -144,7 +144,7 @@ if args.env_name in ['Explore2D']:
 
         terminal_states_f.close()
 
-def obs_to_state_img(obs):
+def obs_to_state_img(obs, marker='o'):
     if state_type in ['standard_image']:
         state_img = obs[0]
     elif state_type in ['vector']:
@@ -168,7 +168,7 @@ def obs_to_state_img(obs):
             axes = plt.gca()
             axes.set_xlim([-10,10])
             axes.set_ylim([-10,10])
-            plt.scatter(obs[28], obs[29], s=18, c=1, alpha=0.5)
+            plt.scatter(obs[28], obs[29], s=18, c=1, alpha=1.0)
             from utils import figure_to_array
             state_img = figure_to_array(plt.gcf())
             state_img = cv2.cvtColor(state_img, cv2.cv2.COLOR_RGBA2GRAY)
@@ -674,7 +674,7 @@ class HierarchyLayer(object):
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
 
                     # DEBUG:
-                    self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][30]
+                    self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][30]
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
@@ -1109,7 +1109,8 @@ class HierarchyLayer(object):
                 elif state_type in ['vector']:
                     temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0]
                 temp = obs_to_state_img(
-                    temp.cpu().numpy()
+                    temp.cpu().numpy(),
+                    marker = "+",
                 )
 
                 if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
