@@ -159,14 +159,14 @@ class PPO(object):
                             raise NotImplemented
 
                         observation_delta = (next_observations_batch-observations_batch_base)
-
+                        
                         '''slice part of the observation'''
                         if len(observations_batch_base.shape)==4:
                             pass
                         elif len(observations_batch_base.shape)==2:
-                            if self.this_layer.args.env_name in ['ReacherBulletEnv-v1']:
-                                observation_delta = observation_delta[0:2]
-                                predicted_next_observations_batch = predicted_next_observations_batch[0:2]
+                            if self.this_layer.args.env_name in ['ReacherBulletEnv-v1','Explore2DContinuous']:
+                                observation_delta = observation_delta[:,0:2]
+                                predicted_next_observations_batch = predicted_next_observations_batch[:,0:2]
                             else:
                                 raise NotImplemented
                         else:

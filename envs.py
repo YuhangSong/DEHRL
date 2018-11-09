@@ -206,6 +206,14 @@ def make_env(rank, args):
                 args = args,
             )
 
+        elif args.env_name in ['Explore2DContinuous']:
+            '''OverCooked game we wrote'''
+            import explore2d_continuous
+            env = explore2d_continuous.Explore2DContinuous(
+                args = args,
+            )
+            env = ScaleActions(env)
+
         elif args.env_name in ['MineCraft']:
             '''OverCooked game we wrote'''
             import minecraft
