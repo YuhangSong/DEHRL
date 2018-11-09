@@ -168,7 +168,7 @@ def obs_to_state_img(obs, marker='o'):
             axes = plt.gca()
             axes.set_xlim([-10,10])
             axes.set_ylim([-10,10])
-            plt.scatter(obs[28], obs[29], s=18, c=1, alpha=1.0)
+            plt.scatter(obs[28], obs[29], s=18, c=1, marker=marker, alpha=1.0)
             from utils import figure_to_array
             state_img = figure_to_array(plt.gcf())
             state_img = cv2.cvtColor(state_img, cv2.cv2.COLOR_RGBA2GRAY)
@@ -633,7 +633,11 @@ class HierarchyLayer(object):
                                 difference_l2 = np.linalg.norm(
                                     x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
                                     ord = 2,
-                                )
+                                )/(obs_rb[process_i][28:30].shape[0]**0.5)
+                                # difference_l2 = np.linalg.norm(
+                                #     x = (obs_rb[process_i]-prediction_rb[action_i,process_i]),
+                                #     ord = 2,
+                                # )/(obs_rb[process_i].shape[0]**0.5)
                             else:
                                 raise NotImplemented
 
@@ -673,8 +677,13 @@ class HierarchyLayer(object):
                     '''compute reward bounty'''
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
 
-                    # DEBUG:
-                    self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][30]
+                    # # DEBUG:
+                    # if action_rb[process_i].item()==0.0:
+                    #     self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][30]
+                    # elif action_rb[process_i].item()==1.0:
+                    #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][30]
+                    # else:
+                    #     raise NotImplemented
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
@@ -720,17 +729,14 @@ class HierarchyLayer(object):
                 if self.args.env_name in ['OverCooked','MineCraft','Explore2D']:
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
                     self.reward_final = self.reward_bounty
-                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','MinitaurBulletEnv-v1']:
+                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
                     '''reward occurs more frequently and we want down layers to know it'''
                     self.reward_final = self.reward.cuda() + self.reward_bounty
-                elif self.args.env_name in ['MinitaurBulletEnv-v0']:
-                    '''ppo baseline with extrinsic reward'''
-                    self.reward_final = self.reward.cuda()
                 else:
                     raise NotImplemented
 
         else:
-            self.reward_final = self.reward
+            self.reward_final = self.reward.cuda()
 
         if args.reward_bounty>0:
             if self.is_final_step_by_upper_layer:
