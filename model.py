@@ -35,7 +35,7 @@ class Policy(nn.Module):
     def __init__(self, obs_shape, state_type, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
         super(Policy, self).__init__()
 
-        if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
+        if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0']:
             self.linear_size = 64
         elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
             self.linear_size = 256
@@ -457,10 +457,10 @@ class TransitionModel(nn.Module):
             obs_size_flatten = get_obs_size_flatten(self.input_observation_shape)
             self.conv = nn.Sequential(
                 self.linear_init_(nn.Linear(obs_size_flatten, self.linear_size)),
-                nn.BatchNorm1d(self.linear_size),
+                # nn.BatchNorm1d(self.linear_size),
                 nn.Tanh(),
                 self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-                nn.BatchNorm1d(self.linear_size),
+                # nn.BatchNorm1d(self.linear_size),
                 nn.Tanh()
             )
 
@@ -502,7 +502,7 @@ class TransitionModel(nn.Module):
             elif self.state_type in ['vector']:
                 self.deconv = nn.Sequential(
                     self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-                    nn.BatchNorm1d(self.linear_size),
+                    # nn.BatchNorm1d(self.linear_size),
                     nn.Tanh(),
                     self.linear_init_(nn.Linear(self.linear_size, obs_size_flatten)),
                     # output do not normalize

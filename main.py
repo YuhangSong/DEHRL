@@ -61,13 +61,14 @@ if args.num_processes > 1:
 else:
     bottom_envs = bottom_envs[0]()
 
-if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
-    if len(bottom_envs.observation_space.shape) == 1:
-        from envs import VecNormalize
-        if args.gamma is None:
-            bottom_envs = VecNormalize(bottom_envs, ret=False)
-        else:
-            bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
+if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0']:
+    # if len(bottom_envs.observation_space.shape) == 1:
+    #     from envs import VecNormalize
+    #     if args.gamma is None:
+    #         bottom_envs = VecNormalize(bottom_envs, ret=False)
+    #     else:
+    #         bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
+    pass
 
 elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
     pass
@@ -631,9 +632,9 @@ class HierarchyLayer(object):
                             elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                                 '''28:30 represents the position'''
                                 difference_l2 = np.linalg.norm(
-                                    x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
+                                    x = (obs_rb[process_i][28:29]-prediction_rb[action_i,process_i][28:29]),
                                     ord = 2,
-                                )/(obs_rb[process_i][28:30].shape[0]**0.5)
+                                )/(obs_rb[process_i][28:29].shape[0]**0.5)
                                 # difference_l2 = np.linalg.norm(
                                 #     x = (obs_rb[process_i]-prediction_rb[action_i,process_i]),
                                 #     ord = 2,
@@ -799,7 +800,7 @@ class HierarchyLayer(object):
             self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float()
             if args.env_name in ['OverCooked','MineCraft','GridWorld','MontezumaRevengeNoFrameskip-v4','Explore2D']:
                 self.reward = self.reward_raw.sign()
-            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
+            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0']:
                 self.reward = self.reward_raw
             else:
                 raise NotImplemented
