@@ -61,7 +61,7 @@ if args.num_processes > 1:
 else:
     bottom_envs = bottom_envs[0]()
 
-if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
     if len(bottom_envs.observation_space.shape) == 1:
         from envs import VecNormalize
         if args.gamma is None:
@@ -162,7 +162,7 @@ def obs_to_state_img(obs, marker='o'):
                     +args.episode_length_limit
                 )+args.episode_length_limit
             ] = 255
-        elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+        elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
             import matplotlib.pyplot as plt
             plt.clf()
             axes = plt.gca()
@@ -545,7 +545,7 @@ class HierarchyLayer(object):
                 if args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld','Explore2D']:
                     '''state are represented in a image format'''
                     self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i][:,-1:]
-                elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+                elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                     '''state are represented in a one-dimentional vector format'''
                     self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i]
 
@@ -628,7 +628,7 @@ class HierarchyLayer(object):
                                     x = (obs_rb[process_i][0,0]-prediction_rb[action_i,process_i][0,0]),
                                     ord = 2,
                                 )
-                            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+                            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                                 '''28:30 represents the position'''
                                 difference_l2 = np.linalg.norm(
                                     x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
@@ -720,7 +720,7 @@ class HierarchyLayer(object):
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
                 if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     self.reward_final = self.reward
-                elif self.args.env_name in ['Explore2D','MineCraft','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+                elif self.args.env_name in ['Explore2D','MineCraft','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                     self.reward_final = self.reward*0.0
                 else:
                     raise NotImplemented
@@ -729,7 +729,7 @@ class HierarchyLayer(object):
                 if self.args.env_name in ['OverCooked','MineCraft','Explore2D']:
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
                     self.reward_final = self.reward_bounty
-                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                     '''reward occurs more frequently and we want down layers to know it'''
                     self.reward_final = self.reward.cuda() + self.reward_bounty
                 else:
@@ -799,7 +799,7 @@ class HierarchyLayer(object):
             self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float()
             if args.env_name in ['OverCooked','MineCraft','GridWorld','MontezumaRevengeNoFrameskip-v4','Explore2D']:
                 self.reward = self.reward_raw.sign()
-            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                 self.reward = self.reward_raw
             else:
                 raise NotImplemented
@@ -1119,7 +1119,7 @@ class HierarchyLayer(object):
                     marker = "+",
                 )
 
-                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                     img = img + temp/2
                 elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     img = np.concatenate((img,temp),1)
@@ -1137,7 +1137,7 @@ class HierarchyLayer(object):
                         ),
                         1,
                     )
-            if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1']:
+            if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                 img = (img/np.amax(img)*255.0).astype(np.uint8)
 
             try:
