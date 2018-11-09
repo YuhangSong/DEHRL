@@ -167,6 +167,13 @@ register(
 	)
 
 register(
+	id='ReacherBulletEnv-v1',
+	entry_point='pybullet_envs.gym_manipulator_envs:ReacherBulletEnv_v1',
+	max_episode_steps=150,
+	reward_threshold=18.0,
+	)
+
+register(
 	id='PusherBulletEnv-v0',
 	entry_point='pybullet_envs.gym_manipulator_envs:PusherBulletEnv',
 	max_episode_steps=150,

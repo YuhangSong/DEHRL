@@ -35,7 +35,7 @@ class Policy(nn.Module):
     def __init__(self, obs_shape, state_type, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
         super(Policy, self).__init__()
 
-        if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0']:
+        if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0','ReacherBulletEnv-v1']:
             self.linear_size = 64
         elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
             self.linear_size = 256
@@ -507,7 +507,7 @@ class TransitionModel(nn.Module):
                     self.linear_init_(nn.Linear(self.linear_size, obs_size_flatten)),
                     # output do not normalize
                 )
-                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
+                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1']:
                     pass
                 elif args.env_name in ['env with obs bound'] > -1:
                     self.deconv.add_module(

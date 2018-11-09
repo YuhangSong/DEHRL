@@ -46,6 +46,30 @@ class Reacher(MJCFBasedRobot):
 	def calc_potential(self):
 		return -100 * np.linalg.norm(self.to_target_vec)
 
+class Reacher_v1(Reacher):
+	def __init__(self):
+		Reacher.__init__(self)
+
+	def calc_state(self):
+		theta, self.theta_dot = self.central_joint.current_relative_position()
+		self.gamma, self.gamma_dot = self.elbow_joint.current_relative_position()
+		target_x, _ = self.jdict["target_x"].current_position()
+		target_y, _ = self.jdict["target_y"].current_position()
+		self.to_target_vec = np.array(self.fingertip.pose().xyz()) - np.array(self.target.pose().xyz())
+		return np.array([
+			# target_x,
+			np.array(self.fingertip.pose().xyz())[0],
+			# target_y,
+			np.array(self.fingertip.pose().xyz())[1],
+			self.to_target_vec[0],
+			self.to_target_vec[1],
+			np.cos(theta),
+			np.sin(theta),
+			self.theta_dot,
+			self.gamma,
+			self.gamma_dot,
+		])
+
 
 class Pusher(MJCFBasedRobot):
 	min_target_placement_radius = 0.5
