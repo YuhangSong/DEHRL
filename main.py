@@ -550,10 +550,10 @@ class HierarchyLayer(object):
             '''predict states'''
             self.transition_model.eval()
             with torch.no_grad():
-                if args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld','Explore2D']:
+                if len(self.rollouts.observations[self.step_i].size())==4:
                     '''state are represented in a image format'''
                     self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i][:,-1:]
-                elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1']:
+                elif len(self.rollouts.observations[self.step_i].size())==2:
                     '''state are represented in a one-dimentional vector format'''
                     self.observation_predicted_from_to_downer_layer = self.rollouts.observations[self.step_i]
                 else:

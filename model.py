@@ -217,7 +217,6 @@ class StateEncoder(nn.Module):
 
     def forward(self, inputs, states, masks):
         if self.state_type in ['standard_image']:
-            inputs = inputs[:,-1:]
             x = self.main(inputs / 255.0)
 
             if hasattr(self, 'gru'):
