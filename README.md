@@ -234,6 +234,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-para
 Number of subpolicies: 4 | Number of subpolicies: 8 |
 :-------------------------:|:-------------------------:
 <img src="imgs/Explore2DContinuous/4_sub.gif">  |  <img src="imgs/Explore2DContinuous/8_sub.gif">
+
 where the dot is current position and crosses are resulted states of different subpolicies.
 
 ## Continuous Control (PyBullet)
