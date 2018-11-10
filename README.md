@@ -256,6 +256,12 @@ Number of subpolicies: 4
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp ReacherBulletEnv-2 --obs-type 'image' --env-name "ReacherBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
 ```
 
+Number of subpolicies: 2 | Number of subpolicies: 4 |
+:-------------------------:|:-------------------------:
+<img src="imgs/ReacherBulletEnv-v1/2_sub.gif">  |  <img src="imgs/ReacherBulletEnv-v1/4_sub.gif">
+
+where the dot is current position and crosses are resulted states of different subpolicies.
+
 Other available environments can be found [here](https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_envs/__init__.py).
 
 ## Results Visualization
