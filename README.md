@@ -182,6 +182,59 @@ In the mean time, open an issue immediately, since we believe we are introducing
 But it performs poorly on MontezumaRevenge.
 We are waiting for their official release to further advance our DEHRL on domains with uncontrollable objects.
 
+## Continuous Control
+
+### Explore2DContinuous
+
+Number of subpolicies: 4
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
+```
+
+Number of subpolicies: 8
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 8 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
+```
+
+Number of subpolicies: 4 | Number of subpolicies: 8 |
+:-------------------------:|:-------------------------:
+<img src="imgs/Explore2DContinuous/4_sub.gif">  |  <img src="imgs/Explore2DContinuous/8_sub.gif">
+
+where the dot is current position and crosses are resulted states of different subpolicies.
+
+### PyBullet
+
+[Pybullet](https://pybullet.org/wordpress/) is a free alternative for Mujoco, with even better / more complex continuous control tasks.
+Install by ```pip install -U pybullet```.
+
+<img src="imgs/pybullet_1.gif">  |  <img src="imgs/pybullet_2.gif">
+:-------------------------:|:-------------------------:
+
+#### MinitaurBulletEnv-v2.
+
+Number of subpolicies: 2
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MinitaurBulletEnv-v2" --num-hierarchy 2 --num-subpolicy 2 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
+```
+
+Number of subpolicies: 4
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MinitaurBulletEnv-v2" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
+```
+
+Number of subpolicies: 2 | Number of subpolicies: 4 |
+:-------------------------:|:-------------------------:
+<img src="imgs/MinitaurBulletEnv-v2/2_sub.gif">  |  <img src="imgs/MinitaurBulletEnv-v2/4_sub.gif">
+
+where the dot is current position and crosses are resulted states of different subpolicies.
+
+Note that for above PyBullet domains
+* We manually extract position information from observation, and use it to do diverse-driven. This is due to we leave extracting useful information from observation as a future work, and mainly focus on verifying our diverse-drive solution.
+* We remove the reward returned by the original enviriment so that the experiment is aimed to let DEHRL discover diverse subpolicies in an unsupervise manner. Of course extrinsic reward can be included, but the goal set out by current environment is too simply to show the effectiveness of diverse sub-policies.
+* Thus, the part of experiment is only to show our method scale well to continuous control tasks, futher investigation is a promising future work.
+
+Other available environments in PyBullet can be found [here](https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_envs/__init__.py).
+
 ## Run Explore2D
 
 Following results on Explore2D are produced at ```9c2c8bbe5a8e18df21fbda1183e3e2a229a340d1```.
@@ -234,56 +287,6 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 Level 1 | Level 2 | Level 3 | Level 4
 :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
 <img src="imgs/9_sub/terminal_states_1.jpg">  |  <img src="imgs/9_sub/terminal_states_2.jpg">  |  <img src="imgs/9_sub/terminal_states_3.jpg">  |  <img src="imgs/9_sub/terminal_states_4.jpg">
-
-## Continuous Control
-
-### Explore2DContinuous
-
-Number of subpolicies: 4
-```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
-```
-
-Number of subpolicies: 8
-```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 8 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
-```
-
-Number of subpolicies: 4 | Number of subpolicies: 8 |
-:-------------------------:|:-------------------------:
-<img src="imgs/Explore2DContinuous/4_sub.gif">  |  <img src="imgs/Explore2DContinuous/8_sub.gif">
-
-where the dot is current position and crosses are resulted states of different subpolicies.
-
-### PyBullet
-
-[Pybullet](https://pybullet.org/wordpress/) is a free alternative for Mujoco, with even better / more complex continuous control tasks.
-Install by ```pip install -U pybullet```.
-
-#### MinitaurBulletEnv-v2.
-
-Number of subpolicies: 2
-```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MinitaurBulletEnv-v2" --num-hierarchy 2 --num-subpolicy 2 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
-```
-
-Number of subpolicies: 4
-```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MinitaurBulletEnv-v2" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
-```
-
-Number of subpolicies: 2 | Number of subpolicies: 4 |
-:-------------------------:|:-------------------------:
-<img src="imgs/MinitaurBulletEnv-v2/2_sub.gif">  |  <img src="imgs/MinitaurBulletEnv-v2/4_sub.gif">
-
-where the dot is current position and crosses are resulted states of different subpolicies.
-
-Note that for above PyBullet domains
-* We manually extract position information from observation, and use it to do diverse-driven. This is due to we leave extracting useful information from observation as a future work, and mainly focus on verifying our diverse-drive solution.
-* We remove the reward returned by the original enviriment so that the experiment is aimed to let DEHRL discover diverse subpolicies in an unsupervise manner. Of course extrinsic reward can be included, but the goal set out by current environment is too simply to show the effectiveness of diverse sub-policies.
-* Thus, the part of experiment is only to show our method scale well to continuous control tasks, futher investigation is a promising future work.
-
-Other available environments in PyBullet can be found [here](https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_envs/__init__.py).
 
 ## Results Visualization
 
