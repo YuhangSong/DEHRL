@@ -168,7 +168,7 @@ def obs_to_state_img(obs, marker='o'):
             plt.clf()
             axes = plt.gca()
             if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
-                limit = 10
+                limit = 1
                 plt.scatter(obs[28], obs[29], s=18, c=1, marker=marker, alpha=1.0)
             elif args.env_name in ['ReacherBulletEnv-v1']:
                 limit = 1
@@ -644,9 +644,9 @@ class HierarchyLayer(object):
                             elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
                                 '''28:30 represents the position'''
                                 difference_l2 = np.linalg.norm(
-                                    x = (obs_rb[process_i][28:29]-prediction_rb[action_i,process_i][28:29]),
+                                    x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
                                     ord = 2,
-                                )/(obs_rb[process_i][28:29].shape[0]**0.5)
+                                )/(obs_rb[process_i][28:30].shape[0]**0.5)
                                 # difference_l2 = np.linalg.norm(
                                 #     x = (obs_rb[process_i]-prediction_rb[action_i,process_i]),
                                 #     ord = 2,
