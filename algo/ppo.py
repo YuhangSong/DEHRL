@@ -151,10 +151,35 @@ class PPO(object):
                             inputs = observations_batch,
                             input_action = action_onehot_batch,
                         )
+                        if len(observations_batch.shape)==4:
+                            observations_batch_base = observations_batch[:,-1:]
+                        elif len(observations_batch.shape)==2:
+                            observations_batch_base = observations_batch
+                        else:
+                            raise NotImplemented
+
+                        observation_delta = (next_observations_batch-observations_batch_base)
+
+                        '''slice part of the observation'''
+                        if len(observations_batch_base.shape)==4:
+                            pass
+                        elif len(observations_batch_base.shape)==2:
+                            if self.this_layer.args.env_name in ['ReacherBulletEnv-v1','Explore2DContinuous']:
+                                observation_delta = observation_delta[:,0:2]
+                                predicted_next_observations_batch = predicted_next_observations_batch[:,0:2]
+                            elif self.this_layer.args.env_name in ['MinitaurBulletEnv-v2']:
+                                '''28:30 represents the position'''
+                                observation_delta = observation_delta[:,28:30]
+                                predicted_next_observations_batch = predicted_next_observations_batch[:,28:30]
+                            else:
+                                raise NotImplemented
+                        else:
+                            raise NotImplemented
+
                         '''compute mse loss'''
                         loss_transition = F.mse_loss(
                             input = predicted_next_observations_batch,
-                            target = (next_observations_batch-observations_batch[:,-1:]),
+                            target = observation_delta,
                             reduction='elementwise_mean',
                         )/255.0
 

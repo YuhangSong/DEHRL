@@ -17,8 +17,10 @@ class RolloutStorage(object):
         self.action_space = action_space
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
-        else:
+        elif action_space.__class__.__name__ == 'Box':
             action_shape = action_space.shape[0]
+        else:
+            raise NotImplemented
         self.actions = torch.zeros(num_steps, num_processes, action_shape)
         if action_space.__class__.__name__ == 'Discrete':
             self.actions = self.actions.long()
@@ -111,12 +113,18 @@ class RolloutStorage(object):
         next_masks_batch             = next_masks_batch                 [1:  ].view(-1, 1                           )
 
         '''generate indexs'''
-        next_masks_batch_index = next_masks_batch.squeeze().nonzero().squeeze()
+        next_masks_batch_index = next_masks_batch.squeeze(1).nonzero().squeeze(1)
 
-        next_masks_batch_index_observations_batch      = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
-        next_masks_batch_index_reward_bounty_raw_batch = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*reward_bounty_raw_batch.size()[1:])
-        next_masks_batch_index_next_observations_batch = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3).expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
-        next_masks_batch_index_actions_batch           = next_masks_batch_index.unsqueeze(1)                          .expand(next_masks_batch_index.size()[0],*actions_batch          .size()[1:])
+        if len(observations_batch.size()) == 4:
+            unsqueezed_next_masks_batch_index_for_obs = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3)
+        elif len(observations_batch.size()) == 2:
+            unsqueezed_next_masks_batch_index_for_obs = next_masks_batch_index.unsqueeze(1)
+        unsqueezed_next_masks_batch_index_for_vec =  next_masks_batch_index.unsqueeze(1)
+
+        next_masks_batch_index_observations_batch      = unsqueezed_next_masks_batch_index_for_obs.expand(next_masks_batch_index.size()[0],*observations_batch     .size()[1:])
+        next_masks_batch_index_reward_bounty_raw_batch = unsqueezed_next_masks_batch_index_for_vec                          .expand(next_masks_batch_index.size()[0],*reward_bounty_raw_batch.size()[1:])
+        next_masks_batch_index_next_observations_batch = unsqueezed_next_masks_batch_index_for_obs.expand(next_masks_batch_index.size()[0],*next_observations_batch.size()[1:])
+        next_masks_batch_index_actions_batch           = unsqueezed_next_masks_batch_index_for_vec                          .expand(next_masks_batch_index.size()[0],*actions_batch          .size()[1:])
 
         '''index'''
         observations_batch      = observations_batch     .gather(0,next_masks_batch_index_observations_batch)
@@ -135,7 +143,7 @@ class RolloutStorage(object):
 
         sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=True)
         for indices in sampler:
-            yield observations_batch[indices], next_observations_batch[indices][:,-self.observation_space.shape[0]:,:,:], action_onehot_batch[indices], reward_bounty_raw_batch[indices]
+            yield observations_batch[indices], next_observations_batch[indices][:,-self.observation_space.shape[0]:], action_onehot_batch[indices], reward_bounty_raw_batch[indices]
 
     def recurrent_generator(self, advantages, num_mini_batch):
         raise Exception('Not supported')

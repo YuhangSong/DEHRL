@@ -3,6 +3,7 @@ import os
 import gym
 import numpy as np
 from gym.spaces.box import Box
+from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
 try:
     import dm_control2gym
@@ -142,6 +143,35 @@ class DelayDone(gym.Wrapper):
 
         return self.obs, self.reward, self.done, self.info
 
+class ScaleActions(gym.ActionWrapper):
+    def __init__(self, env):
+        super(ScaleActions, self).__init__(env)
+
+    def action(self, action):
+        action = (np.tanh(action) + 1) / 2 * (self.action_space.high - self.action_space.low) + self.action_space.low
+        return action
+
+class VecNormalize(VecNormalize_):
+
+    def __init__(self, *args, **kwargs):
+        super(VecNormalize, self).__init__(*args, **kwargs)
+        self.training = True
+
+    def _obfilt(self, obs):
+        if self.ob_rms:
+            if self.training:
+                self.ob_rms.update(obs)
+            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+            return obs
+        else:
+            return obs
+
+    def train(self):
+        self.training = True
+
+    def eval(self):
+        self.training = False
+
 def make_env(rank, args):
     def _thunk():
 
@@ -153,6 +183,7 @@ def make_env(rank, args):
         elif args.env_name.find('Bullet') > -1:
             import pybullet_envs
             env = pybullet_envs.make(args.env_name)
+            env = ScaleActions(env)
 
         elif args.env_name in ['OverCooked']:
             '''OverCooked game we wrote'''
@@ -174,6 +205,14 @@ def make_env(rank, args):
             env = explore2d.Explore2D(
                 args = args,
             )
+
+        elif args.env_name in ['Explore2DContinuous']:
+            '''OverCooked game we wrote'''
+            import explore2d_continuous
+            env = explore2d_continuous.Explore2DContinuous(
+                args = args,
+            )
+            env = ScaleActions(env)
 
         elif args.env_name in ['MineCraft']:
             '''OverCooked game we wrote'''

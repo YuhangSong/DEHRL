@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_
 import numpy as np
-
+from arguments import get_args
+args = get_args()
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -20,16 +21,33 @@ class DeFlatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), *self.shape)
 
+def get_obs_size_flatten(obs_shape):
+    if len(obs_shape) in [3]:
+        obs_size_flatten = obs_shape[0]*obs_shape[1]*obs_shape[2]
+    elif len(obs_shape) in [1]:
+        obs_size_flatten = obs_shape[0]
+    else:
+        raise NotImplemented
+    return obs_size_flatten
+
 class Policy(nn.Module):
 
     def __init__(self, obs_shape, state_type, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
         super(Policy, self).__init__()
 
+        if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0','ReacherBulletEnv-v1','Explore2DContinuous']:
+            self.linear_size = 64
+        elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+            self.linear_size = 256
+        else:
+            raise NotImplemented
+
         self.num_subpolicy = num_subpolicy
-        self.base = CNNBase(
+        self.base = StateEncoder(
             use_gru = recurrent_policy,
             obs_shape = obs_shape,
             state_type = state_type,
+            linear_size = self.linear_size,
         )
 
         self.state_size = self.base.state_size
@@ -38,10 +56,10 @@ class Policy(nn.Module):
         self.output_action_space = output_action_space
         if self.output_action_space.__class__.__name__ == "Discrete":
             num_outputs = self.output_action_space.n
-            self.dist = Categorical(self.base.output_size, num_outputs,self.num_subpolicy)
+            self.dist = Categorical(self.base.output_size, num_outputs, self.num_subpolicy)
         elif self.output_action_space.__class__.__name__ == "Box":
             num_outputs = self.output_action_space.shape[0]
-            self.dist = DiagGaussian(self.base.output_size, num_outputs)
+            self.dist = DiagGaussian(self.base.output_size, num_outputs, self.num_subpolicy)
         else:
             raise NotImplementedError
 
@@ -66,6 +84,8 @@ class Policy(nn.Module):
     def get_value_dist(self, base_features, input_action):
 
         if self.num_subpolicy > 1:
+
+            '''value forward'''
             index_dic = {}
             tensor_dic = {}
             y_dic = {}
@@ -73,7 +93,7 @@ class Policy(nn.Module):
             for dic_i in range(self.num_subpolicy):
                 index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                 if index_dic[str(dic_i)].size()[0] != 0:
-                    tensor_dic[str(dic_i)] = torch.index_select(base_features,0,index_dic[str(dic_i)])
+                    tensor_dic[str(dic_i)] = torch.index_select(base_features['critic'],0,index_dic[str(dic_i)])
                     y_dic[str(dic_i)] = self.critic_linear[dic_i](tensor_dic[str(dic_i)])
 
             value = torch.zeros((input_action.size()[0],1)).cuda()
@@ -81,11 +101,14 @@ class Policy(nn.Module):
                 if str(y_i) in y_dic:
                     value.index_add_(0,index_dic[str(y_i)],y_dic[str(y_i)])
 
-            dist, dist_features = self.dist(base_features,action_index)
+            '''dist forward'''
+            dist, dist_features = self.dist(base_features['actor'],action_index)
 
         else:
-            value = self.critic_linear(base_features)
-            dist, dist_features = self.dist(base_features)
+            '''value forward'''
+            value = self.critic_linear(base_features['critic'])
+            'dist forward'
+            dist, dist_features = self.dist(base_features['actor'])
 
         return value, dist, dist_features
 
@@ -120,10 +143,10 @@ class Policy(nn.Module):
     def save_model(self, save_path):
         torch.save(self.state_dict(), save_path)
 
-class CNNBase(nn.Module):
+class StateEncoder(nn.Module):
 
     def __init__(self, use_gru, obs_shape, state_type, linear_size=256):
-        super(CNNBase, self).__init__()
+        super(StateEncoder, self).__init__()
 
         self.linear_size = linear_size
         self.state_type = state_type
@@ -144,7 +167,7 @@ class CNNBase(nn.Module):
 
         if self.state_type in ['standard_image']:
             self.main = nn.Sequential(
-                self.leakrelu_init_(nn.Conv2d(obs_shape[0], 32, 8, stride=4)),
+                self.leakrelu_init_(nn.Conv2d(obs_shape[0], 16, 8, stride=4)),
                 nn.LeakyReLU(),
                 self.leakrelu_init_(nn.Conv2d(16, 32, 4, stride=2)),
                 nn.LeakyReLU(),
@@ -155,10 +178,20 @@ class CNNBase(nn.Module):
                 nn.LeakyReLU()
             )
         elif self.state_type in ['vector']:
-            self.main = nn.Sequential(
-                self.linear_init_(nn.Linear(obs_shape[0]*obs_shape[1]*obs_shape[2], self.linear_size)),
+            obs_size_flatten = get_obs_size_flatten(obs_shape)
+            init_ = lambda m: init(m,
+                init_normc_,
+                lambda x: nn.init.constant_(x, 0))
+            self.main_actor = nn.Sequential(
+                init_(nn.Linear(obs_size_flatten, self.linear_size)),
                 nn.Tanh(),
-                self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
+                init_(nn.Linear(self.linear_size, self.linear_size)),
+                nn.Tanh()
+            )
+            self.main_critic = nn.Sequential(
+                init_(nn.Linear(obs_size_flatten, self.linear_size)),
+                nn.Tanh(),
+                init_(nn.Linear(self.linear_size, self.linear_size)),
                 nn.Tanh()
             )
 
@@ -183,9 +216,7 @@ class CNNBase(nn.Module):
         return self.linear_size
 
     def forward(self, inputs, states, masks):
-
         if self.state_type in ['standard_image']:
-            inputs = inputs[:,-1:]
             x = self.main(inputs / 255.0)
 
             if hasattr(self, 'gru'):
@@ -200,13 +231,16 @@ class CNNBase(nn.Module):
                         outputs.append(hx)
                     x = torch.cat(outputs, 0)
 
-            return x, states
+            return {'actor': x, 'critic': x}, states
 
         elif self.state_type in ['vector']:
-            x = self.main(
+            x_actor = self.main_actor(
                 inputs.view(inputs.size()[0],-1)
             )
-            return x, states
+            x_critic = self.main_critic(
+                inputs.view(inputs.size()[0],-1)
+            )
+            return {'actor': x_actor, 'critic': x_critic}, states
 
         else:
             raise NotImplemented
@@ -419,12 +453,13 @@ class TransitionModel(nn.Module):
                 # fc linear
             )
         elif self.state_type in ['vector']:
+            obs_size_flatten = get_obs_size_flatten(self.input_observation_shape)
             self.conv = nn.Sequential(
-                self.linear_init_(nn.Linear(self.input_observation_shape[0]*self.input_observation_shape[1]*self.input_observation_shape[2], self.linear_size)),
-                nn.BatchNorm1d(self.linear_size),
+                self.linear_init_(nn.Linear(obs_size_flatten, self.linear_size)),
+                # nn.BatchNorm1d(self.linear_size),
                 nn.Tanh(),
                 self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-                nn.BatchNorm1d(self.linear_size),
+                # nn.BatchNorm1d(self.linear_size),
                 nn.Tanh()
             )
 
@@ -466,11 +501,20 @@ class TransitionModel(nn.Module):
             elif self.state_type in ['vector']:
                 self.deconv = nn.Sequential(
                     self.linear_init_(nn.Linear(self.linear_size, self.linear_size)),
-                    nn.BatchNorm1d(self.linear_size),
+                    # nn.BatchNorm1d(self.linear_size),
                     nn.Tanh(),
-                    self.linear_init_(nn.Linear(self.linear_size, self.output_observation_shape[0]*self.output_observation_shape[1]*self.output_observation_shape[2])),
+                    self.linear_init_(nn.Linear(self.linear_size, obs_size_flatten)),
                     # output do not normalize
                 )
+                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+                    pass
+                elif args.env_name in ['env with obs bound'] > -1:
+                    self.deconv.add_module(
+                        'output_active',
+                        nn.Tanh(),
+                    )
+                else:
+                    raise NotImplemented
 
         else:
 
@@ -479,7 +523,6 @@ class TransitionModel(nn.Module):
             )
 
     def forward(self, inputs, input_action=None):
-
         if self.state_type in ['standard_image']:
             conved = self.conv(
                 inputs/255.0,
