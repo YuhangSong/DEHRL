@@ -97,14 +97,14 @@ class PPO(object):
                                                1.0 + self.this_layer.args.clip_param) * adv_targ
                     action_loss = -torch.min(surr1, surr2)
                     action_loss = action_loss.mean()
-                    # epoch_loss['action_{}'.format(input_actions_index[0])] = action_loss[0,0].item()
+                    # epoch_loss['action_{}'.format(input_actions_index[0])] = action_loss.item()
 
                     value_loss = (return_batch-values).pow(2)
                     value_loss = value_loss.mean() * self.this_layer.args.value_loss_coef
-                    # epoch_loss['value_{}'.format(input_actions_index[0])] = value_loss[0,0].item()
+                    # epoch_loss['value_{}'.format(input_actions_index[0])] = value_loss.item()
 
                     dist_entropy = dist_entropy.mean() * (self.this_layer.args.entropy_coef if self.this_layer.hierarchy_id in [0] else 0.01)
-                    epoch_loss['dist_entropy_{}'.format(input_actions_index[0])] = dist_entropy[0].item()
+                    epoch_loss['dist_entropy_{}'.format(input_actions_index[0])] = dist_entropy.item()
 
                     final_loss = value_loss + action_loss - dist_entropy
 

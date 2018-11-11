@@ -1084,7 +1084,6 @@ class HierarchyLayer(object):
         if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_action)) and args.log_behavior:
             '''log behavior every x minutes'''
             if self.episode_reward['len']==0:
-                self.last_time_log_behavior = time.time()
                 self.log_behavior = True
 
         if self.log_behavior:
@@ -1114,6 +1113,7 @@ class HierarchyLayer(object):
 
             if self.log_behavior:
                 self.summary_behavior_at_done()
+                self.last_time_log_behavior = time.time()
                 self.log_behavior = False
 
             if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
