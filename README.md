@@ -2,14 +2,16 @@
 
 This repository provides implementation of [**domains**](#domains), [**DEHRL**](#setup-an-environment-to-run-our-code) and [**results visualization**](#results-visualization) for paper:
 
-* [**Diversity−Driven Extensible Hierarchical Reinforcement Learning.**](xxx)
-[*Yuhang Song* &#8224;](http://www.cs.ox.ac.uk/people/yuhang.song/),
+* **Diversity−Driven Extensible Hierarchical Reinforcement Learning.**
+[*Yuhang Song*](http://www.cs.ox.ac.uk/people/yuhang.song/),
 [*Jianyi Wang* &#8224;](http://45.77.201.133/html/Members/jianyiwang.html),
 [*Thomas Lukasiewicz* &#8727;](http://www.cs.ox.ac.uk/people/thomas.lukasiewicz/),
 [*Zhenghua Xu* &#8727;](https://www.cs.ox.ac.uk/people/zhenghua.xu/),
 [*Mai Xu*](http://45.77.201.133/html/Members/maixu.html).
-Equal contribution&#8224;.
+Co-first author&#8224;.
 Corresponding author&#8727;.
+[[Paper](https://www.dropbox.com/s/zt8wwwyy80f8b3q/Song.pdf?dl=0)],
+[[Supplementary Material](https://www.dropbox.com/s/0viej0541ns7o3i/main.pdf?dl=0)].
 
 Published on [**Proceedings of the 33rd National Conference on Artificial Intelligence (AAAI 2019)**](https://www.computer.org/web/tpami).
 By [Intelligent Systems Lab](http://www.cs.ox.ac.uk/people/thomas.lukasiewicz/isg-index.html) @ [Computer Science](http://www.cs.ox.ac.uk/) in [University of Oxford](http://www.ox.ac.uk/).
@@ -246,24 +248,6 @@ where the dot is current position and crosses are resulted states of different s
 Pybullet is a free alternative for Mujoco, with even better / more complex continuous control tasks.
 Install by ```pip install -U pybullet```.
 
-#### ReacherBulletEnv-v1.
-
-Number of subpolicies: 2
-```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "ReacherBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 2 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
-```
-
-Number of subpolicies: 4
-```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "ReacherBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
-```
-
-Number of subpolicies: 2 | Number of subpolicies: 4 |
-:-------------------------:|:-------------------------:
-<img src="imgs/ReacherBulletEnv-v1/2_sub.gif">  |  <img src="imgs/ReacherBulletEnv-v1/4_sub.gif">
-
-where the dot is current position and crosses are resulted states of different subpolicies.
-
 #### MinitaurBulletEnv-v2.
 
 Number of subpolicies: 2
@@ -282,7 +266,10 @@ Number of subpolicies: 2 | Number of subpolicies: 4 |
 
 where the dot is current position and crosses are resulted states of different subpolicies.
 
-* Note that for above PyBullet domains, we manually extract position information from observation, and use it to do diverse-driven. This is due to we leave extracting useful information from observation as a future work, and mainly focus on verifying our diverse-drive solution.
+Note that for above PyBullet domains
+* We manually extract position information from observation, and use it to do diverse-driven. This is due to we leave extracting useful information from observation as a future work, and mainly focus on verifying our diverse-drive solution.
+* We remove the reward returned by the original enviriment so that the experiment is aimed to let DEHRL discover diverse subpolicies in an unsupervise manner. Of course extrinsic reward can be included, but the goal set out by current environment is too simply to show the effectiveness of diverse sub-policies.
+* Thus, the part of experiment is only to show our method scale well to continuous control tasks, futher investigation is a promising future work.
 
 Other available environments in PyBullet can be found [here](https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/gym/pybullet_envs/__init__.py).
 
