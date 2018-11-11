@@ -207,8 +207,8 @@ where the dot is current position and crosses are resulted states of different s
 [Pybullet](https://pybullet.org/wordpress/) is a free alternative for Mujoco, with even better / more complex continuous control tasks.
 Install by ```pip install -U pybullet```.
 
-<img src="imgs/pybullet_1.gif">  |  <img src="imgs/pybullet_2.gif">
-:-------------------------:|:-------------------------:
+<img src="imgs/pybullet_1.gif">  |  <img src="imgs/pybullet_2.gif">  |  <img src="imgs/pybullet_3.gif">  |  <img src="imgs/pybullet_4.gif">
+:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
 
 #### MinitaurBulletEnv-v2.
 
