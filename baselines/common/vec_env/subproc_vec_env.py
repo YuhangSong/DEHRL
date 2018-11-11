@@ -63,6 +63,11 @@ class SubprocVecEnv(VecEnv):
         sleeping = self.remotes[env_index].recv()
         return sleeping
 
+    def get_one_render(self, env_index):
+        self.remotes[env_index].send(('render', None))
+        render = self.remotes[env_index].recv()
+        return render
+
     def step_wait(self):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False

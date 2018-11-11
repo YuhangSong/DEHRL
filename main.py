@@ -521,6 +521,11 @@ class HierarchyLayer(object):
                     )
                 )
 
+        # DEBUG: 
+        # if self.args.env_name in ['MinitaurBulletEnv-v2']:
+        #     if self.hierarchy_id in [self.args.num_hierarchy-1]:
+        #         print(self.action[:,0])
+
     def log_for_specify_action(self):
 
         if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
@@ -761,7 +766,6 @@ class HierarchyLayer(object):
             if self.is_final_step_by_upper_layer:
                 '''mask it and stop reward function'''
                 self.masks = self.masks * 0.0
-
 
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
@@ -1122,8 +1126,19 @@ class HierarchyLayer(object):
         state_img = obs_to_state_img(self.obs[0])
         try:
             self.episode_visilize_stack['observation'] += [state_img]
+            '''
+                0-255, uint8, either (xx,xx) for gray image or (xx,xx,3) for rgb image.
+            '''
         except Exception as e:
             self.episode_visilize_stack['observation'] = [state_img]
+
+        if self.hierarchy_id in [0]:
+            if self.args.log_rendered_behavior:
+                rendered_observation = self.envs.get_one_render(env_index=0)
+                try:
+                    self.episode_visilize_stack['rendered_observation'] += [rendered_observation]
+                except Exception as e:
+                    self.episode_visilize_stack['rendered_observation'] = [rendered_observation]
 
         '''Summery state_prediction'''
         if self.predicted_next_observations_to_downer_layer is not None:
@@ -1197,8 +1212,13 @@ class HierarchyLayer(object):
             )
             for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
                 cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
-                cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
-                videoWriter.write(cur_frame.astype(np.uint8))
+                if len(cur_frame.shape)==2:
+                    '''gray image'''
+                    cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
+                elif len(cur_frame.shape)==3:
+                    pass
+                else:
+                    raise NotImplemented
             videoWriter.release()
 
             self.episode_visilize_stack[episode_visilize_stack_name] = None

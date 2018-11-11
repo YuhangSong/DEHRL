@@ -219,7 +219,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-para
 
 Number of subpolicies: 4
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MinitaurBulletEnv-v2" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp MinitaurBulletEnv-3 --obs-type 'image' --env-name "MinitaurBulletEnv-v2" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 16 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
 ```
 
 Number of subpolicies: 2 | Number of subpolicies: 4 |
