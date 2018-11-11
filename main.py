@@ -521,7 +521,7 @@ class HierarchyLayer(object):
                     )
                 )
 
-        # DEBUG: 
+        # DEBUG:
         # if self.args.env_name in ['MinitaurBulletEnv-v2']:
         #     if self.hierarchy_id in [self.args.num_hierarchy-1]:
         #         print(self.action[:,0])
@@ -1219,6 +1219,7 @@ class HierarchyLayer(object):
                     pass
                 else:
                     raise NotImplemented
+                videoWriter.write(cur_frame.astype(np.uint8))
             videoWriter.release()
 
             self.episode_visilize_stack[episode_visilize_stack_name] = None
