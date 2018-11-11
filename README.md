@@ -142,6 +142,18 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-pa
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/minecraft_0.png" width="600"/></p>
 
+We also save the world build by the agent, set
+```
+window.loadWorld('<path-to-the-save-file>.sav')
+```
+to the path of ```.sav``` file and run
+```
+python replay.py
+```
+to have a third person view of the built world.
+
+<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/replay.gif" width="600"/></p>
+
 ### Run Atari
 
 #### Game: MontezumaRevengeNoFrameskip-v4
@@ -287,18 +299,6 @@ Besides, if you add argument ```--log-behavior```, multiple videos are saved in 
 However, this will cost extra memory, so be careful when you are using it.
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/video.gif"/></p>
-
-For Minecraft, we also save the world build by the agent, set
-```
-window.loadWorld('<path-to-the-save-file>.sav')
-```
-to the path of ```.sav``` file and run
-```
-python replay.py
-```
-to have a third person view of the built world.
-
-<p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/replay.gif"/></p>
 
 ## Meet some problems?
 
