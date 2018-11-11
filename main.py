@@ -763,9 +763,14 @@ class HierarchyLayer(object):
             self.reward_final = self.reward.cuda()
 
         if args.reward_bounty>0:
-            if self.is_final_step_by_upper_layer:
-                '''mask it and stop reward function'''
-                self.masks = self.masks * 0.0
+            if self.args.env_name in ['MinitaurBulletEnv-v2']:
+                print('kkk')
+                '''some games need this to avoid too risky behavior'''
+                pass
+            else:
+                if self.is_final_step_by_upper_layer:
+                    '''mask it and stop reward function'''
+                    self.masks = self.masks * 0.0
 
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
