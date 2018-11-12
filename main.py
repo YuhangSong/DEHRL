@@ -701,13 +701,13 @@ class HierarchyLayer(object):
                     '''compute reward bounty'''
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
 
-                    # # DEBUG:
-                    # if action_rb[process_i].item()==0.0:
-                    #     self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][30]
-                    # elif action_rb[process_i].item()==1.0:
-                    #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][30]
-                    # else:
-                    #     raise NotImplemented
+                    # DEBUG:
+                    if action_rb[process_i].item()==0.0:
+                        self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][28]
+                    elif action_rb[process_i].item()==1.0:
+                        self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
+                    else:
+                        raise NotImplemented
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
@@ -764,7 +764,6 @@ class HierarchyLayer(object):
 
         if args.reward_bounty>0:
             if self.args.env_name in ['MinitaurBulletEnv-v2']:
-                print('kkk')
                 '''some games need this to avoid too risky behavior'''
                 pass
             else:
