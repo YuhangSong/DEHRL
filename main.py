@@ -608,9 +608,9 @@ class HierarchyLayer(object):
         self.reward_bounty_raw_to_return *= 0.0
         self.reward_bounty *= 0.0
 
-        # DEBUG: for generate fake bounty every step
-        if self.hierarchy_id in [0]:
-            self.is_final_step_by_upper_layer = True
+        # # DEBUG: for generate fake bounty every step
+        # if self.hierarchy_id in [0]:
+        #     self.is_final_step_by_upper_layer = True
 
         if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer):
 
@@ -713,7 +713,7 @@ class HierarchyLayer(object):
                     # else:
                     #     raise NotImplemented
                     # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][31]/obs_rb[process_i][34]
-                    self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
+                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
