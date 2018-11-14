@@ -506,7 +506,7 @@ class TransitionModel(nn.Module):
                     self.linear_init_(nn.Linear(self.linear_size, obs_size_flatten)),
                     # output do not normalize
                 )
-                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+                if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                     pass
                 elif args.env_name in ['env with obs bound'] > -1:
                     self.deconv.add_module(

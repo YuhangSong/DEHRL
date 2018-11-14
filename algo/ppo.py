@@ -140,6 +140,10 @@ class PPO(object):
 
                 for sample in data_generator:
 
+                    if sample is None:
+                        print('# WARNING: No sample this update!')
+                        return epoch_loss
+
                     observations_batch, next_observations_batch, action_onehot_batch, reward_bounty_raw_batch = sample
 
                     self.optimizer_transition_model.zero_grad()
@@ -166,7 +170,7 @@ class PPO(object):
                             if self.this_layer.args.env_name in ['ReacherBulletEnv-v1','Explore2DContinuous']:
                                 observation_delta = observation_delta[:,0:2]
                                 predicted_next_observations_batch = predicted_next_observations_batch[:,0:2]
-                            elif self.this_layer.args.env_name in ['MinitaurBulletEnv-v2']:
+                            elif ('MinitaurBulletEnv' in self.this_layer.args.env_name) or ('AntBulletEnv' in self.this_layer.args.env_name):
                                 '''28:30 represents the position'''
                                 observation_delta = observation_delta[:,28:30]
                                 predicted_next_observations_batch = predicted_next_observations_batch[:,28:30]

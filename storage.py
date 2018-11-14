@@ -113,7 +113,10 @@ class RolloutStorage(object):
         next_masks_batch             = next_masks_batch                 [1:  ].view(-1, 1                           )
 
         '''generate indexs'''
-        next_masks_batch_index = next_masks_batch.squeeze(1).nonzero().squeeze(1)
+        try:
+            next_masks_batch_index = next_masks_batch.squeeze(1).nonzero().squeeze(1)
+        except Exception as e:
+            yield None 
 
         if len(observations_batch.size()) == 4:
             unsqueezed_next_masks_batch_index_for_obs = next_masks_batch_index.unsqueeze(1).unsqueeze(2).unsqueeze(3)

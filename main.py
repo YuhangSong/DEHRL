@@ -167,7 +167,7 @@ def obs_to_state_img(obs, marker='o'):
             import matplotlib.pyplot as plt
             plt.clf()
             axes = plt.gca()
-            if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
+            if ('MinitaurBulletEnv' in args.env_name) or ('AntBulletEnv' in args.env_name):
                 limit = 1
                 plt.scatter(obs[28], obs[29], s=18, c=1, marker=marker, alpha=1.0)
             elif args.env_name in ['ReacherBulletEnv-v1']:
@@ -176,9 +176,6 @@ def obs_to_state_img(obs, marker='o'):
             elif args.env_name in ['Explore2DContinuous']:
                 limit = args.episode_length_limit
                 plt.scatter(obs[0], obs[1], s=18, c=1, marker=marker, alpha=1.0)
-            elif args.env_name in ['AntBulletEnv-v0']:
-                limit = args.episode_length_limit
-                plt.scatter(obs[28], obs[29], s=18, c=1, marker=marker, alpha=1.0)
             else:
                 raise NotImplemented
             axes.set_xlim([-limit,limit])
@@ -524,7 +521,7 @@ class HierarchyLayer(object):
                     )
                 )
 
-        # DEBUG:
+        # DEBUG: specify higher level actions
         # if self.args.env_name in ['MinitaurBulletEnv-v2']:
         #     if self.hierarchy_id in [self.args.num_hierarchy-1]:
         #         print(self.action[:,0])
@@ -611,9 +608,9 @@ class HierarchyLayer(object):
         self.reward_bounty_raw_to_return *= 0.0
         self.reward_bounty *= 0.0
 
-        # # DEBUG: for generate fake bounty every step
-        # if self.hierarchy_id in [0]:
-        #     self.is_final_step_by_upper_layer = True
+        # DEBUG: for generate fake bounty every step
+        if self.hierarchy_id in [0]:
+            self.is_final_step_by_upper_layer = True
 
         if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer):
 
@@ -653,7 +650,7 @@ class HierarchyLayer(object):
                                     x = (obs_rb[process_i][0,0]-prediction_rb[action_i,process_i][0,0]),
                                     ord = 2,
                                 )
-                            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
+                            elif ('MinitaurBulletEnv' in args.env_name) or ('AntBulletEnv' in args.env_name):
                                 '''28:30 represents the position'''
                                 difference_l2 = np.linalg.norm(
                                     x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
@@ -708,14 +705,14 @@ class HierarchyLayer(object):
                     '''compute reward bounty'''
                     self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
 
-                    # DEBUG:
+                    # DEBUG: generate fake reward bounty
                     # if action_rb[process_i].item()==0.0:
                     #     self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][28]
                     # elif action_rb[process_i].item()==1.0:
                     #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
                     # else:
                     #     raise NotImplemented
-                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
+                    self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][31]
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
@@ -750,18 +747,18 @@ class HierarchyLayer(object):
         if args.reward_bounty>0:
             if self.hierarchy_id in [args.num_hierarchy-1]:
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
-                if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld','Explore2D','Explore2DContinuous']:
                     self.reward_final = self.reward
-                elif self.args.env_name in ['Explore2D','MineCraft','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+                elif (self.args.env_name in ['MineCraft']) or ('Bullet' in args.env_name):
                     self.reward_final = self.reward*0.0
                 else:
                     raise NotImplemented
 
             else:
-                if self.args.env_name in ['OverCooked','MineCraft','Explore2D']:
+                if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous']) or ('MinitaurBulletEnv' in args.env_name):
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
                     self.reward_final = self.reward_bounty
-                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','AntBulletEnv-v1']:
                     '''reward occurs more frequently and we want down layers to know it'''
                     self.reward_final = self.reward.cuda() + self.reward_bounty
                 else:
@@ -1165,7 +1162,7 @@ class HierarchyLayer(object):
                     marker = "+",
                 )
 
-                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+                if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                     img = img + temp/2
                 elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     img = np.concatenate((img,temp),1)
@@ -1183,7 +1180,7 @@ class HierarchyLayer(object):
                         ),
                         1,
                     )
-            if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+            if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                 img = (img/np.amax(img)*255.0).astype(np.uint8)
             elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                 pass

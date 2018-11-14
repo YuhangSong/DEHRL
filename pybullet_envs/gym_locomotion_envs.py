@@ -1,20 +1,20 @@
 from .scene_stadium import SinglePlayerStadiumScene
 from .env_bases import MJCFBaseBulletEnv
 import numpy as np
-import pybullet 
+import pybullet
 from robot_locomotors import Hopper, Walker2D, HalfCheetah, Ant, Humanoid, HumanoidFlagrun, HumanoidFlagrunHarder
 
 
 class WalkerBaseBulletEnv(MJCFBaseBulletEnv):
-	def __init__(self, robot, render=False):
+	def __init__(self, robot, reward_include_progress, render=False):
 		print("WalkerBase::__init__ start")
 		MJCFBaseBulletEnv.__init__(self, robot, render)
-		
+
 		self.camera_x = 0
 		self.walk_target_x = 1e3  # kilometer away
 		self.walk_target_y = 0
 		self.stateId=-1
-		
+		self.reward_include_progress = reward_include_progress
 
 	def create_single_player_scene(self, bullet_client):
 		self.stadium_scene = SinglePlayerStadiumScene(bullet_client, gravity=9.8, timestep=0.0165/4, frame_skip=4)
@@ -24,7 +24,7 @@ class WalkerBaseBulletEnv(MJCFBaseBulletEnv):
 		if (self.stateId>=0):
 			#print("restoreState self.stateId:",self.stateId)
 			self._p.restoreState(self.stateId)
-		
+
 		r = MJCFBaseBulletEnv._reset(self)
 		self._p.configureDebugVisualizer(pybullet.COV_ENABLE_RENDERING,0)
 
@@ -36,10 +36,10 @@ class WalkerBaseBulletEnv(MJCFBaseBulletEnv):
 		if (self.stateId<0):
 			self.stateId=self._p.saveState()
 			#print("saving state self.stateId:",self.stateId)
-			
-		
+
+
 		return r
-	
+
 	def _isDone(self):
 		return self._alive < 0
 
@@ -102,13 +102,15 @@ class WalkerBaseBulletEnv(MJCFBaseBulletEnv):
 			print("feet_collision_cost")
 			print(feet_collision_cost)
 
-		self.rewards = [
-			self._alive,
-			progress,
+		self.rewards = [self._alive]
+		if self.reward_include_progress:
+			self.rewards += [progress]
+		self.rewards += [
 			electricity_cost,
 			joints_at_limit_cost,
 			feet_collision_cost
-			]
+		]
+
 		if (debugmode):
 			print("rewards=")
 			print(self.rewards)
@@ -138,14 +140,14 @@ class HalfCheetahBulletEnv(WalkerBaseBulletEnv):
 	def __init__(self):
 		self.robot = HalfCheetah()
 		WalkerBaseBulletEnv.__init__(self, self.robot)
-		
+
 	def _isDone(self):
 		return False
 
 class AntBulletEnv(WalkerBaseBulletEnv):
-	def __init__(self):
+	def __init__(self, reward_include_progress):
 		self.robot = Ant()
-		WalkerBaseBulletEnv.__init__(self, self.robot)
+		WalkerBaseBulletEnv.__init__(self, self.robot, reward_include_progress)
 
 class HumanoidBulletEnv(WalkerBaseBulletEnv):
 	def __init__(self, robot=Humanoid()):
