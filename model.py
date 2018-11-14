@@ -35,7 +35,7 @@ class Policy(nn.Module):
     def __init__(self, obs_shape, state_type, input_action_space,output_action_space, num_subpolicy, recurrent_policy):
         super(Policy, self).__init__()
 
-        if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0','ReacherBulletEnv-v1','Explore2DContinuous']:
+        if ('Bullet' in args.env_name) or (args.env_name in ['Explore2DContinuous']):
             self.linear_size = 64
         elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
             self.linear_size = 256

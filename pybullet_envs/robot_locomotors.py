@@ -1,6 +1,6 @@
 from robot_bases import XmlBasedRobot, MJCFBasedRobot, URDFBasedRobot
 import numpy as np
-import pybullet 
+import pybullet
 import os
 import pybullet_data
 from robot_bases import BodyPart
@@ -63,7 +63,8 @@ class WalkerBase(MJCFBasedRobot):
 			np.sin(angle_to_target), np.cos(angle_to_target),
 			0.3* vx , 0.3* vy , 0.3* vz ,  # 0.3 is just scaling typical speed into -1..+1, no physical sense here
 			r, p], dtype=np.float32)
-		return np.clip( np.concatenate([more] + [j] + [self.feet_contact]), -5, +5)
+
+		return np.clip( np.concatenate([more] + [j] + [self.feet_contact] + [np.asarray(self.body_xyz)]), -5, +5)
 
 	def calc_potential(self):
 		# progress in potential field is speed*dt, typical speed is about 2-3 meter per second, this potential will change 2-3 per frame (not per second),
@@ -85,7 +86,7 @@ class Hopper(WalkerBase):
 	foot_list = ["foot"]
 
 	def __init__(self):
-		WalkerBase.__init__(self, "hopper.xml", "torso", action_dim=3, obs_dim=15, power=0.75)
+		WalkerBase.__init__(self, "hopper.xml", "torso", action_dim=3, obs_dim=15+3, power=0.75)
 
 	def alive_bonus(self, z, pitch):
 		return +1 if z > 0.8 and abs(pitch) < 1.0 else -1
@@ -95,7 +96,7 @@ class Walker2D(WalkerBase):
 	foot_list = ["foot", "foot_left"]
 
 	def __init__(self):
-		WalkerBase.__init__(self,  "walker2d.xml", "torso", action_dim=6, obs_dim=22, power=0.40)
+		WalkerBase.__init__(self,  "walker2d.xml", "torso", action_dim=6, obs_dim=22+3, power=0.40)
 
 	def alive_bonus(self, z, pitch):
 		return +1 if z > 0.8 and abs(pitch) < 1.0 else -1
@@ -110,7 +111,7 @@ class HalfCheetah(WalkerBase):
 	foot_list = ["ffoot", "fshin", "fthigh",  "bfoot", "bshin", "bthigh"]  # track these contacts with ground
 
 	def __init__(self):
-		WalkerBase.__init__(self, "half_cheetah.xml", "torso", action_dim=6, obs_dim=26, power=0.90)
+		WalkerBase.__init__(self, "half_cheetah.xml", "torso", action_dim=6, obs_dim=26+3, power=0.90)
 
 	def alive_bonus(self, z, pitch):
 		# Use contact other than feet to terminate episode: due to a lot of strange walks using knees
@@ -130,7 +131,7 @@ class Ant(WalkerBase):
 	foot_list = ['front_left_foot', 'front_right_foot', 'left_back_foot', 'right_back_foot']
 
 	def __init__(self):
-		WalkerBase.__init__(self, "ant.xml", "torso", action_dim=8, obs_dim=28, power=2.5)
+		WalkerBase.__init__(self, "ant.xml", "torso", action_dim=8, obs_dim=28+3, power=2.5)
 
 	def alive_bonus(self, z, pitch):
 		return +1 if z > 0.26 else -1  # 0.25 is central sphere rad, die if it scrapes the ground
@@ -141,7 +142,7 @@ class Humanoid(WalkerBase):
 	foot_list = ["right_foot", "left_foot"]  # "left_hand", "right_hand"
 
 	def __init__(self):
-		WalkerBase.__init__(self,  'humanoid_symmetric.xml', 'torso', action_dim=17, obs_dim=44, power=0.41)
+		WalkerBase.__init__(self,  'humanoid_symmetric.xml', 'torso', action_dim=17, obs_dim=44+3, power=0.41)
 		# 17 joints, 4 of them important for walking (hip, knee), others may as well be turned off, 17/4 = 4.25
 
 	def robot_specific_reset(self, bullet_client):
@@ -193,7 +194,7 @@ class Humanoid(WalkerBase):
 
 
 
-def get_cube(_p, x, y, z):	
+def get_cube(_p, x, y, z):
 	body = _p.loadURDF(os.path.join(pybullet_data.getDataPath(),"cube_small.urdf"), [x, y, z])
 	_p.changeDynamics(body,-1, mass=1.2)#match Roboschool
 	part_name, _ = _p.getBodyInfo(body)
@@ -213,7 +214,7 @@ class HumanoidFlagrun(Humanoid):
 	def __init__(self):
 		Humanoid.__init__(self)
 		self.flag = None
-		
+
 	def robot_specific_reset(self, bullet_client):
 		Humanoid.robot_specific_reset(self, bullet_client)
 		self.flag_reposition()
@@ -224,7 +225,7 @@ class HumanoidFlagrun(Humanoid):
 		more_compact = 0.5  # set to 1.0 whole football field
 		self.walk_target_x *= more_compact
 		self.walk_target_y *= more_compact
-		
+
 		if (self.flag):
 			#for b in self.flag.bodies:
 			#	print("remove body uid",b)
@@ -232,7 +233,7 @@ class HumanoidFlagrun(Humanoid):
 			self._p.resetBasePositionAndOrientation(self.flag.bodies[0],[self.walk_target_x, self.walk_target_y, 0.7],[0,0,0,1])
 		else:
 			self.flag = get_sphere(self._p, self.walk_target_x, self.walk_target_y, 0.7)
-		self.flag_timeout = 600/self.scene.frame_skip #match Roboschool 
+		self.flag_timeout = 600/self.scene.frame_skip #match Roboschool
 
 	def calc_state(self):
 		self.flag_timeout -= 1
@@ -254,7 +255,7 @@ class HumanoidFlagrunHarder(HumanoidFlagrun):
 	def robot_specific_reset(self, bullet_client):
 
 		HumanoidFlagrun.robot_specific_reset(self, bullet_client)
-		
+
 		self.frame = 0
 		if (self.aggressive_cube):
 			self._p.resetBasePositionAndOrientation(self.aggressive_cube.bodies[0],[-1.5,0,0.05],[0,0,0,1])
@@ -318,4 +319,3 @@ class HumanoidFlagrunHarder(HumanoidFlagrun):
 			self.crawl_start_potential = None
 
 		return flag_running_progress + self.potential_leak()*100
-

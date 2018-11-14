@@ -61,7 +61,7 @@ if args.num_processes > 1:
 else:
     bottom_envs = bottom_envs[0]()
 
-if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0','ReacherBulletEnv-v1','Explore2DContinuous']:
+if 'Bullet' in args.env_name:
     # if len(bottom_envs.observation_space.shape) == 1:
     #     from envs import VecNormalize
     #     if args.gamma is None:
@@ -163,7 +163,7 @@ def obs_to_state_img(obs, marker='o'):
                     +args.episode_length_limit
                 )+args.episode_length_limit
             ] = 255
-        elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+        elif ('Bullet' in args.env_name) or (args.env_name in ['Explore2DContinuous']):
             import matplotlib.pyplot as plt
             plt.clf()
             axes = plt.gca()
@@ -176,6 +176,9 @@ def obs_to_state_img(obs, marker='o'):
             elif args.env_name in ['Explore2DContinuous']:
                 limit = args.episode_length_limit
                 plt.scatter(obs[0], obs[1], s=18, c=1, marker=marker, alpha=1.0)
+            elif args.env_name in ['AntBulletEnv-v0']:
+                limit = args.episode_length_limit
+                plt.scatter(obs[28], obs[29], s=18, c=1, marker=marker, alpha=1.0)
             else:
                 raise NotImplemented
             axes.set_xlim([-limit,limit])
@@ -608,9 +611,9 @@ class HierarchyLayer(object):
         self.reward_bounty_raw_to_return *= 0.0
         self.reward_bounty *= 0.0
 
-        # DEBUG: for generate fake bounty every step
-        if self.hierarchy_id in [0]:
-            self.is_final_step_by_upper_layer = True
+        # # DEBUG: for generate fake bounty every step
+        # if self.hierarchy_id in [0]:
+        #     self.is_final_step_by_upper_layer = True
 
         if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer):
 
@@ -712,7 +715,7 @@ class HierarchyLayer(object):
                     #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
                     # else:
                     #     raise NotImplemented
-                    self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
+                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
@@ -831,7 +834,7 @@ class HierarchyLayer(object):
             self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float()
             if args.env_name in ['OverCooked','MineCraft','GridWorld','MontezumaRevengeNoFrameskip-v4','Explore2D']:
                 self.reward = self.reward_raw.sign()
-            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0','ReacherBulletEnv-v1','Explore2DContinuous']:
+            elif ('Bullet' in args.env_name) or (args.env_name in ['Explore2DContinuous']):
                 self.reward = self.reward_raw
             else:
                 raise NotImplemented
