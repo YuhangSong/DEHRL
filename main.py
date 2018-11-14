@@ -712,7 +712,8 @@ class HierarchyLayer(object):
                     #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
                     # else:
                     #     raise NotImplemented
-                    self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][31]
+                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][31]/obs_rb[process_i][34]
+                    self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
