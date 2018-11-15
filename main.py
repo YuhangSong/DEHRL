@@ -119,6 +119,25 @@ for hierarchy_i in range(args.num_hierarchy):
 '''init top layer input_actions'''
 input_actions_onehot_global[-1][:,0]=1.0
 
+def puton_input_action_text(img):
+    font                   = cv2.FONT_HERSHEY_SIMPLEX
+    bottomLeftCornerOfText = (10,40)
+    fontScale              = 1
+    fontColor              = (0,0,0)
+    lineType               = 2
+    cv2.putText(
+        img,
+        '{}'.format(
+            input_actions_onehot_global[0][0].cpu().numpy().astype(np.int64),
+        ),
+        bottomLeftCornerOfText,
+        font,
+        fontScale,
+        fontColor,
+        lineType,
+    )
+    return img
+
 sess = tf.Session()
 
 if args.env_name in ['Explore2D']:
@@ -769,10 +788,7 @@ class HierarchyLayer(object):
             self.reward_final = self.reward.cuda()
 
         if args.reward_bounty>0:
-            if self.args.env_name in ['MinitaurBulletEnv-v2']:
-                '''some games need this to avoid too risky behavior'''
-                pass
-            else:
+            if args.mask_value_function:
                 if self.is_final_step_by_upper_layer:
                     '''mask it and stop reward function'''
                     self.masks = self.masks * 0.0
@@ -1145,6 +1161,7 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             if self.args.log_rendered_behavior:
                 rendered_observation = self.envs.get_one_render(env_index=0)
+                rendered_observation = puton_input_action_text(rendered_observation)
                 try:
                     self.episode_visilize_stack['rendered_observation'] += [rendered_observation]
                 except Exception as e:

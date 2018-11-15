@@ -95,6 +95,8 @@ def get_args():
                         help='distance to meansure the difference between states: l1, mass_center, l1_mass_center' )
     parser.add_argument('--train-mode', type=str,
                         help='train mode for transition_model and actor_critic: switch, together' )
+    parser.add_argument('--mask-value-function', action='store_false',
+                        help='whether mask value functions' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
@@ -186,6 +188,8 @@ def get_args():
         # args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
         # args.save_dir = os.path.join(args.save_dir, 't_m-{}'.format(args.train_mode))
+        '''mask value function'''
+        args.save_dir = os.path.join(args.save_dir, 'm_v_f-{}'.format(args.mask_value_function))
         '''mutual information'''
         args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
         '''clip reward bounty'''
