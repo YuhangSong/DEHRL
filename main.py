@@ -756,10 +756,10 @@ class HierarchyLayer(object):
                     raise NotImplemented
 
             else:
-                if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous']) or ('MinitaurBulletEnv' in args.env_name):
+                if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous','AntBulletEnv-v1']) or ('MinitaurBulletEnv' in args.env_name):
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
                     self.reward_final = self.reward_bounty
-                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','AntBulletEnv-v1']:
+                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     '''reward occurs more frequently and we want down layers to know it'''
                     self.reward_final = self.reward.cuda() + self.reward_bounty
                 else:
