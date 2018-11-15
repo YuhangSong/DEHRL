@@ -30,8 +30,8 @@ If you find our code or paper useful for your research, please cite:
 @inproceedings{SWLXX-AAAI-2019,
   title = "Diversity-Driven Extensible Hierarchical Reinforcement Learning",
   author = "Yuhang Song and Jianyi Wang and Thomas Lukasiewicz and Zhenghua Xu and Mai Xu",
+  booktitle = "Proceedings of the 33rd National Conference on Artificial Intelligence (AAAI 2019)",
   year = "2019",
-  booktitle = "Proceedings of the 33rd National Conference on Artificial Intelligence‚ AAAI 2019‚ Honolulu, Hawaii, USA‚ January 27 - February 1‚ 2019",
   month = "January",
   publisher = "AAAI Press",
 }
