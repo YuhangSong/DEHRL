@@ -213,14 +213,8 @@ Install by ```pip install -U pybullet```.
 #### AntBulletEnv-v0.
 
 Number of subpolicies: 4
-
-Best so far,
 ```bash
-CUDA_VISIBLE_DEVICES=1 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp AntBulletEnv-0 --obs-type 'image' --env-name "AntBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --unmask-value-function --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior --log-rendered-behavior
-```
-
-```bash
-CUDA_VISIBLE_DEVICES=3 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp AntBulletEnv-0 --obs-type 'image' --env-name "AntBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --unmask-value-function --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_1 --log-behavior --log-rendered-behavior
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp AntBulletEnv-0 --obs-type 'image' --env-name "AntBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --unmask-value-function --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 15 --aux r_0 --summarize-rendered-behavior --summarize-state-prediction
 ```
 
 <!-- Number of subpolicies: 2 | Number of subpolicies: 4 |

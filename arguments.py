@@ -8,140 +8,140 @@ def get_args():
 
     '''basic save and log'''
     parser.add_argument('--exp', type=str,
-                        help='exp')
+                        help='Give a top description of this experiment')
 
     '''following settings are seen as default in this project'''
     parser.add_argument('--algo', default='a2c',
-                        help='algorithm to use: a2c | ppo | acktr')
+                        help='Algorithm to use: a2c | ppo | acktr (Currently supported: PPO)')
     parser.add_argument('--lr', type=float, default=7e-4,
-                        help='learning rate (default: 7e-4)')
+                        help='Learning rate')
     parser.add_argument('--eps', type=float, default=1e-5,
-                        help='RMSprop optimizer epsilon (default: 1e-5)')
+                        help='RMSprop optimizer epsilon')
     parser.add_argument('--alpha', type=float, default=0.99,
-                        help='RMSprop optimizer apha (default: 0.99)')
+                        help='RMSprop optimizer apha')
     parser.add_argument('--gamma', type=float, default=0.99,
-                        help='discount factor for rewards (default: 0.99)')
+                        help='Discount factor for rewards')
     parser.add_argument('--use-gae', action='store_true', default=False,
-                        help='use generalized advantage estimation')
+                        help='If use generalized advantage estimation')
     parser.add_argument('--tau', type=float, default=0.95,
-                        help='gae parameter (default: 0.95)')
+                        help='GAE parameter')
     parser.add_argument('--entropy-coef', type=float, default=0.01,
-                        help='entropy term coefficient, only for bottom_layer, other layers are default to be 0.01')
+                        help='Entropy term coefficient. Only for bottom_layer, other layers are default to be 0.01')
     parser.add_argument('--value-loss-coef', type=float, default=0.5,
-                        help='value loss coefficient (default: 0.5)')
+                        help='Value loss coefficient')
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
-                        help='max norm of gradients (default: 0.5)')
+                        help='Max norm of gradients')
     parser.add_argument('--seed', type=int, default=1,
-                        help='random seed (default: 1)')
+                        help='Random seed')
     parser.add_argument('--num-processes', type=int, default=16,
-                        help='how many training CPU processes to use (default: 16)')
+                        help='How many training CPU processes to use')
     parser.add_argument('--actor-critic-epoch', type=int, default=4,
-                        help='number of ppo epochs (default: 4)')
+                        help='Number of ppo epochs')
     parser.add_argument('--actor-critic-mini-batch-size', type=int, default=32,
-                        help='mini batch size for ppo (default: 32)')
+                        help='Mini batch size for PPO')
     parser.add_argument('--clip-param', type=float, default=0.2,
-                        help='ppo clip parameter (default: 0.2)')
+                        help='PPO clip parameter')
     parser.add_argument('--num-stack', type=int, default=1,
-                        help='number of frames to stack')
+                        help='Number of frames to stack')
     parser.add_argument('--log-interval', type=int, default=1,
-                        help='log interval, one log per n updates')
+                        help='In updates')
     parser.add_argument('--save-interval', type=int, default=100,
-                        help='save interval, one save per n updates')
-    parser.add_argument('--vis-interval', type=int, default=1,
-                        help='vis interval, one log per n updates')
+                        help='In updates')
+    parser.add_argument('--vis-curves-interval', type=int, default=1,
+                        help='In updates')
     parser.add_argument('--num-frames', type=int, default=20e7,
-                        help='number of frames to train (default: 10e6)')
+                        help='number of frames to train')
     parser.add_argument('--add-timestep', action='store_true', default=False,
-                        help='add timestep to observations')
+                        help='add timestep to observations (depreciated)')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
-                        help='use a recurrent policy')
+                        help='use a recurrent policy (depreciated)')
     parser.add_argument('--render', action='store_true',
-                        help='render environment in a window')
+                        help='render environment in a window (depreciated)')
 
     '''environment details'''
     parser.add_argument('--obs-type', type=str, default='image',
-                        help='observation type: image or ram' )
-    parser.add_argument('--env-name', default='PongNoFrameskip-v4',
-                        help='environment to train on')
-    parser.add_argument('--reward-level', type=int, default=2,
-                        help='level of reward in games like OverCooked')
-    parser.add_argument('--episode-length-limit', type=int, default=100,
-                        help='episode length limit in game like Explore2D')
+                        help='Observation type: image or ram (depreciated)' )
+    parser.add_argument('--env-name',
+                        help='Name of the environment')
+    parser.add_argument('--reward-level', type=int,
+                        help='Level of reward in some games, including: OverCooked')
+    parser.add_argument('--episode-length-limit', type=int,
+                        help='Episode length limit in game, including: Explore2D')
     parser.add_argument('--use-fake-reward-bounty', action='store_true',
-                        help='if use fake reward bounty')
+                        help='If use fake reward bounty (depreciated)')
     parser.add_argument('--reset-leg', action='store_true',
-                        help='if reset four legs after four steps')
+                        help='If reset four legs after four steps (for OverCooked, depreciated)')
     parser.add_argument('--add-goal-color', action='store_true',
-                        help='if add area color when get the goal')
+                        help='If add area color when get the goal (for OverCooked, depreciated)')
     parser.add_argument('--setup-goal', type=str, default='random',
-                        help='The setup for goal: fix, random, any')
+                        help='The setup for goal type: fix, random, any')
     parser.add_argument('--new-overcooked', action='store_true',
-                        help='to use new overcooked or not')
+                        help='If use new overcooked or not')
 
     '''policy details'''
     parser.add_argument('--num-hierarchy',      type=int,
-                        help='num of the hierarchical_policy' )
+                        help='Num of the hierarchical_policy, i.e., L')
     parser.add_argument('--num-subpolicy',      type=int, nargs='*',
-                        help='num of the subpolicies per hierarchy' )
+                        help='Num of the subpolicies per hierarchy, i.e., A^l')
     parser.add_argument('--hierarchy-interval', type=int, nargs='*',
-                        help='the interval between the subpolicies')
+                        help='Interval between the subpolicies, i.e., T^l')
     parser.add_argument('--num-steps',          type=int, nargs='*',
-                        help='number of forward steps before update agent')
+                        help='Number of forward steps before update agent')
 
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
-                        help='the discount for the reward bounty, it would be different for shared_policy and hierarchical_policy' )
+                        help='Coefficient of the raw reward bounty, set to 0 to disable reward bounty' )
     parser.add_argument('--distance', type=str,
-                        help='distance to meansure the difference between states: l1, mass_center, l1_mass_center' )
+                        help='Distance to meansure the difference between states: l1, mass_center, l1_mass_center' )
     parser.add_argument('--train-mode', type=str,
-                        help='train mode for transition_model and actor_critic: switch, together' )
+                        help='Train mode for transition_model and actor_critic: switch, together' )
     parser.add_argument('--unmask-value-function', action='store_true',
-                        help='whether unmask value functions' )
+                        help='Whether unmask value functions' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
-                        help='whether clip the reward bounty' )
+                        help='Whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
-                        help='active function of clip reward bounty: linear, u, relu, shrink_relu' )
+                        help='Active function of clip reward bounty: linear, u, relu, shrink_relu' )
     parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
-                        help='num of the subpolicies per hierarchy' )
+                        help='Num of the subpolicies per hierarchy' )
 
     parser.add_argument('--mutual-information', action='store_true',
-                        help='whether use mutual information as bounty reward' )
+                        help='Whether use mutual information as bounty reward' )
 
-    '''inverse mask'''
+    '''inverse mask model'''
     parser.add_argument('--inverse-mask', action='store_true',
-                        help='whether use inverse mask to avoid the influence from uncontrollable parts of state' )
+                        help='Whether use inverse mask to avoid the influence from uncontrollable parts of state' )
     parser.add_argument('--num-grid', type=int,
-                        help='num grid of inverse_mask_model' )
-
-
-    '''for log behavior'''
-    parser.add_argument('--log-behavior', action='store_true',
-                        help='whether log behavior as video' )
-    parser.add_argument('--log-rendered-behavior', action='store_true',
-                        help='whether log rendered behavior as video (for envs with vector observation)' )
-    parser.add_argument('--log-one-episode', action='store_true',
-                        help='if only log one episode')
-    parser.add_argument('--log-behavior-interval', type=int, default=30,
-                        help='log behavior every x minutes')
-    parser.add_argument('--act-deterministically', action='store_true',
-                        help='if act deterministically when interactiong')
+                        help='Num grid of inverse_mask_model' )
 
     parser.add_argument('--aux', type=str, default='',
-                        help='some aux information you may want to record along with this run')
+                        help='Some aux information you may want to record along with this run')
+
+
+    '''for summarize behavior'''
+    parser.add_argument('--summarize-behavior-interval', type=int, default=10,
+                        help='Interval for summarizing behavior (in minutes)')
+
+    parser.add_argument('--summarize-observation', action='store_true',
+                        help='Whether summarize observation as video' )
+    parser.add_argument('--summarize-rendered-behavior', action='store_true',
+                        help='Whether summarize rendered behavior as video (only for envs with render()')
+    parser.add_argument('--summarize-state-prediction', action='store_true',
+                        help='Whether summarize state and prediction as video' )
+
+    parser.add_argument('--summarize-one-episode', action='store_true',
+                        help='Whether only summarize one episode')
+    parser.add_argument('--act-deterministically', action='store_true',
+                        help='Whether act deterministically when interactiong')
 
     '''for debug'''
-    parser.add_argument('--test-reward-bounty', action='store_true',
-                        help='to test what reward bounty will each macro-action produce')
     parser.add_argument('--test-action', action='store_true',
-                        help='specify actions at every level')
-    parser.add_argument('--test-action-vis', action='store_true',
-                        help='see actions at every level')
-    parser.add_argument('--run-overcooked', action='store_true',
-                        help='run overcooked to debug the game')
+                        help='Specify actions at every level')
     parser.add_argument('--see-leg-fre', action='store_true',
-                        help='see the frequency of each leg through tensorboard')
+                        help='See the frequency of each leg through tensorboard')
 
     args = parser.parse_args()
+
+    args.summarize_behavior = args.summarize_observation or args.summarize_rendered_behavior or args.summarize_state_prediction
 
     '''none = []'''
     if args.num_subpolicy is None:
