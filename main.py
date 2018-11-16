@@ -448,6 +448,7 @@ class HierarchyLayer(object):
 
         self.bounty_clip = torch.zeros(args.num_processes).cuda()
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
+        self.reward_final = torch.zeros(args.num_processes).cuda()
         self.reward_bounty = torch.zeros(args.num_processes).cuda()
 
         if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
@@ -540,10 +541,10 @@ class HierarchyLayer(object):
                     )
                 )
 
-        # DEBUG: specify higher level actions
-        # if self.args.env_name in ['MinitaurBulletEnv-v2']:
-        #     if self.hierarchy_id in [self.args.num_hierarchy-1]:
-        #         print(self.action[:,0])
+        # # DEBUG: specify higher level actions
+        # if self.hierarchy_id in [1]:
+        #     self.action[0,0]=2
+        #     print(self.action[:,0])
 
     def log_for_specify_action(self):
 
@@ -623,24 +624,26 @@ class HierarchyLayer(object):
     def generate_reward_bounty(self):
         '''this method generate reward bounty'''
 
-        self.bounty_clip *= 0.0
-        self.reward_bounty_raw_to_return *= 0.0
-        self.reward_bounty *= 0.0
+        self.bounty_clip *= 0.0 # to record the clip value
+        self.reward_bounty_raw_to_return *= 0.0  # to be return and train the bounty prediction
+        self.reward_bounty *= 0.0 # bounty after clip
+        self.reward_final *= 0.0 # reward be used to update policy
 
-        # # DEBUG: for generate fake bounty every step
-        # if self.hierarchy_id in [0]:
-        #     self.is_final_step_by_upper_layer = True
-
+        '''START: computer normalized reward_bounty, EVERY T interval'''
         if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer):
 
-            action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
+            '''integrate original reward, integrate the original reward here
+            will cause the original reward being normalized too'''
+            if self.args.env_name in ['None']:
+                self.reward_bounty_raw_to_return += (self.reward.cuda()*0.01)
 
+            '''START: compute none normalized reward_bounty_raw_to_return'''
+            action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
             if not args.mutual_information:
                 obs_rb = self.obs.astype(float)-self.observation_predicted_from_by_upper_layer.cpu().numpy()
                 prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
                 if self.args.inverse_mask:
                     mask_rb = self.mask_of_predicted_observation_by_upper_layer.cpu().numpy()
-
             else:
                 self.upper_layer.transition_model.eval()
                 with torch.no_grad():
@@ -648,7 +651,6 @@ class HierarchyLayer(object):
                         inputs = torch.from_numpy(self.obs).float().cuda(),
                     )
                     predicted_action_resulted_from = predicted_action_resulted_from.exp()
-
             for process_i in range(args.num_processes):
 
                 if not args.mutual_information:
@@ -722,7 +724,7 @@ class HierarchyLayer(object):
                         difference_list += [difference*args.reward_bounty]
 
                     '''compute reward bounty'''
-                    self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
+                    self.reward_bounty_raw_to_return[process_i] += float(np.amin(difference_list))
 
                     # DEBUG: generate fake reward bounty
                     # if action_rb[process_i].item()==0.0:
@@ -736,9 +738,13 @@ class HierarchyLayer(object):
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
+            '''END: compute none normalized reward_bounty_raw_to_return'''
 
-            self.reward_bounty = self.reward_bounty_raw_to_return
+            '''mask reward bounty, since the final state is start state,
+            and the estimation from transition model is not accurate'''
+            self.reward_bounty_raw_to_return *= self.masks.squeeze()
 
+            '''START: computer bounty after being clipped'''
             if args.clip_reward_bounty:
 
                 if not args.mutual_information:
@@ -746,7 +752,7 @@ class HierarchyLayer(object):
                 else:
                     self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
 
-                delta = (self.reward_bounty-self.bounty_clip)
+                delta = (self.reward_bounty_raw_to_return-self.bounty_clip)
 
                 if args.clip_reward_bounty_active_function in ['linear']:
                     self.reward_bounty = delta
@@ -760,33 +766,43 @@ class HierarchyLayer(object):
                 else:
                     raise Exception('No Supported')
 
-            '''mask reward bounty, since the final state is start state,
-            and the estimation from transition model is not accurate'''
-            self.reward_bounty *= self.masks.squeeze()
+            else:
+                self.reward_bounty = self.reward_bounty_raw_to_return
+            '''END: end of computer bounty after being clipped'''
+        '''END: computer normalized reward_bounty'''
 
+        '''START: compute reward_final for updating the policy'''
+        self.reward_final += self.reward_bounty
+        '''rewards added to reward_final in following part will NOT be normalized'''
         if args.reward_bounty>0:
             if self.hierarchy_id in [args.num_hierarchy-1]:
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
                 if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld','Explore2D','Explore2DContinuous']:
-                    self.reward_final = self.reward
+                    '''top level only receive reward from env'''
+                    self.reward_final += self.reward
                 elif (self.args.env_name in ['MineCraft']) or ('Bullet' in args.env_name):
-                    self.reward_final = self.reward*0.0
+                    '''top level only receive nothing to observe unsupervised learning'''
+                    pass
                 else:
                     raise NotImplemented
-
             else:
+                '''other levels except top level'''
                 if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous','AntBulletEnv-v1']) or ('MinitaurBulletEnv' in args.env_name):
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
-                    self.reward_final = self.reward_bounty
-                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                    pass
+                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','AntBulletEnv-v1']:
                     '''reward occurs more frequently and we want down layers to know it'''
-                    self.reward_final = self.reward.cuda() + self.reward_bounty
+                    if self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                        self.reward_final += self.reward.cuda()
+                    elif self.args.env_name in ['AntBulletEnv-v1']:
+                        self.reward_final += (self.reward.cuda()*0.001)
+                    else:
+                        raise NotImplemented
                 else:
                     raise NotImplemented
+        '''END: compute reward_final for updating the policy'''
 
-        else:
-            self.reward_final = self.reward.cuda()
-
+        '''may mask to stop value function'''
         if args.reward_bounty>0:
             if not args.unmask_value_function:
                 if self.is_final_step_by_upper_layer:
@@ -1284,6 +1300,9 @@ class HierarchyLayer(object):
             self.hierarchy_id,
             self.num_trained_frames,
         ))
+
+        if args.log_one_episode:
+            raise NotImplemented
 
     def get_sleeping(self, env_index):
         return self.envs.get_sleeping(env_index)

@@ -119,6 +119,8 @@ def get_args():
                         help='whether log behavior as video' )
     parser.add_argument('--log-rendered-behavior', action='store_true',
                         help='whether log rendered behavior as video (for envs with vector observation)' )
+    parser.add_argument('--log-one-episode', action='store_true',
+                        help='if only log one episode')
     parser.add_argument('--log-behavior-interval', type=int, default=30,
                         help='log behavior every x minutes')
     parser.add_argument('--act-deterministically', action='store_true',
