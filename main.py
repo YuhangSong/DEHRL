@@ -788,7 +788,7 @@ class HierarchyLayer(object):
             self.reward_final = self.reward.cuda()
 
         if args.reward_bounty>0:
-            if args.mask_value_function:
+            if not args.unmask_value_function:
                 if self.is_final_step_by_upper_layer:
                     '''mask it and stop reward function'''
                     self.masks = self.masks * 0.0
