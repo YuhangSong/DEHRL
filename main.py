@@ -35,6 +35,7 @@ if args.recurrent_policy:
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
 
+print('######## SUMMARY OF LOGGING ########')
 try:
     os.makedirs(args.save_dir)
     print('Dir empty, making new log dir...')
@@ -43,8 +44,12 @@ except Exception as e:
         print('Dir exsit, checking checkpoint...')
     else:
         raise e
-
 print('Log to {}'.format(args.save_dir))
+print('Summarize_behavior_interval: {} minutes'.format(args.summarize_behavior_interval))
+print('Summarize_observation: {}'.format(args.summarize_observation))
+print('Summarize_rendered_behavior: {}'.format(args.summarize_rendered_behavior))
+print('Summarize_state_prediction: {}'.format(args.summarize_state_prediction))
+print('####################################')
 
 log_fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 log_fps = 10
@@ -61,7 +66,7 @@ if args.num_processes > 1:
 else:
     bottom_envs = bottom_envs[0]()
 
-if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0','ReacherBulletEnv-v1','Explore2DContinuous']:
+if 'Bullet' in args.env_name:
     # if len(bottom_envs.observation_space.shape) == 1:
     #     from envs import VecNormalize
     #     if args.gamma is None:
@@ -119,6 +124,25 @@ for hierarchy_i in range(args.num_hierarchy):
 '''init top layer input_actions'''
 input_actions_onehot_global[-1][:,0]=1.0
 
+def puton_input_action_text(img):
+    font                   = cv2.FONT_HERSHEY_SIMPLEX
+    bottomLeftCornerOfText = (10,40)
+    fontScale              = 1
+    fontColor              = (0,0,0)
+    lineType               = 2
+    cv2.putText(
+        img,
+        '{}'.format(
+            input_actions_onehot_global[0][0].cpu().numpy().astype(np.int64),
+        ),
+        bottomLeftCornerOfText,
+        font,
+        fontScale,
+        fontColor,
+        lineType,
+    )
+    return img
+
 sess = tf.Session()
 
 if args.env_name in ['Explore2D']:
@@ -163,11 +187,11 @@ def obs_to_state_img(obs, marker='o'):
                     +args.episode_length_limit
                 )+args.episode_length_limit
             ] = 255
-        elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+        elif ('Bullet' in args.env_name) or (args.env_name in ['Explore2DContinuous']):
             import matplotlib.pyplot as plt
             plt.clf()
             axes = plt.gca()
-            if args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
+            if ('MinitaurBulletEnv' in args.env_name) or ('AntBulletEnv' in args.env_name):
                 limit = 1
                 plt.scatter(obs[28], obs[29], s=18, c=1, marker=marker, alpha=1.0)
             elif args.env_name in ['ReacherBulletEnv-v1']:
@@ -417,10 +441,10 @@ class HierarchyLayer(object):
 
         self.refresh_update_type()
 
-        self.last_time_log_behavior = 0.0
-        self.log_behavior = False
+        self.last_time_summarize_behavior = 0.0 # make sure the first episode is recorded
+        self.summarize_behavior = False
         self.episode_visilize_stack = {}
-        self.episode_save_stack = {}
+        # self.episode_save_stack = {}
 
         self.predicted_next_observations_to_downer_layer = None
         self.mask_of_predicted_observation_to_downer_layer = None
@@ -429,6 +453,7 @@ class HierarchyLayer(object):
 
         self.bounty_clip = torch.zeros(args.num_processes).cuda()
         self.reward_bounty_raw_to_return = torch.zeros(args.num_processes).cuda()
+        self.reward_final = torch.zeros(args.num_processes).cuda()
         self.reward_bounty = torch.zeros(args.num_processes).cuda()
 
         if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
@@ -521,9 +546,14 @@ class HierarchyLayer(object):
                     )
                 )
 
+        # # DEBUG: specify higher level actions
+        # if self.hierarchy_id in [1]:
+        #     self.action[0,0]=3
+        #     print(self.action[:,0])
+
     def log_for_specify_action(self):
 
-        if (args.test_reward_bounty or args.test_action or args.test_action_vis) and self.hierarchy_id in [0]:
+        if args.test_action and (self.hierarchy_id in [0]):
 
             print_str = ''
             print_str += '[reward {} ][done {}][masks {}]'.format(
@@ -599,20 +629,26 @@ class HierarchyLayer(object):
     def generate_reward_bounty(self):
         '''this method generate reward bounty'''
 
-        self.bounty_clip *= 0.0
-        self.reward_bounty_raw_to_return *= 0.0
-        self.reward_bounty *= 0.0
+        self.bounty_clip *= 0.0 # to record the clip value
+        self.reward_bounty_raw_to_return *= 0.0  # to be return and train the bounty prediction
+        self.reward_bounty *= 0.0 # bounty after clip
+        self.reward_final *= 0.0 # reward be used to update policy
 
+        '''START: computer normalized reward_bounty, EVERY T interval'''
         if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer):
 
-            action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
+            '''integrate original reward, integrate the original reward here
+            will cause the original reward being normalized too'''
+            if self.args.env_name in ['None']:
+                self.reward_bounty_raw_to_return += (self.reward.cuda()*0.01)
 
+            '''START: compute none normalized reward_bounty_raw_to_return'''
+            action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
             if not args.mutual_information:
                 obs_rb = self.obs.astype(float)-self.observation_predicted_from_by_upper_layer.cpu().numpy()
                 prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
                 if self.args.inverse_mask:
                     mask_rb = self.mask_of_predicted_observation_by_upper_layer.cpu().numpy()
-
             else:
                 self.upper_layer.transition_model.eval()
                 with torch.no_grad():
@@ -620,7 +656,6 @@ class HierarchyLayer(object):
                         inputs = torch.from_numpy(self.obs).float().cuda(),
                     )
                     predicted_action_resulted_from = predicted_action_resulted_from.exp()
-
             for process_i in range(args.num_processes):
 
                 if not args.mutual_information:
@@ -641,7 +676,7 @@ class HierarchyLayer(object):
                                     x = (obs_rb[process_i][0,0]-prediction_rb[action_i,process_i][0,0]),
                                     ord = 2,
                                 )
-                            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2']:
+                            elif ('MinitaurBulletEnv' in args.env_name) or ('AntBulletEnv' in args.env_name):
                                 '''28:30 represents the position'''
                                 difference_l2 = np.linalg.norm(
                                     x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
@@ -694,21 +729,27 @@ class HierarchyLayer(object):
                         difference_list += [difference*args.reward_bounty]
 
                     '''compute reward bounty'''
-                    self.reward_bounty_raw_to_return[process_i] = float(np.amin(difference_list))
+                    self.reward_bounty_raw_to_return[process_i] += float(np.amin(difference_list))
 
-                    # # DEBUG:
+                    # DEBUG: generate fake reward bounty
                     # if action_rb[process_i].item()==0.0:
-                    #     self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][30]
+                    #     self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][28]
                     # elif action_rb[process_i].item()==1.0:
-                    #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][30]
+                    #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
                     # else:
                     #     raise NotImplemented
+                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][31]/obs_rb[process_i][34]
+                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
 
                 else:
                     self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
+            '''END: compute none normalized reward_bounty_raw_to_return'''
 
-            self.reward_bounty = self.reward_bounty_raw_to_return
+            '''mask reward bounty, since the final state is start state,
+            and the estimation from transition model is not accurate'''
+            self.reward_bounty_raw_to_return *= self.masks.squeeze()
 
+            '''START: computer bounty after being clipped'''
             if args.clip_reward_bounty:
 
                 if not args.mutual_information:
@@ -716,7 +757,7 @@ class HierarchyLayer(object):
                 else:
                     self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
 
-                delta = (self.reward_bounty-self.bounty_clip)
+                delta = (self.reward_bounty_raw_to_return-self.bounty_clip)
 
                 if args.clip_reward_bounty_active_function in ['linear']:
                     self.reward_bounty = delta
@@ -730,38 +771,48 @@ class HierarchyLayer(object):
                 else:
                     raise Exception('No Supported')
 
-            '''mask reward bounty, since the final state is start state,
-            and the estimation from transition model is not accurate'''
-            self.reward_bounty *= self.masks.squeeze()
+            else:
+                self.reward_bounty = self.reward_bounty_raw_to_return
+            '''END: end of computer bounty after being clipped'''
+        '''END: computer normalized reward_bounty'''
 
+        '''START: compute reward_final for updating the policy'''
+        self.reward_final += self.reward_bounty
+        '''rewards added to reward_final in following part will NOT be normalized'''
         if args.reward_bounty>0:
             if self.hierarchy_id in [args.num_hierarchy-1]:
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
                 if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
-                    self.reward_final = self.reward
-                elif self.args.env_name in ['Explore2D','MineCraft','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
-                    self.reward_final = self.reward*0.0
+                    '''top level only receive reward from env'''
+                    self.reward_final += self.reward
+                elif (self.args.env_name in ['MineCraft','Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
+                    '''top level only receive nothing to observe unsupervised learning'''
+                    pass
                 else:
                     raise NotImplemented
-
             else:
-                if self.args.env_name in ['OverCooked','MineCraft','Explore2D']:
+                '''other levels except top level'''
+                if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous']):
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
-                    self.reward_final = self.reward_bounty
-                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
+                    pass
+                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','AntBulletEnv-v1']:
                     '''reward occurs more frequently and we want down layers to know it'''
-                    self.reward_final = self.reward.cuda() + self.reward_bounty
+                    if self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                        self.reward_final += self.reward.cuda()
+                    elif self.args.env_name in ['AntBulletEnv-v1']:
+                        self.reward_final += (self.reward.cuda()*0.001)
+                    else:
+                        raise NotImplemented
                 else:
                     raise NotImplemented
+        '''END: compute reward_final for updating the policy'''
 
-        else:
-            self.reward_final = self.reward.cuda()
-
+        '''may mask to stop value function'''
         if args.reward_bounty>0:
-            if self.is_final_step_by_upper_layer:
-                '''mask it and stop reward function'''
-                self.masks = self.masks * 0.0
-
+            if not args.unmask_value_function:
+                if self.is_final_step_by_upper_layer:
+                    '''mask it and stop reward function'''
+                    self.masks = self.masks * 0.0
 
     def interact_one_step(self):
         '''interact with self.envs for one step and store experience into self.rollouts'''
@@ -818,7 +869,7 @@ class HierarchyLayer(object):
             self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float()
             if args.env_name in ['OverCooked','MineCraft','GridWorld','MontezumaRevengeNoFrameskip-v4','Explore2D']:
                 self.reward = self.reward_raw.sign()
-            elif args.env_name in ['MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v0','ReacherBulletEnv-v1','Explore2DContinuous']:
+            elif ('Bullet' in args.env_name) or (args.env_name in ['Explore2DContinuous']):
                 self.reward = self.reward_raw
             else:
                 raise NotImplemented
@@ -832,7 +883,7 @@ class HierarchyLayer(object):
 
         env_0_sleeping = self.envs.get_sleeping(env_index=0)
         if env_0_sleeping in [False]:
-            self.step_summary_from_env_0()
+            self.step_summarize_from_env_0()
         elif env_0_sleeping in [True]:
             pass
         else:
@@ -983,14 +1034,14 @@ class HierarchyLayer(object):
                 print_string += ', remaining {:4.1f} hours'.format(
                     (self.end - self.start)/(self.num_trained_frames-self.num_trained_frames_at_start)*(args.num_frames-self.num_trained_frames)/60.0/60.0,
                 )
-            if self.args.log_behavior:
-                print_string += ', log_behavior {}'.format(
-                    self.log_behavior,
+            if self.args.summarize_behavior:
+                print_string += ', summarize_behavior {}'.format(
+                    self.summarize_behavior,
                 )
             print(print_string)
 
         '''visualize results'''
-        if (self.update_i % args.vis_interval == 0) and (not (args.test_reward_bounty or args.test_action or args.test_action_vis)):
+        if (self.update_i % args.vis_curves_interval == 0) and (not args.test_action):
             '''we use tensorboard since its better when comparing plots'''
             self.summary = tf.Summary()
             if args.env_name in ['OverCooked']:
@@ -1075,16 +1126,15 @@ class HierarchyLayer(object):
             self.current_obs[:, :-shape_dim0] = self.current_obs[:, shape_dim0:]
         self.current_obs[:, -shape_dim0:] = obs
 
-    def step_summary_from_env_0(self):
+    def step_summarize_from_env_0(self):
 
-        if ((time.time()-self.last_time_log_behavior)/60.0 > args.log_behavior_interval) and (not (args.test_action)) and args.log_behavior:
+        if (((time.time()-self.last_time_summarize_behavior)/60.0) > args.summarize_behavior_interval) and (not (args.test_action)) and args.summarize_behavior:
             '''log behavior every x minutes'''
             if self.episode_reward['len']==0:
-                self.last_time_log_behavior = time.time()
-                self.log_behavior = True
+                self.summarize_behavior = True
 
-        if self.log_behavior:
-            self.summary_behavior_at_step()
+        if self.summarize_behavior:
+            self.summarize_behavior_at_step()
 
         '''summarize reward'''
         self.episode_reward['norm'] += self.reward[0].item()
@@ -1108,75 +1158,96 @@ class HierarchyLayer(object):
                 self.episode_count += 1
                 self.final_reward['raw_all'] = self.episode_reward_raw_all / self.episode_count
 
-            if self.log_behavior:
-                self.summary_behavior_at_done()
-                self.log_behavior = False
+            if self.summarize_behavior:
+                self.summarize_behavior_at_done()
+                self.last_time_summarize_behavior = time.time()
+                self.summarize_behavior = False
 
             if (self.args.env_name in ['Explore2D']) and (self.hierarchy_id in [0]):
                 self.terminal_states += [self.obs[0,0,0:1]]
 
-    def summary_behavior_at_step(self):
+    def summarize_behavior_at_step(self):
 
-        '''Summary observation'''
+        '''summarize observation'''
+        if args.summarize_observation:
+            state_img = obs_to_state_img(self.obs[0])
+            try:
+                self.episode_visilize_stack['observation'] += [state_img]
+                '''
+                    0-255, uint8, either (xx,xx) for gray image or (xx,xx,3) for rgb image.
+                '''
+            except Exception as e:
+                self.episode_visilize_stack['observation'] = [state_img]
 
-        state_img = obs_to_state_img(self.obs[0])
-        try:
-            self.episode_visilize_stack['observation'] += [state_img]
-        except Exception as e:
-            self.episode_visilize_stack['observation'] = [state_img]
+        '''summarize rendered observation'''
+        if self.args.summarize_rendered_behavior:
+            if self.hierarchy_id in [0]:
+                rendered_observation = self.envs.get_one_render(env_index=0)
+                rendered_observation = puton_input_action_text(rendered_observation)
+                try:
+                    self.episode_visilize_stack['rendered_observation'] += [rendered_observation]
+                except Exception as e:
+                    self.episode_visilize_stack['rendered_observation'] = [rendered_observation]
 
         '''Summery state_prediction'''
-        if self.predicted_next_observations_to_downer_layer is not None:
-            img = obs_to_state_img(self.observation_predicted_from_to_downer_layer[0].cpu().numpy())
-            for action_i in range(self.envs.action_space.n):
-                if state_type in ['standard_image']:
-                    temp = ((self.predicted_next_observations_to_downer_layer[action_i,0]+255.0)/2.0)
-                elif state_type in ['vector']:
-                    temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0]
-                temp = obs_to_state_img(
-                    temp.cpu().numpy(),
-                    marker = "+",
-                )
+        if args.summarize_state_prediction:
+            if self.predicted_next_observations_to_downer_layer is not None:
+                img = obs_to_state_img(self.observation_predicted_from_to_downer_layer[0].cpu().numpy())
+                for action_i in range(self.envs.action_space.n):
+                    if state_type in ['standard_image']:
+                        temp = ((self.predicted_next_observations_to_downer_layer[action_i,0]+255.0)/2.0)
+                    elif state_type in ['vector']:
+                        temp = self.observation_predicted_from_to_downer_layer[0] + self.predicted_next_observations_to_downer_layer[action_i,0]
+                    temp = obs_to_state_img(
+                        temp.cpu().numpy(),
+                        marker = "+",
+                    )
 
-                if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
-                    img = img + temp/2
+                    if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
+                        img = img + temp/2
+                    elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                        img = np.concatenate((img,temp),1)
+                    else:
+                        raise NotImplemented
+
+                    if self.args.inverse_mask:
+                        inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
+                        img = np.concatenate(
+                            (
+                                img,
+                                obs_to_state_img(
+                                    (binarize_mask_torch(inverse_model_mask)*255.0).cpu().numpy()
+                                )
+                            ),
+                            1,
+                        )
+                if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
+                    img = (img/np.amax(img)*255.0).astype(np.uint8)
                 elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
-                    img = np.concatenate((img,temp),1)
+                    pass
                 else:
                     raise NotImplemented
 
-                if self.args.inverse_mask:
-                    inverse_model_mask = self.mask_of_predicted_observation_to_downer_layer[action_i,0,:,:,:]
-                    img = np.concatenate(
-                        (
-                            img,
-                            obs_to_state_img(
-                                (binarize_mask_torch(inverse_model_mask)*255.0).cpu().numpy()
-                            )
-                        ),
-                        1,
-                    )
-            if args.env_name in ['Explore2D','MinitaurBulletEnv-v0','MinitaurBulletEnv-v1','MinitaurBulletEnv-v2','ReacherBulletEnv-v1','Explore2DContinuous']:
-                img = (img/np.amax(img)*255.0).astype(np.uint8)
-            elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
-                pass
-            else:
-                raise NotImplemented
+                try:
+                    self.episode_visilize_stack['state_prediction'] += [img]
+                except Exception as e:
+                    self.episode_visilize_stack['state_prediction'] = [img]
 
-            try:
-                self.episode_visilize_stack['state_prediction'] += [img]
-            except Exception as e:
-                self.episode_visilize_stack['state_prediction'] = [img]
+        # if self.hierarchy_id in [0]:
+        #     '''record actions'''
+        #     try:
+        #         self.episode_save_stack['actions'] += [self.action[0,0].item()]
+        #     except Exception as e:
+        #         self.episode_save_stack['actions'] = [self.action[0,0].item()]
 
-        if self.hierarchy_id in [0]:
-            '''record actions'''
-            try:
-                self.episode_save_stack['actions'] += [self.action[0,0].item()]
-            except Exception as e:
-                self.episode_save_stack['actions'] = [self.action[0,0].item()]
+    def summarize_behavior_at_done(self):
 
-    def summary_behavior_at_done(self):
+        if args.summarize_one_episode not in ['None']:
+            log_header = '{}_'.format(args.summarize_one_episode)
+        else:
+            log_header = ''
 
+        '''log episode_visilize_stack with avi'''
         for episode_visilize_stack_name in self.episode_visilize_stack.keys():
 
             self.episode_visilize_stack[episode_visilize_stack_name] = np.stack(
@@ -1185,8 +1256,9 @@ class HierarchyLayer(object):
 
             '''log everything with video'''
             videoWriter = cv2.VideoWriter(
-                '{}/H-{}_F-{}_{}.avi'.format(
+                '{}/{}H-{}_F-{}_{}.avi'.format(
                     args.save_dir,
+                    log_header,
                     self.hierarchy_id,
                     self.num_trained_frames,
                     episode_visilize_stack_name,
@@ -1197,36 +1269,44 @@ class HierarchyLayer(object):
             )
             for frame_i in range(self.episode_visilize_stack[episode_visilize_stack_name].shape[0]):
                 cur_frame = self.episode_visilize_stack[episode_visilize_stack_name][frame_i]
-                cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
+                if len(cur_frame.shape)==2:
+                    '''gray image'''
+                    cur_frame = cv2.cvtColor(cur_frame, cv2.cv2.COLOR_GRAY2RGB)
+                elif len(cur_frame.shape)==3:
+                    pass
+                else:
+                    raise NotImplemented
                 videoWriter.write(cur_frame.astype(np.uint8))
             videoWriter.release()
 
             self.episode_visilize_stack[episode_visilize_stack_name] = None
 
-        summary_writer.flush()
+        # '''log episode_save_stack with npy'''
+        # for episode_save_stack_name in self.episode_save_stack.keys():
+        #
+        #     self.episode_save_stack[episode_save_stack_name] = np.stack(
+        #         self.episode_save_stack[episode_save_stack_name]
+        #     )
+        #
+        #     np.save(
+        #         '{}/{}H-{}_F-{}_{}.npy'.format(
+        #             args.save_dir,
+        #             log_header,
+        #             self.hierarchy_id,
+        #             self.num_trained_frames,
+        #             episode_save_stack_name,
+        #         ),
+        #         self.episode_save_stack[episode_save_stack_name],
+        #     )
+        #
+        #     self.episode_save_stack[episode_save_stack_name] = None
 
-        for episode_save_stack_name in self.episode_save_stack.keys():
-
-            self.episode_save_stack[episode_save_stack_name] = np.stack(
-                self.episode_save_stack[episode_save_stack_name]
-            )
-
-            np.save(
-                '{}/H-{}_F-{}_{}.npy'.format(
-                    args.save_dir,
-                    self.hierarchy_id,
-                    self.num_trained_frames,
-                    episode_save_stack_name,
-                ),
-                self.episode_save_stack[episode_save_stack_name],
-            )
-
-            self.episode_save_stack[episode_save_stack_name] = None
-
+        '''log world with sav, just for MineCraft'''
         if self.hierarchy_id in [0] and self.args.env_name in ['MineCraft']:
             self.envs.unwrapped.saveWorld(
-                saveGameFile = '{}/H-{}_F-{}_savegame.sav'.format(
+                saveGameFile = '{}/{}H-{}_F-{}_savegame.sav'.format(
                     args.save_dir,
+                    log_header,
                     self.hierarchy_id,
                     self.num_trained_frames,
                 )
@@ -1236,6 +1316,10 @@ class HierarchyLayer(object):
             self.hierarchy_id,
             self.num_trained_frames,
         ))
+
+        if args.summarize_one_episode not in ['None']:
+            print('summarize_one_episode done')
+            raise SystemExit
 
     def get_sleeping(self, env_index):
         return self.envs.get_sleeping(env_index)

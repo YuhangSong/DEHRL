@@ -211,7 +211,20 @@ register(
 	id='AntBulletEnv-v0',
 	entry_point='pybullet_envs.gym_locomotion_envs:AntBulletEnv',
 	max_episode_steps=1000,
-	reward_threshold=2500.0
+	reward_threshold=2500.0,
+	kwargs={
+		'reward_include_progress':True,
+	},
+	)
+
+register(
+	id='AntBulletEnv-v1',
+	entry_point='pybullet_envs.gym_locomotion_envs:AntBulletEnv',
+	max_episode_steps=1000,
+	reward_threshold=2500.0,
+	kwargs={
+		'reward_include_progress':False,
+	},
 	)
 
 register(

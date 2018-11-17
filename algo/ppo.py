@@ -96,16 +96,15 @@ class PPO(object):
                     surr2 = torch.clamp(ratio, 1.0 - self.this_layer.args.clip_param,
                                                1.0 + self.this_layer.args.clip_param) * adv_targ
                     action_loss = -torch.min(surr1, surr2)
-                    # epoch_loss['action_{}'.format(input_actions_index[0])] = action_loss[0,0].item()
                     action_loss = action_loss.mean()
+                    # epoch_loss['action_{}'.format(input_actions_index[0])] = action_loss.item()
 
-                    value_loss = (return_batch-values).pow(2) * self.this_layer.args.value_loss_coef
-                    # epoch_loss['value_{}'.format(input_actions_index[0])] = value_loss[0,0].item()
-                    value_loss = value_loss.mean()
+                    value_loss = (return_batch-values).pow(2)
+                    value_loss = value_loss.mean() * self.this_layer.args.value_loss_coef
+                    # epoch_loss['value_{}'.format(input_actions_index[0])] = value_loss.item()
 
-                    dist_entropy = dist_entropy * self.this_layer.args.entropy_coef
-                    # epoch_loss['dist_entropy_{}'.format(input_actions_index[0])] = dist_entropy[0].item()
-                    dist_entropy = dist_entropy.mean()
+                    dist_entropy = dist_entropy.mean() * (self.this_layer.args.entropy_coef if self.this_layer.hierarchy_id in [0] else 0.01)
+                    epoch_loss['dist_entropy_{}'.format(input_actions_index[0])] = dist_entropy.item()
 
                     final_loss = value_loss + action_loss - dist_entropy
 
@@ -141,6 +140,10 @@ class PPO(object):
 
                 for sample in data_generator:
 
+                    if sample is None:
+                        print('# WARNING: No sample this update!')
+                        return epoch_loss
+
                     observations_batch, next_observations_batch, action_onehot_batch, reward_bounty_raw_batch = sample
 
                     self.optimizer_transition_model.zero_grad()
@@ -167,7 +170,7 @@ class PPO(object):
                             if self.this_layer.args.env_name in ['ReacherBulletEnv-v1','Explore2DContinuous']:
                                 observation_delta = observation_delta[:,0:2]
                                 predicted_next_observations_batch = predicted_next_observations_batch[:,0:2]
-                            elif self.this_layer.args.env_name in ['MinitaurBulletEnv-v2']:
+                            elif ('MinitaurBulletEnv' in self.this_layer.args.env_name) or ('AntBulletEnv' in self.this_layer.args.env_name):
                                 '''28:30 represents the position'''
                                 observation_delta = observation_delta[:,28:30]
                                 predicted_next_observations_batch = predicted_next_observations_batch[:,28:30]
