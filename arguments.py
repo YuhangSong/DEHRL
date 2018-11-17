@@ -128,8 +128,8 @@ def get_args():
     parser.add_argument('--summarize-state-prediction', action='store_true',
                         help='Whether summarize state and prediction as video' )
 
-    parser.add_argument('--summarize-one-episode', action='store_true',
-                        help='Whether only summarize one episode')
+    parser.add_argument('--summarize-one-episode',  type=str, default='None',
+                        help='Whether only summarize one episode, if not None, log with it as a log_header')
     parser.add_argument('--act-deterministically', action='store_true',
                         help='Whether act deterministically when interactiong')
 

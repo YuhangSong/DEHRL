@@ -548,7 +548,7 @@ class HierarchyLayer(object):
 
         # # DEBUG: specify higher level actions
         # if self.hierarchy_id in [1]:
-        #     self.action[0,0]=2
+        #     self.action[0,0]=3
         #     print(self.action[:,0])
 
     def log_for_specify_action(self):
@@ -1242,6 +1242,11 @@ class HierarchyLayer(object):
 
     def summarize_behavior_at_done(self):
 
+        if args.summarize_one_episode not in ['None']:
+            log_header = '{}_'.format(args.summarize_one_episode)
+        else:
+            log_header = ''
+
         '''log episode_visilize_stack with avi'''
         for episode_visilize_stack_name in self.episode_visilize_stack.keys():
 
@@ -1251,8 +1256,9 @@ class HierarchyLayer(object):
 
             '''log everything with video'''
             videoWriter = cv2.VideoWriter(
-                '{}/H-{}_F-{}_{}.avi'.format(
+                '{}/{}H-{}_F-{}_{}.avi'.format(
                     args.save_dir,
+                    log_header,
                     self.hierarchy_id,
                     self.num_trained_frames,
                     episode_visilize_stack_name,
@@ -1283,8 +1289,9 @@ class HierarchyLayer(object):
         #     )
         #
         #     np.save(
-        #         '{}/H-{}_F-{}_{}.npy'.format(
+        #         '{}/{}H-{}_F-{}_{}.npy'.format(
         #             args.save_dir,
+        #             log_header,
         #             self.hierarchy_id,
         #             self.num_trained_frames,
         #             episode_save_stack_name,
@@ -1297,8 +1304,9 @@ class HierarchyLayer(object):
         '''log world with sav, just for MineCraft'''
         if self.hierarchy_id in [0] and self.args.env_name in ['MineCraft']:
             self.envs.unwrapped.saveWorld(
-                saveGameFile = '{}/H-{}_F-{}_savegame.sav'.format(
+                saveGameFile = '{}/{}H-{}_F-{}_savegame.sav'.format(
                     args.save_dir,
+                    log_header,
                     self.hierarchy_id,
                     self.num_trained_frames,
                 )
@@ -1309,7 +1317,7 @@ class HierarchyLayer(object):
             self.num_trained_frames,
         ))
 
-        if args.summarize_one_episode:
+        if args.summarize_one_episode not in ['None']:
             print('summarize_one_episode done')
             raise SystemExit
 
