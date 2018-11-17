@@ -227,6 +227,10 @@ CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-para
 CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp AntBulletEnv-0 --obs-type 'image' --env-name "AntBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --extend-drive 1 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --unmask-value-function --summarize-behavior-interval 15 --aux r_3 --summarize-rendered-behavior --summarize-state-prediction
 ```
 
+```bash
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp AntBulletEnv-0 --obs-type 'image' --env-name "AntBulletEnv-v1" --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 32 --extend-drive 1 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --unmask-value-function --diversity-driven-active-function 'sum' --summarize-behavior-interval 15 --aux r_3 --summarize-rendered-behavior --summarize-state-prediction
+```
+
 <!-- Number of subpolicies: 2 | Number of subpolicies: 4 |
 :-------------------------:|:-------------------------:
 <img src="imgs/MinitaurBulletEnv-v2/2_sub.gif">  |  <img src="imgs/MinitaurBulletEnv-v2/4_sub.gif"> -->

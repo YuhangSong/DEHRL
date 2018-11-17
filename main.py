@@ -692,7 +692,13 @@ class HierarchyLayer(object):
                             raise NotImplemented
 
                         difference_list += [difference*args.reward_bounty]
-                self.reward_bounty_raw_to_return[process_i] += float(np.amin(difference_list))
+                if args.diversity_driven_active_function in ['min']:
+                    self.reward_bounty_raw_to_return[process_i] += float(np.amin(difference_list))
+                elif args.diversity_driven_active_function in ['sum']:
+                    self.reward_bounty_raw_to_return[process_i] += float(np.sum(difference_list))
+                else:
+                    raise NotImplemented
+
             '''END: compute none normalized reward_bounty_raw_to_return'''
 
             '''mask reward bounty, since the final state is start state,

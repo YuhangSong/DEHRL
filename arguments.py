@@ -99,6 +99,8 @@ def get_args():
                         help='Train mode for transition_model and actor_critic: switch, together' )
     parser.add_argument('--unmask-value-function', action='store_true',
                         help='Whether unmask value functions' )
+    parser.add_argument('--diversity-driven-active-function', type=str, default='min',
+                        help='Active function of diversity-driven: min, sum' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='Whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
@@ -199,7 +201,9 @@ def get_args():
         '''mask value function'''
         args.save_dir = os.path.join(args.save_dir, 'u_v_f-{}'.format(args.unmask_value_function))
         '''mutual information'''
-        args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
+        # args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
+        '''diversity-driven-active-function'''
+        args.save_dir = os.path.join(args.save_dir, 'd_d_a_f-{}'.format(args.diversity_driven_active_function))
         '''clip reward bounty'''
         args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
         if args.clip_reward_bounty:
