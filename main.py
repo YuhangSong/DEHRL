@@ -658,7 +658,6 @@ class HierarchyLayer(object):
                 difference_list = []
                 for action_i in range(prediction_rb.shape[0]):
                     if action_i!=action_rb[process_i]:
-                        print(action_i)
                         '''compute difference'''
                         if args.distance in ['l2']:
                             if args.env_name in ['Explore2D']:
@@ -698,19 +697,20 @@ class HierarchyLayer(object):
 
             '''START: computer bounty after being clipped'''
             if args.clip_reward_bounty:
-                self.bounty_clip = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]]
-                delta = (self.reward_bounty_raw_to_return-self.bounty_clip)
-                if args.clip_reward_bounty_active_function in ['linear']:
-                    self.reward_bounty = delta
-                elif args.clip_reward_bounty_active_function in ['u']:
-                    self.reward_bounty = delta.sign().clamp(min=0.0,max=1.0)
-                elif args.clip_reward_bounty_active_function in ['relu']:
-                    self.reward_bounty = F.relu(delta)
-                elif args.clip_reward_bounty_active_function in ['shrink_relu']:
-                    positive_active = delta.sign().clamp(min=0.0,max=1.0)
-                    self.reward_bounty = delta * positive_active + positive_active - 1
-                else:
-                    raise Exception('No Supported')
+                for process_i in range(args.num_processes):
+                    self.bounty_clip[process_i] = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]][process_i]
+                    delta = (self.reward_bounty_raw_to_return[process_i]-self.bounty_clip[process_i])
+                    if args.clip_reward_bounty_active_function in ['linear']:
+                        self.reward_bounty[process_i] = delta
+                    elif args.clip_reward_bounty_active_function in ['u']:
+                        self.reward_bounty[process_i] = delta.sign().clamp(min=0.0,max=1.0)
+                    elif args.clip_reward_bounty_active_function in ['relu']:
+                        self.reward_bounty[process_i] = F.relu(delta)
+                    elif args.clip_reward_bounty_active_function in ['shrink_relu']:
+                        positive_active = delta.sign().clamp(min=0.0,max=1.0)
+                        self.reward_bounty[process_i] = delta * positive_active + positive_active - 1
+                    else:
+                        raise Exception('No Supported')
             else:
                 self.reward_bounty = self.reward_bounty_raw_to_return
             '''END: end of computer bounty after being clipped'''
