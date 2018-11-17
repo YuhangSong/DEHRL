@@ -435,13 +435,13 @@ class HierarchyLayer(object):
         print('[H-{:1}] Learner has been trained to step: {}'.format(self.hierarchy_id, self.num_trained_frames))
         self.num_trained_frames_at_start = self.num_trained_frames
 
-        self.start = 0.0 # make sure the first episode is recorded
+        self.start = time.time()
         self.step_i = 0
         self.update_i = 0
 
         self.refresh_update_type()
 
-        self.last_time_summarize_behavior = time.time()
+        self.last_time_summarize_behavior = 0.0 # make sure the first episode is recorded
         self.summarize_behavior = False
         self.episode_visilize_stack = {}
         # self.episode_save_stack = {}
@@ -782,17 +782,17 @@ class HierarchyLayer(object):
         if args.reward_bounty>0:
             if self.hierarchy_id in [args.num_hierarchy-1]:
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
-                if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld','Explore2D','Explore2DContinuous']:
+                if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     '''top level only receive reward from env'''
                     self.reward_final += self.reward
-                elif (self.args.env_name in ['MineCraft']) or ('Bullet' in args.env_name):
+                elif (self.args.env_name in ['MineCraft','Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                     '''top level only receive nothing to observe unsupervised learning'''
                     pass
                 else:
                     raise NotImplemented
             else:
                 '''other levels except top level'''
-                if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous','AntBulletEnv-v1']) or ('MinitaurBulletEnv' in args.env_name):
+                if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous']):
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
                     pass
                 elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','AntBulletEnv-v1']:
