@@ -143,6 +143,15 @@ def puton_input_action_text(img):
     )
     return img
 
+def get_mass_center(obs):
+    return np.asarray(
+        ndimage.measurements.center_of_mass(
+            (
+                (obs+255.0)/2.0
+            ).astype(np.uint8)
+        )
+    )
+
 sess = tf.Session()
 
 if args.env_name in ['Explore2D']:
@@ -486,6 +495,8 @@ class HierarchyLayer(object):
         for macro_step_i in range(self.hierarchy_interval):
 
             self.is_final_step_by_upper_layer = (macro_step_i in [self.hierarchy_interval-1])
+            if args.extend_driven > 0:
+                self.is_extend_step = (macro_step_i%args.extend_driven==0)
 
             self.one_step()
 
@@ -635,114 +646,50 @@ class HierarchyLayer(object):
         self.reward_final *= 0.0 # reward be used to update policy
 
         '''START: computer normalized reward_bounty, EVERY T interval'''
-        if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer):
-
-            '''integrate original reward, integrate the original reward here
-            will cause the original reward being normalized too'''
-            if self.args.env_name in ['None']:
-                self.reward_bounty_raw_to_return += (self.reward.cuda()*0.01)
+        if (args.reward_bounty>0) and (self.hierarchy_id not in [args.num_hierarchy-1]) and (self.is_final_step_by_upper_layer or self.is_extend_step):
 
             '''START: compute none normalized reward_bounty_raw_to_return'''
             action_rb = self.rollouts.input_actions[self.step_i].nonzero()[:,1]
-            if not args.mutual_information:
-                obs_rb = self.obs.astype(float)-self.observation_predicted_from_by_upper_layer.cpu().numpy()
-                prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
-                if self.args.inverse_mask:
-                    mask_rb = self.mask_of_predicted_observation_by_upper_layer.cpu().numpy()
-            else:
-                self.upper_layer.transition_model.eval()
-                with torch.no_grad():
-                    predicted_action_resulted_from, self.predicted_reward_bounty_by_upper_layer = self.upper_layer.transition_model(
-                        inputs = torch.from_numpy(self.obs).float().cuda(),
-                    )
-                    predicted_action_resulted_from = predicted_action_resulted_from.exp()
+            obs_rb = self.obs.astype(float)-self.observation_predicted_from_by_upper_layer.cpu().numpy()
+            prediction_rb = self.predicted_next_observations_by_upper_layer.cpu().numpy()
+            if self.args.inverse_mask:
+                mask_rb = self.mask_of_predicted_observation_by_upper_layer.cpu().numpy()
             for process_i in range(args.num_processes):
-
-                if not args.mutual_information:
-                    difference_list = []
-                    for action_i in range(prediction_rb.shape[0]):
-
+                difference_list = []
+                for action_i in range(prediction_rb.shape[0]):
+                    if action_i!=action_rb[process_i]:
+                        print(action_i)
                         '''compute difference'''
-                        if args.distance in ['l1']:
-                            difference_l1 = np.mean(
-                                np.abs(
-                                    (obs_rb[process_i]-prediction_rb[action_i,process_i])
-                                )
-                            )/255.0
-
                         if args.distance in ['l2']:
                             if args.env_name in ['Explore2D']:
-                                difference_l2 = np.linalg.norm(
+                                difference = np.linalg.norm(
                                     x = (obs_rb[process_i][0,0]-prediction_rb[action_i,process_i][0,0]),
                                     ord = 2,
                                 )
                             elif ('MinitaurBulletEnv' in args.env_name) or ('AntBulletEnv' in args.env_name):
                                 '''28:30 represents the position'''
-                                difference_l2 = np.linalg.norm(
+                                difference = np.linalg.norm(
                                     x = (obs_rb[process_i][28:30]-prediction_rb[action_i,process_i][28:30]),
                                     ord = 2,
                                 )/(obs_rb[process_i][28:30].shape[0]**0.5)
-                                # difference_l2 = np.linalg.norm(
-                                #     x = (obs_rb[process_i]-prediction_rb[action_i,process_i]),
-                                #     ord = 2,
-                                # )/(obs_rb[process_i].shape[0]**0.5)
                             elif args.env_name in ['ReacherBulletEnv-v1','Explore2DContinuous']:
                                 '''0:2 represents the position'''
-                                difference_l2 = np.linalg.norm(
+                                difference = np.linalg.norm(
                                     x = (obs_rb[process_i][0:2]-prediction_rb[action_i,process_i][0:2]),
                                     ord = 2,
                                 )/(obs_rb[process_i][0:2].shape[0]**0.5)
                             else:
                                 raise NotImplemented
-
-                        if args.distance in ['mass_center']:
-                            # mask here: *mask_rb[action_i,process_i][0]
-                            mass_center_0 = np.asarray(
-                                ndimage.measurements.center_of_mass(
-                                    (
-                                        (obs_rb[process_i][0]+255.0)/2.0
-                                    ).astype(np.uint8)
-                                )
-                            )
-                            mass_center_1 = np.asarray(
-                                ndimage.measurements.center_of_mass(
-                                    (
-                                        (prediction_rb[action_i,process_i][0]+255.0)/2.0
-                                    ).astype(np.uint8)
-                                )
-                            )
-                            difference_mass_center = np.linalg.norm(mass_center_0-mass_center_1)
-
-                        '''assign difference'''
-                        if args.distance in ['l1']:
-                            difference = difference_l1
-                        if args.distance in ['l2']:
-                            difference = difference_l2
                         elif args.distance in ['mass_center']:
-                            difference = difference_mass_center
+                            # mask here: *mask_rb[action_i,process_i][0]
+                            difference = np.linalg.norm(
+                                get_mass_center(obs_rb[process_i][0])-get_mass_center(prediction_rb[action_i,process_i][0])
+                            )
                         else:
-                            raise NotImplementedError
+                            raise NotImplemented
 
-                        '''record difference'''
-                        if action_i==action_rb[process_i]:
-                            continue
                         difference_list += [difference*args.reward_bounty]
-
-                    '''compute reward bounty'''
-                    self.reward_bounty_raw_to_return[process_i] += float(np.amin(difference_list))
-
-                    # DEBUG: generate fake reward bounty
-                    # if action_rb[process_i].item()==0.0:
-                    #     self.reward_bounty_raw_to_return[process_i] = -obs_rb[process_i][28]
-                    # elif action_rb[process_i].item()==1.0:
-                    #     self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
-                    # else:
-                    #     raise NotImplemented
-                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][31]/obs_rb[process_i][34]
-                    # self.reward_bounty_raw_to_return[process_i] = obs_rb[process_i][28]
-
-                else:
-                    self.reward_bounty_raw_to_return[process_i] = predicted_action_resulted_from[process_i, action_rb[process_i]].log()
+                self.reward_bounty_raw_to_return[process_i] += float(np.amin(difference_list))
             '''END: compute none normalized reward_bounty_raw_to_return'''
 
             '''mask reward bounty, since the final state is start state,
@@ -751,14 +698,8 @@ class HierarchyLayer(object):
 
             '''START: computer bounty after being clipped'''
             if args.clip_reward_bounty:
-
-                if not args.mutual_information:
-                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]]
-                else:
-                    self.bounty_clip = self.predicted_reward_bounty_by_upper_layer
-
+                self.bounty_clip = self.predicted_reward_bounty_by_upper_layer[action_rb[process_i]]
                 delta = (self.reward_bounty_raw_to_return-self.bounty_clip)
-
                 if args.clip_reward_bounty_active_function in ['linear']:
                     self.reward_bounty = delta
                 elif args.clip_reward_bounty_active_function in ['u']:
@@ -770,7 +711,6 @@ class HierarchyLayer(object):
                     self.reward_bounty = delta * positive_active + positive_active - 1
                 else:
                     raise Exception('No Supported')
-
             else:
                 self.reward_bounty = self.reward_bounty_raw_to_return
             '''END: end of computer bounty after being clipped'''
@@ -1353,6 +1293,7 @@ def main():
         hierarchy_layer[-1].observation_predicted_from_by_upper_layer = None
         hierarchy_layer[-1].predicted_reward_bounty_by_upper_layer = None
         hierarchy_layer[-1].is_final_step_by_upper_layer = False
+        hierarchy_layer[-1].is_extend_step = False
         hierarchy_layer[-1].one_step()
 
 if __name__ == "__main__":

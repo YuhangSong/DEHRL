@@ -91,8 +91,10 @@ def get_args():
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
                         help='Coefficient of the raw reward bounty, set to 0 to disable reward bounty' )
+    parser.add_argument('--extend-driven', type=int, default=0,
+                        help='If extend the driven (0 for no extend), positive number for extended interval. For continuous control, they are bad at handling sparese reward')
     parser.add_argument('--distance', type=str,
-                        help='Distance to meansure the difference between states: l1, mass_center, l1_mass_center' )
+                        help='Distance to meansure the difference between states: l2, mass_center')
     parser.add_argument('--train-mode', type=str,
                         help='Train mode for transition_model and actor_critic: switch, together' )
     parser.add_argument('--unmask-value-function', action='store_true',
@@ -105,7 +107,7 @@ def get_args():
                         help='Num of the subpolicies per hierarchy' )
 
     parser.add_argument('--mutual-information', action='store_true',
-                        help='Whether use mutual information as bounty reward' )
+                        help='Whether use mutual information as bounty reward (depreciated)' )
 
     '''inverse mask model'''
     parser.add_argument('--inverse-mask', action='store_true',
@@ -186,6 +188,8 @@ def get_args():
     if args.reward_bounty > 0.0:
         '''distance'''
         args.save_dir = os.path.join(args.save_dir, 'd-{}'.format(args.distance))
+        '''extend_driven'''
+        args.save_dir = os.path.join(args.save_dir, 'e_d-{}'.format(args.extend_driven))
         '''transition_model training details'''
         # args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
