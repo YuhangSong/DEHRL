@@ -103,6 +103,8 @@ def get_args():
                         help='Whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
                         help='Active function of clip reward bounty: linear, u, relu, shrink_relu' )
+    parser.add_argument('--clip-reward-bounty-over-subpolicy', type=str, default='each',
+                        help='Mode of clip reward bounty: each, all' )
     parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
                         help='Num of the subpolicies per hierarchy' )
 
@@ -202,6 +204,7 @@ def get_args():
         args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
         if args.clip_reward_bounty:
             args.save_dir = os.path.join(args.save_dir, 'c_r_b_a_f-{}'.format(args.clip_reward_bounty_active_function))
+            args.save_dir = os.path.join(args.save_dir, 'c_r_b_o_s-{}'.format(args.clip_reward_bounty_over_subpolicy))
         '''inverse mask'''
         args.save_dir = os.path.join(args.save_dir, 'i_m-{}'.format(args.inverse_mask))
         if args.inverse_mask:

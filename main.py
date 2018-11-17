@@ -497,6 +497,10 @@ class HierarchyLayer(object):
             self.is_final_step_by_upper_layer = (macro_step_i in [self.hierarchy_interval-1])
             if args.extend_driven > 0:
                 self.is_extend_step = (macro_step_i%args.extend_driven==0)
+            elif args.extend_driven == 0:
+                self.is_extend_step = False
+            else:
+                raise NotImplementeds
 
             self.one_step()
 
