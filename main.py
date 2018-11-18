@@ -750,7 +750,7 @@ class HierarchyLayer(object):
                     if self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld']:
                         self.reward_final += self.reward.cuda()
                     elif self.args.env_name in ['AntBulletEnv-v1']:
-                        self.reward_final += (self.reward.cuda()*0.001)
+                        self.reward_final += (self.reward.cuda()/460.0*140.0)
                     else:
                         raise NotImplemented
                 else:
