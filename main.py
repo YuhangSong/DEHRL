@@ -178,7 +178,7 @@ if args.env_name in ['Explore2D']:
 
         terminal_states_f.close()
 
-def obs_to_state_img(obs, marker='o'):
+def obs_to_state_img(obs, marker='o',c='blue'):
     if state_type in ['standard_image']:
         state_img = obs[0]
     elif state_type in ['vector']:
@@ -201,21 +201,21 @@ def obs_to_state_img(obs, marker='o'):
             plt.clf()
             axes = plt.gca()
             if ('MinitaurBulletEnv' in args.env_name) or ('AntBulletEnv' in args.env_name):
-                limit = 1
-                plt.scatter(obs[28], obs[29], s=18, c=1, marker=marker, alpha=1.0)
+                limit = 2.0
+                plt.scatter(obs[28], obs[29], s=24, c=c, marker=marker, alpha=1.0)
             elif args.env_name in ['ReacherBulletEnv-v1']:
                 limit = 1
-                plt.scatter(obs[0], obs[1], s=18, c=1, marker=marker, alpha=1.0)
+                plt.scatter(obs[0], obs[1], s=18, c=c, marker=marker, alpha=1.0)
             elif args.env_name in ['Explore2DContinuous']:
                 limit = args.episode_length_limit
-                plt.scatter(obs[0], obs[1], s=18, c=1, marker=marker, alpha=1.0)
+                plt.scatter(obs[0], obs[1], s=18, c=c, marker=marker, alpha=1.0)
             else:
                 raise NotImplemented
             axes.set_xlim([-limit,limit])
             axes.set_ylim([-limit,limit])
             from utils import figure_to_array
             state_img = figure_to_array(plt.gcf())
-            state_img = cv2.cvtColor(state_img, cv2.cv2.COLOR_RGBA2GRAY)
+            state_img = cv2.cvtColor(state_img, cv2.cv2.COLOR_RGBA2RGB)
         else:
             raise NotImplemented
     else:
@@ -562,9 +562,10 @@ class HierarchyLayer(object):
                 )
 
         # # DEBUG: specify higher level actions
-        # if self.hierarchy_id in [1]:
-        #     self.action[0,0]=3
-        #     print(self.action[:,0])
+        # if args.summarize_one_episode.split('_')[0] in ['sub']:
+        #     if self.hierarchy_id in [1]:
+        #         self.action[0,0]=int(args.summarize_one_episode.split('_')[1])
+        #         print(self.action[:,0])
 
     def log_for_specify_action(self):
 
@@ -1151,10 +1152,11 @@ class HierarchyLayer(object):
                     temp = obs_to_state_img(
                         temp.cpu().numpy(),
                         marker = "+",
+                        c = 'green',
                     )
 
                     if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
-                        img = img + temp/2
+                        img = img+temp
                     elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                         img = np.concatenate((img,temp),1)
                     else:
@@ -1173,6 +1175,7 @@ class HierarchyLayer(object):
                         )
                 if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                     img = (img/np.amax(img)*255.0).astype(np.uint8)
+
                 elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     pass
                 else:
