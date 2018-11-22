@@ -91,21 +91,27 @@ def get_args():
     '''reward bounty details'''
     parser.add_argument('--reward-bounty', type=float,
                         help='Coefficient of the raw reward bounty, set to 0 to disable reward bounty' )
+    parser.add_argument('--extend-driven', type=int, default=0,
+                        help='If extend the driven (0 for no extend), positive number for extended interval. For continuous control, they are bad at handling sparese reward')
     parser.add_argument('--distance', type=str,
-                        help='Distance to meansure the difference between states: l1, mass_center, l1_mass_center' )
+                        help='Distance to meansure the difference between states: l2, mass_center')
     parser.add_argument('--train-mode', type=str,
                         help='Train mode for transition_model and actor_critic: switch, together' )
     parser.add_argument('--unmask-value-function', action='store_true',
                         help='Whether unmask value functions' )
+    parser.add_argument('--diversity-driven-active-function', type=str, default='min',
+                        help='Active function of diversity-driven: min, sum' )
     parser.add_argument('--clip-reward-bounty', action='store_true',
                         help='Whether clip the reward bounty' )
     parser.add_argument('--clip-reward-bounty-active-function', type=str,
                         help='Active function of clip reward bounty: linear, u, relu, shrink_relu' )
+    parser.add_argument('--clip-reward-bounty-over-subpolicy', type=str, default='each',
+                        help='Mode of clip reward bounty: each, all' )
     parser.add_argument('--transition-model-mini-batch-size', type=int, nargs='*',
                         help='Num of the subpolicies per hierarchy' )
 
     parser.add_argument('--mutual-information', action='store_true',
-                        help='Whether use mutual information as bounty reward' )
+                        help='Whether use mutual information as bounty reward (depreciated)' )
 
     '''inverse mask model'''
     parser.add_argument('--inverse-mask', action='store_true',
@@ -186,6 +192,8 @@ def get_args():
     if args.reward_bounty > 0.0:
         '''distance'''
         args.save_dir = os.path.join(args.save_dir, 'd-{}'.format(args.distance))
+        '''extend_driven'''
+        args.save_dir = os.path.join(args.save_dir, 'e_d-{}'.format(args.extend_driven))
         '''transition_model training details'''
         # args.save_dir = os.path.join(args.save_dir, 't_m_e-{}'.format(args.transition_model_epoch))
         '''train mode'''
@@ -193,11 +201,14 @@ def get_args():
         '''mask value function'''
         args.save_dir = os.path.join(args.save_dir, 'u_v_f-{}'.format(args.unmask_value_function))
         '''mutual information'''
-        args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
+        # args.save_dir = os.path.join(args.save_dir, 'm_i-{}'.format(args.mutual_information))
+        '''diversity-driven-active-function'''
+        args.save_dir = os.path.join(args.save_dir, 'd_d_a_f-{}'.format(args.diversity_driven_active_function))
         '''clip reward bounty'''
         args.save_dir = os.path.join(args.save_dir, 'c_r_b-{}'.format(args.clip_reward_bounty))
         if args.clip_reward_bounty:
             args.save_dir = os.path.join(args.save_dir, 'c_r_b_a_f-{}'.format(args.clip_reward_bounty_active_function))
+            args.save_dir = os.path.join(args.save_dir, 'c_r_b_o_s-{}'.format(args.clip_reward_bounty_over_subpolicy))
         '''inverse mask'''
         args.save_dir = os.path.join(args.save_dir, 'i_m-{}'.format(args.inverse_mask))
         if args.inverse_mask:

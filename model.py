@@ -534,7 +534,12 @@ class TransitionModel(nn.Module):
 
         before_deconv = conved*self.input_action_linear(input_action)
 
-        predicted_reward_bounty = self.reward_bounty_linear(before_deconv)
+        predicted_reward_bounty = self.reward_bounty_linear(
+            {
+                'each': before_deconv,
+                'all': conved,
+            }[args.clip_reward_bounty_over_subpolicy]
+        )
 
         if not self.mutual_information:
 
