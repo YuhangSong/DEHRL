@@ -128,13 +128,10 @@ Level 2; Any | Level 2; Fix | Level 2; Random
 If you cannot reproduce above curves, checkout to above points and run following commands again.
 In the mean time, open an issue immediately, since we believe we are introducing unintentional changes to the code when adding more domains to present.
 
-#### Load pre-trained model and data
+#### Reload Model and Data from a Checkpoint
 
 The code antomatically check and reload everything from the log dir you set, and everything (model/curves/videos, etc.) is saved every 10 minutes.
-Thus, please feel free to continue your experiment from where you stopped by simply typing in the same command.
-
-If you want to load our pre-trained model, download the zipped log dir from [here]() and unzip it to the ```../results/``` dir.
-Then run the same commands to load our model as well as other training data.
+Thus, please feel save to continue your experiment from where you stopped by simply typing in the same command.
 
 ### Run MineCraft
 
