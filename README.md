@@ -87,34 +87,34 @@ We thank them a lot for this inspiration.
 
 Goal-type: any.
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal any --new-overcooked --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.1875 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal any --new-overcooked --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.1875 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Goal-type: fix
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal fix --new-overcooked --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.1875 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal fix --new-overcooked --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.1875 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Goal-type: random
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal random --new-overcooked --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.1875 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 1 --setup-goal random --new-overcooked --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0.1875 --distance mass_center --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 #### Level 2
 
 Goal-type: any
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal any --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal any --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Goal-type: fix
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal fix --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal fix --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Goal-type: random
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal random --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "OverCooked" --reward-level 2 --setup-goal random --new-overcooked --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 12 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Following curves are produced at commit point ```7ea3aec9eabcd421d5660042d3e50333454f928e```.
@@ -139,7 +139,7 @@ Then run the same commands to load our model as well as other training data.
 ### Run MineCraft
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 1 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MineCraft" --num-hierarchy 4 --num-subpolicy 8 8 8 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l1 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 10 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 1 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MineCraft" --num-hierarchy 4 --num-subpolicy 8 8 8 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l1 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 10 --aux r_0
 ```
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/minecraft_0.png" width="600"/></p>
@@ -162,7 +162,7 @@ to have a third person view of the built world.
 
 The agent can reach the key when the skull is not presented, video is [here](https://www.dropbox.com/s/abcjmzxu9eubcbd/H-0_F-67778560_observation.avi?dl=0).
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 8 4 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "MontezumaRevengeNoFrameskip-v4" --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 8 4 --num-steps 128 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 But due to the skull is affecting the mass centre of the state significantly, our method fails when the skull is moving in the state.
 Necessary solution is to generate a mask that can locate the part of the state that is controlled by the agent.
@@ -172,7 +172,7 @@ But their code is not released yet, so we implement their idea to generate the m
 However, their idea works ideally on simple domain like GridWorld.
 Run following command to see the learnt masks on GridWorld,
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "GridWorld" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --inverse-mask --num-grid 7 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "GridWorld" --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance mass_center --transition-model-mini-batch-size 64 --inverse-mask --num-grid 7 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 Following video is produced at commit point ```04baecee316234a7f3fdcd51d1908c971211fdce```.
 
@@ -190,12 +190,12 @@ We are waiting for their official release to further advance our DEHRL on domain
 
 Number of subpolicies: 4
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 4 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0 --log-behavior
 ```
 
 Number of subpolicies: 8
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 8 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0 --log-behavior
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 3e-4 --clip-param 0.1 --actor-critic-epoch 10 --entropy-coef 0 --value-loss-coef 1 --gamma 0.99 --tau 0.95 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp code_release --obs-type 'image' --env-name "Explore2DContinuous" --episode-length-limit 32 --num-hierarchy 2 --num-subpolicy 8 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0 --log-behavior
 ```
 
 Number of subpolicies: 4 | Number of subpolicies: 8 |
@@ -238,24 +238,24 @@ Following results on Explore2D are produced at ```9c2c8bbe5a8e18df21fbda1183e3e2
 
 Random policy baseline
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 0 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 ### Run with 5 subpolicies
 
 Number of levels: 2
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 5 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Number of levels: 3
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 3 --num-subpolicy 5 5 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Number of levels: 4
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 4 --num-subpolicy 5 5 5 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 4 --num-subpolicy 5 5 5 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Visualize Explore2D: replace ```main.py``` to ```vis_explore2d.py``` in corresponding command.
@@ -268,17 +268,17 @@ Level 1 | Level 2 | Level 3 | Level 4
 
 Number of levels: 2
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 9 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 2 --num-subpolicy 9 --hierarchy-interval 4 --num-steps 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Number of levels: 3
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 3 --num-subpolicy 9 9 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 3 --num-subpolicy 9 9 --hierarchy-interval 4 4 --num-steps 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Number of levels: 4
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 4 --num-subpolicy 9 9 9 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --log-behavior-interval 5 --aux r_0
+CUDA_VISIBLE_DEVICES=0 python main.py --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --actor-critic-mini-batch-size 256 --actor-critic-epoch 4 --exp 2d_explore --obs-type 'image' --env-name "Explore2D" --episode-length-limit 1024 --num-hierarchy 4 --num-subpolicy 9 9 9 --hierarchy-interval 4 4 4 --num-steps 128 128 128 128 --reward-bounty 1 --distance l2 --transition-model-mini-batch-size 64 64 64 --train-mode together --clip-reward-bounty --clip-reward-bounty-active-function linear --summarize-behavior-interval 5 --aux r_0
 ```
 
 Level 1 | Level 2 | Level 3 | Level 4
