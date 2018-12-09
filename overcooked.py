@@ -487,8 +487,7 @@ class OverCooked(gym.Env):
             return self.get_ram()
         elif self.args.obs_type == 'image':
             img = self.render()
-            if not self.args.run_overcooked:
-                img = self.processes_obs(img)
+            img = self.processes_obs(img)
             return img
 
     def get_ram(self):

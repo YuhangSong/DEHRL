@@ -217,7 +217,7 @@ class StateEncoder(nn.Module):
 
     def forward(self, inputs, states, masks):
         if self.state_type in ['standard_image']:
-            x = self.main(inputs / 255.0)
+            x = self.main(inputs)
 
             if hasattr(self, 'gru'):
                 if inputs.size(0) == states.size(0):
@@ -355,8 +355,8 @@ class InverseMaskModel(nn.Module):
 
     def forward(self, last_states, now_states):
 
-        conved_last_states = (last_states/255.0)
-        conved_now_states  = (now_states /255.0)
+        conved_last_states = (last_states)
+        conved_now_states  = (now_states)
 
         alpha = self.get_alpha(
             states = conved_now_states,
@@ -387,7 +387,7 @@ class InverseMaskModel(nn.Module):
         return alpha
 
     def get_mask(self, last_states):
-        conved_last_states  = (last_states /255.0)
+        conved_last_states  = (last_states)
 
         alpha = self.get_alpha(
             states = conved_last_states,
@@ -401,7 +401,7 @@ class InverseMaskModel(nn.Module):
         torch.save(self.state_dict(), save_path)
 
 class TransitionModel(nn.Module):
-    def __init__(self, input_observation_shape, state_type, input_action_space, output_observation_shape, num_subpolicy, mutual_information, linear_size=256):
+    def __init__(self, input_observation_shape, state_type, input_action_space, output_observation_shape, num_subpolicy, mutual_information, ObsNormer, linear_size=256):
         super(TransitionModel, self).__init__()
         '''if mutual_information, transition_model is act as a regressor to fit p(Z|c)'''
 
@@ -409,6 +409,10 @@ class TransitionModel(nn.Module):
         self.state_type = state_type
         self.output_observation_shape = output_observation_shape
         self.mutual_information = mutual_information
+        self.ObsNormer = ObsNormer
+        if -self.ObsNormer.bound[0]!=self.ObsNormer.bound[1]:
+            raise NotImplemented
+        self.ob_bound = self.ObsNormer.bound[1]
 
         self.linear_size = linear_size
         self.num_subpolicy = num_subpolicy
@@ -525,7 +529,7 @@ class TransitionModel(nn.Module):
     def forward(self, inputs, input_action=None):
         if self.state_type in ['standard_image']:
             conved = self.conv(
-                inputs/255.0,
+                inputs,
             )
         elif self.state_type in ['vector']:
             conved = self.conv(
@@ -543,13 +547,10 @@ class TransitionModel(nn.Module):
 
         if not self.mutual_information:
 
-            if self.state_type in ['standard_image']:
+            predicted_state = self.deconv(before_deconv)*self.ob_bound
 
-                predicted_state = self.deconv(before_deconv)*255.0
+            if self.state_type in ['vector']:
 
-            elif self.state_type in ['vector']:
-
-                predicted_state = self.deconv(before_deconv)
                 predicted_state = predicted_state.view(predicted_state.size()[0],*self.output_observation_shape)
 
             return predicted_state, predicted_reward_bounty

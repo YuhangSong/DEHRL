@@ -58,6 +58,19 @@ torch.set_num_threads(1)
 
 summary_writer = tf.summary.FileWriter(args.save_dir)
 
+ObsNormer = utils.ObsNorm(
+    env = make_env(0, args=args)(),
+    save_dir = args.save_dir,
+)
+ob_mean_processes = np.repeat(np.expand_dims(ObsNormer.mean,0),repeats=args.num_processes, axis=0)
+
+def obs_norm(obs):
+    return (obs.astype(ob_mean_processes.dtype)-ob_mean_processes)/ObsNormer.std
+
+def obs_denorm(obs):
+    '''H*W (normed) -> H*W (unnormed)'''
+    return ((obs*ob_std)+ob_mean[0]).astype(np.uint8)
+
 bottom_envs = [make_env(i, args=args)
             for i in range(args.num_processes)]
 
@@ -365,6 +378,7 @@ class HierarchyLayer(object):
                 output_observation_shape = self.envs.observation_space.shape,
                 num_subpolicy = args.num_subpolicy[self.hierarchy_id-1],
                 mutual_information = args.mutual_information,
+                ObsNormer = ObsNormer,
             ).cuda()
             self.action_onehot_batch = torch.zeros(args.num_processes*self.envs.action_space.n,self.envs.action_space.n).cuda()
             batch_i = 0
@@ -735,7 +749,7 @@ class HierarchyLayer(object):
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
                 if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     '''top level only receive reward from env'''
-                    self.reward_final += self.reward
+                    self.reward_final += self.reward.cuda()
                 elif (self.args.env_name in ['MineCraft','Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                     '''top level only receive nothing to observe unsupervised learning'''
                     pass
@@ -787,19 +801,15 @@ class HierarchyLayer(object):
         '''Obser reward and next obs'''
         fetched = self.envs.step(self.actions_to_step)
         if self.hierarchy_id in [0]:
-            # print('====')
-            # print(self.obs[0])
             self.obs, self.reward_raw_OR_reward, self.done, self.info = fetched
-            # print(self.obs[0])
-            # print(self.done[0])
-            # input('continue')
+            self.obs = obs_norm(self.obs)
         else:
             self.obs, self.reward_raw_OR_reward, self.reward_bounty_raw_returned, self.done, self.info = fetched
 
         if self.hierarchy_id in [0]:
             if args.test_action:
                 win_dic['Obs'] = viz.images(
-                    self.obs[0],
+                    obs_denorm(self.obs[0]),
                     win=win_dic['Obs'],
                     opts=dict(title='obs')
                 )
@@ -964,6 +974,9 @@ class HierarchyLayer(object):
             except Exception as e:
                 print("[H-{:1}] Save checkpoint failed, due to {}.".format(self.hierarchy_id,e))
 
+            if self.hierarchy_id in [0]:
+                ObsNormer.store()
+
         '''print info'''
         if self.update_i % args.log_interval == 0:
             self.end = time.time()
@@ -1059,9 +1072,10 @@ class HierarchyLayer(object):
         '''as a environment, it has reset method'''
         self.obs = self.envs.reset()
         if self.hierarchy_id in [0]:
+            self.obs = obs_norm(self.obs)
             if args.test_action:
                 win_dic['Obs'] = viz.images(
-                    self.obs[0],
+                    obs_denorm(self.obs[0]),
                     win=win_dic['Obs'],
                     opts=dict(title='obs')
                 )
