@@ -19,7 +19,7 @@ Published on [**Proceedings of the 33rd National Conference on Artificial Intell
 ```diff
 Oral Spotlight Presentation
 ```
-as an [](https://placehold.it/15/c5f015/000000?text=+) `**Oral Spotlight Presentation**`.
+as an **Oral Spotlight Presentation**.
 By [Intelligent Systems Lab](http://www.cs.ox.ac.uk/people/thomas.lukasiewicz/isg-index.html) @ [Computer Science](http://www.cs.ox.ac.uk/) in [University of Oxford](http://www.ox.ac.uk/).
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/overcooked.png"/></p>
