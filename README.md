@@ -1,6 +1,6 @@
 # DEHRL
 
-This repository provides implementation of [**domains**](#domains), [**DEHRL**](#setup-an-environment-to-run-our-code) and [**results visualization**](#results-visualization) for paper:
+This repository provides implementation of [domains](#domains), [DEHRL](#setup-an-environment-to-run-our-code) and [results visualization](#results-visualization) for paper:
 
 * **Diversity−Driven Extensible Hierarchical Reinforcement Learning.**
 [*Yuhang Song*](http://www.cs.ox.ac.uk/people/yuhang.song/),
@@ -15,7 +15,7 @@ Corresponding author&#8727;.
 [[Supplementary Material](https://www.dropbox.com/s/0viej0541ns7o3i/main.pdf?dl=0)],
 [[arXiv](https://arxiv.org/abs/1811.04324)].
 
-Published on [**Proceedings of the 33rd National Conference on Artificial Intelligence (AAAI 2019)**](https://www.computer.org/web/tpami), as an **Oral Spotlight Presentation**.
+Published on [Proceedings of the 33rd National Conference on Artificial Intelligence (AAAI 2019)](https://www.computer.org/web/tpami), as an **Oral Spotlight Presentation**.
 By [Intelligent Systems Lab](http://www.cs.ox.ac.uk/people/thomas.lukasiewicz/isg-index.html) @ [Computer Science](http://www.cs.ox.ac.uk/) in [University of Oxford](http://www.ox.ac.uk/).
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/overcooked.png"/></p>
