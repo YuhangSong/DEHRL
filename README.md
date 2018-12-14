@@ -10,7 +10,7 @@ This repository provides implementation of [domains](#domains), [DEHRL](#setup-a
 [*Mai Xu*](http://45.77.201.133/html/Members/maixu.html).
 Co-first author&#8224;.
 Corresponding author&#8727;.
-[[Slides](https://docs.google.com/presentation/d/18olkElCpJoE0iPnyS6DpE8zH8I3mggcCvcWI5yJDJkI/edit?usp=sharing)],
+[[Oral Spotlight Presentation Slides](https://docs.google.com/presentation/d/18olkElCpJoE0iPnyS6DpE8zH8I3mggcCvcWI5yJDJkI/edit?usp=sharing)],
 [[Paper](https://www.dropbox.com/s/zt8wwwyy80f8b3q/Song.pdf?dl=0)],
 [[Supplementary Material](https://www.dropbox.com/s/0viej0541ns7o3i/main.pdf?dl=0)],
 [[arXiv](https://arxiv.org/abs/1811.04324)].
