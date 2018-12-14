@@ -16,6 +16,7 @@ Corresponding author&#8727;.
 [[arXiv](https://arxiv.org/abs/1811.04324)].
 
 Published on [**Proceedings of the 33rd National Conference on Artificial Intelligence (AAAI 2019)**](https://www.computer.org/web/tpami),
+<span style="color:blue">some *This is Blue italic.* text</span>
 as an [](https://placehold.it/15/c5f015/000000?text=+) `**Oral Spotlight Presentation**`.
 By [Intelligent Systems Lab](http://www.cs.ox.ac.uk/people/thomas.lukasiewicz/isg-index.html) @ [Computer Science](http://www.cs.ox.ac.uk/) in [University of Oxford](http://www.ox.ac.uk/).
 
