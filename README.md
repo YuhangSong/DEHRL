@@ -10,12 +10,13 @@ This repository provides implementation of [**domains**](#domains), [**DEHRL**](
 [*Mai Xu*](http://45.77.201.133/html/Members/maixu.html).
 Co-first author&#8224;.
 Corresponding author&#8727;.
+[[Slides](https://docs.google.com/presentation/d/18olkElCpJoE0iPnyS6DpE8zH8I3mggcCvcWI5yJDJkI/edit?usp=sharing)],
 [[Paper](https://www.dropbox.com/s/zt8wwwyy80f8b3q/Song.pdf?dl=0)],
 [[Supplementary Material](https://www.dropbox.com/s/0viej0541ns7o3i/main.pdf?dl=0)],
-[[Oral Presentation Slides](https://docs.google.com/presentation/d/18olkElCpJoE0iPnyS6DpE8zH8I3mggcCvcWI5yJDJkI/edit?usp=sharing)],
 [[arXiv](https://arxiv.org/abs/1811.04324)].
 
-Published on [**Proceedings of the 33rd National Conference on Artificial Intelligence (AAAI 2019)**](https://www.computer.org/web/tpami).
+Published on [**Proceedings of the 33rd National Conference on Artificial Intelligence (AAAI 2019)**](https://www.computer.org/web/tpami),
+as an [](https://placehold.it/15/c5f015/000000?text=+) `**Oral Spotlight Presentation**`.
 By [Intelligent Systems Lab](http://www.cs.ox.ac.uk/people/thomas.lukasiewicz/isg-index.html) @ [Computer Science](http://www.cs.ox.ac.uk/) in [University of Oxford](http://www.ox.ac.uk/).
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/overcooked.png"/></p>
