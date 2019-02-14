@@ -89,7 +89,7 @@ class Policy(nn.Module):
             index_dic = {}
             tensor_dic = {}
             y_dic = {}
-            action_index = np.where(input_action==1)[1]
+            action_index = np.where(input_action.cpu()==1)[1]
             for dic_i in range(self.num_subpolicy):
                 index_dic[str(dic_i)] = torch.from_numpy(np.where(action_index==dic_i)[0]).long().cuda()
                 if index_dic[str(dic_i)].size()[0] != 0:

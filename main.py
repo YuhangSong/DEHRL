@@ -735,7 +735,7 @@ class HierarchyLayer(object):
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
                 if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
                     '''top level only receive reward from env'''
-                    self.reward_final += self.reward
+                    self.reward_final += self.reward.cuda()
                 elif (self.args.env_name in ['MineCraft','Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                     '''top level only receive nothing to observe unsupervised learning'''
                     pass
