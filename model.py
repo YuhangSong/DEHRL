@@ -37,7 +37,7 @@ class Policy(nn.Module):
 
         if ('Bullet' in args.env_name) or (args.env_name in ['Explore2DContinuous']):
             self.linear_size = 64
-        elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+        elif args.env_name in ['OverCooked','MineCraft','Explore2D','GridWorld'] or ('NoFrameskip-v4' in args.env_name):
             self.linear_size = 256
         else:
             raise NotImplemented

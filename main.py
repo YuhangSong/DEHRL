@@ -75,7 +75,7 @@ if 'Bullet' in args.env_name:
     #         bottom_envs = VecNormalize(bottom_envs, gamma=args.gamma)
     pass
 
-elif args.env_name in ['OverCooked','MineCraft','Explore2D','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+elif (args.env_name in ['OverCooked','MineCraft','Explore2D','GridWorld']) or ('NoFrameskip-v4' in args.env_name):
     pass
 
 else:
@@ -733,7 +733,7 @@ class HierarchyLayer(object):
         if args.reward_bounty>0:
             if self.hierarchy_id in [args.num_hierarchy-1]:
                 '''top level only receive reward from env or nothing to observe unsupervised learning'''
-                if self.args.env_name in ['OverCooked','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                if self.args.env_name in ['OverCooked','GridWorld'] or ('NoFrameskip-v4' in args.env_name):
                     '''top level only receive reward from env'''
                     self.reward_final += self.reward.cuda()
                 elif (self.args.env_name in ['MineCraft','Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
@@ -746,9 +746,9 @@ class HierarchyLayer(object):
                 if (self.args.env_name in ['OverCooked','MineCraft','Explore2D','Explore2DContinuous']):
                     '''rewards occues less frequently or never occurs, down layers do not receive extrinsic reward'''
                     pass
-                elif self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld','AntBulletEnv-v1']:
+                elif self.args.env_name in ['GridWorld','AntBulletEnv-v1'] or ('NoFrameskip-v4' in args.env_name):
                     '''reward occurs more frequently and we want down layers to know it'''
-                    if self.args.env_name in ['MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                    if self.args.env_name in ['GridWorld'] or ('NoFrameskip-v4' in args.env_name):
                         self.reward_final += self.reward.cuda()
                     elif self.args.env_name in ['AntBulletEnv-v1']:
                         self.reward_final += (self.reward.cuda()*0.001)
@@ -818,7 +818,7 @@ class HierarchyLayer(object):
         if self.hierarchy_id in [0]:
             '''only when hierarchy_id is 0, the envs is returning reward_raw from the basic game emulator'''
             self.reward_raw = torch.from_numpy(self.reward_raw_OR_reward).float()
-            if args.env_name in ['OverCooked','MineCraft','GridWorld','MontezumaRevengeNoFrameskip-v4','Explore2D']:
+            if args.env_name in ['OverCooked','MineCraft','GridWorld','Explore2D'] or ('NoFrameskip-v4' in args.env_name):
                 self.reward = self.reward_raw.sign()
             elif ('Bullet' in args.env_name) or (args.env_name in ['Explore2DContinuous']):
                 self.reward = self.reward_raw
@@ -1157,7 +1157,7 @@ class HierarchyLayer(object):
 
                     if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                         img = img+temp
-                    elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                    elif args.env_name in ['OverCooked','MineCraft','GridWorld'] or ('NoFrameskip-v4' in args.env_name):
                         img = np.concatenate((img,temp),1)
                     else:
                         raise NotImplemented
@@ -1176,7 +1176,7 @@ class HierarchyLayer(object):
                 if (args.env_name in ['Explore2D','Explore2DContinuous']) or ('Bullet' in args.env_name):
                     img = (img/np.amax(img)*255.0).astype(np.uint8)
 
-                elif args.env_name in ['OverCooked','MineCraft','MontezumaRevengeNoFrameskip-v4','GridWorld']:
+                elif args.env_name in ['OverCooked','MineCraft','GridWorld'] or ('NoFrameskip-v4' in args.env_name):
                     pass
                 else:
                     raise NotImplemented

@@ -241,7 +241,8 @@ def make_env(rank, args):
                 env = NoLifeEnv(env)
                 if 'FIRE' in env.unwrapped.get_action_meanings():
                     env = FireResetEnv(env)
-                env = WrapperMontezumaRevenge(env)
+                if 'MontezumaRevenge' in args.env_name:
+                    env = WrapperMontezumaRevenge(env)
                 env = WarpFrame(env)
 
         env.seed(args.seed + rank)
