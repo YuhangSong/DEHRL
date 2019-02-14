@@ -52,21 +52,23 @@ In order to install requirements, follow:
 
 ```bash
 # create env
-conda create -n dehrl
+conda create -n dehrl python=3.6.7 -y
 
 # source in env
 source ~/.bashrc
 source activate dehrl
 
-conda install pytorch torchvision -c soumith
+conda install pytorch torchvision -c soumith -y
 pip install opencv-contrib-python
-conda install scikit-image
+conda install scikit-image -y
 pip install --upgrade imutils
 
 mkdir dehrl
 cd dehrl
 git clone https://github.com/YuhangSong/DEHRL.git
 mkdir results
+cd DEHRL
+pip install requirements.txt
 ```
 
 Run commands here to enter the virtual environment before proceeding to following commands:
