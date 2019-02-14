@@ -58,10 +58,12 @@ conda create -n dehrl python=3.6.7 -y
 source ~/.bashrc
 source activate dehrl
 
-conda install pytorch torchvision -c soumith -y
+pip install --upgrade torch torchvision
+pip install --upgrade tensorflow
 pip install opencv-contrib-python
 conda install scikit-image -y
 pip install --upgrade imutils
+pip install gym[atari]
 
 mkdir dehrl
 cd dehrl
