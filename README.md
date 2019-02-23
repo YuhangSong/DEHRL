@@ -286,9 +286,9 @@ Level 1 | Level 2 | Level 3 | Level 4
 
 The code log multiple curves to help analysis the training process, run:
 ```
-tensorboard --logdir ../results/code_release/ --port 6009
+tensorboard --logdir ../results/code_release/ --port 6010
 ```
-and visit ```http://localhost:6009``` for visualization with tensorboard.
+and visit ```http://localhost:6010``` for visualization with tensorboard.
 
 <p align="center"><img src="https://github.com/YuhangSong/DEHRL/blob/code_release/imgs/tensorboard.gif"/></p>
 
